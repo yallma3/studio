@@ -1,41 +1,64 @@
-import React, { useRef, useState, MouseEvent, useEffect, WheelEvent, useCallback } from "react";
-import { NodeComponent } from "./NodeComponent.tsx";
-import { Node, Socket, Connection, createTextNode, createNumberNode, createChatNode, createBooleanNode, createImageNode, createAddNode, createJoinNode, NodeValue } from "../types/NodeTypes";
-import { SOCKET_SPACING } from "./vars";
+import React, { useState, useRef, MouseEvent, useEffect, useCallback } from "react";
+import { NodeComponent } from "./NodeComponent";
+import { Node, NodeValue } from "../types/NodeTypes";
 import CanvasContextMenu from "./CanvasContextMenu";
 import NodeContextMenu from "./NodeContextMenu";
 import NodeEditPanel from "./NodeEditPanel";
 import { executeNode } from "../types/NodeProcessor";
-import { Play } from "lucide-react";
+import { Play, Save, ArrowDown, Globe } from "lucide-react";
+import { exportFlowRunner } from "../utils/exportFlowRunner";
+
+// Import utilities
+import { screenToCanvas } from "../utils/canvasTransforms";
+import { 
+  findSocketById, 
+  getNodeBySocketId, 
+  getSocketPosition, 
+  buildExecutionGraph 
+} from "../utils/socketUtils";
+import { saveCanvasState, loadCanvasState } from "../utils/storageUtils";
+import { generateConnectionPath } from "../utils/connectionUtils";
+import { duplicateNode } from "../utils/nodeOperations";
+
+// Import hooks
+import { useCanvasState } from "../hooks/useCanvasState";
+import { useCanvasTransform } from "../hooks/useCanvasTransform";
+import { useConnectionDrag } from "../hooks/useConnectionDrag";
+import { useContextMenu } from "../hooks/useContextMenu";
 
 const NodeCanvas: React.FC = () => {
-  // Added transform state for zoom and pan
-  const [transform, setTransform] = useState({
-    scale: 1,
-    translateX: 0,
-    translateY: 0
-  });
+  // Canvas state (nodes and connections)
+  const {
+    nodes,
+    setNodes,
+    connections,
+    setConnections,
+    nextNodeId,
+    removeNode
+  } = useCanvasState();
   
-  // Added state to track if the canvas is being panned
-  const isPanning = useRef(false);
-  const panStartPos = useRef({ x: 0, y: 0 });
+  // Canvas transform state (zoom and pan)
+  const {
+    transform,
+    isPanningActive,
+    handleWheel,
+    startPanning,
+    updatePanning,
+    endPanning,
+    resetView,
+    zoomIn,
+    zoomOut
+  } = useCanvasTransform();
   
-  // Added state for selected nodes
+  // Track mouse position for connection dragging
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  // Selected nodes tracking
   const [selectedNodeIds, setSelectedNodeIds] = useState<number[]>([]);
-
-  // State for context menu
-  const [contextMenu, setContextMenu] = useState<{
-    visible: boolean;
-    x: number;
-    y: number;
-    subMenu: string | null;
-    targetNodeId?: number; // New property to track which node was right-clicked
-  }>({
-    visible: false,
-    x: 0,
-    y: 0,
-    subMenu: null,
-  });
+  
+  // State for drag tracking
+  const draggingNode = useRef<number | null>(null);
+  const offset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   
   // Node being edited
   const [editingNode, setEditingNode] = useState<Node | null>(null);
@@ -43,46 +66,22 @@ const NodeCanvas: React.FC = () => {
   // Track when panel is animating out
   const [isPanelClosing, setIsPanelClosing] = useState<boolean>(false);
   
-  // Store canvas position for adding nodes
-  const contextMenuCanvasPosition = useRef({ x: 0, y: 0 });
+  // Connection dragging
+  const {
+    dragConnection,
+    handleSocketDragStart,
+    handleSocketDragMove,
+    handleSocketDragEnd
+  } = useConnectionDrag(nodes, connections, setConnections, transform, mousePosition);
   
-  const [nodes, setNodes] = useState<Node[]>([
-    createTextNode(1, { x: 100, y: 100 }, "Sci-Fi"),
-    createTextNode(2, { x: 100, y: 400 }, "You are an expert Book Recommender. You are given a genre you should recommend 5 books in that genre. Just reply with the titles of the books."),
-    createChatNode(3, { x: 600, y: 350 }, "llama-3.1-8b-instant"),
-    createTextNode(4, {x: 600, y: 100}, "You are given a list of Books in the following genre {{input}}.You select the best title based on review and ratings. Make the answer very concise with a brief explaination in 5 words or less."),
-    createChatNode(5, { x: 1100, y: 200 }, "llama-3.1-8b-instant"),
-    createTextNode(6, {x: 1000, y: 500}, "Recommendations: {{input}}")
-  ]);
-
-  const [connections, setConnections] = useState<Connection[]>([
-    { fromSocket: 100 + 2, toSocket: 300 + 1 },  // Connect first text node's output to chat input
-    { fromSocket: 200 + 2, toSocket: 300 + 2 },  // Connect second text node's output to chat system prompt
-    { fromSocket: 100 + 2, toSocket: 400 + 1 },  // Connect chat output to text node input
-    { fromSocket: 300 + 3, toSocket: 500 + 1 },  // Connect chat output to text node input
-    { fromSocket: 400 + 2, toSocket: 500 + 2 },  // Connect chat output to text node input
-    { fromSocket: 300 + 3, toSocket: 600 + 1 }   // Connect chat output to text node input
-  ]);
-
-  // For dragging nodes
-  const draggingNode = useRef<number | null>(null);
-  const offset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  
-  // For dragging connections
-  const [dragConnection, setDragConnection] = useState<{
-    fromSocket: number;
-    fromX: number;
-    fromY: number;
-    toX: number;
-    toY: number;
-    isRemoving: boolean; // Flag to indicate if this is a removal drag
-  } | null>(null);
-  
-  // Track mouse position for connection dragging
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  
-  // Track next node ID to ensure uniqueness
-  const nextNodeId = useRef(nodes.length > 0 ? Math.max(...nodes.map(n => n.id)) + 1 : 1);
+  // Context menu
+  const {
+    contextMenu,
+    setContextMenu,
+    handleContextMenu,
+    handleNodeContextMenu,
+    handleAddNodeFromContextMenu
+  } = useContextMenu(nodes, setNodes, setSelectedNodeIds, transform, nextNodeId);
   
   // State for execution status
   const [executionStatus, setExecutionStatus] = useState<{
@@ -94,6 +93,15 @@ const NodeCanvas: React.FC = () => {
     progress: 0,
     total: 0
   });
+
+  // Handle closing the edit panel with animation
+  const handleCloseEditPanel = useCallback(() => {
+    setIsPanelClosing(true);
+    setTimeout(() => {
+      setEditingNode(null);
+      setIsPanelClosing(false);
+    }, 300); // Match with transition duration in NodeEditPanel
+  }, []);
 
   // Update mouse position on mouse move
   useEffect(() => {
@@ -131,38 +139,7 @@ const NodeCanvas: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [editingNode]);
-
-  // Add click listener to close context menu when clicking outside
-  useEffect(() => {
-    const handleGlobalClick = () => {
-      if (contextMenu.visible) {
-        setContextMenu(prev => ({ ...prev, visible: false, subMenu: null }));
-      }
-    };
-    
-    window.addEventListener('click', handleGlobalClick);
-    
-    return () => {
-      window.removeEventListener('click', handleGlobalClick);
-    };
-  }, [contextMenu.visible]);
-
-  // Convert screen coordinates to canvas coordinates (considering zoom and pan)
-  const screenToCanvas = (screenX: number, screenY: number) => {
-    return {
-      x: (screenX - transform.translateX) / transform.scale,
-      y: (screenY - transform.translateY) / transform.scale
-    };
-  };
-
-  // Convert canvas coordinates to screen coordinates (considering zoom and pan)
-  const canvasToScreen = (canvasX: number, canvasY: number) => {
-    return {
-      x: canvasX * transform.scale + transform.translateX,
-      y: canvasY * transform.scale + transform.translateY
-    };
-  };
+  }, [editingNode, setContextMenu, setNodes, handleCloseEditPanel]);
 
   const handleMouseDown = (e: MouseEvent<HTMLDivElement>, id: number) => {
     // Since we stop propagation in NodeComponent, this will only be called when clicking on nodes
@@ -188,47 +165,12 @@ const NodeCanvas: React.FC = () => {
       }
       
       // Calculate offset for dragging
-      const canvasCoords = screenToCanvas(e.clientX, e.clientY);
+      const canvasCoords = screenToCanvas(e.clientX, e.clientY, transform);
       offset.current = {
         x: canvasCoords.x - node.x,
         y: canvasCoords.y - node.y,
       };
     }
-  };
-
-  // Handle node-specific context menu
-  const handleNodeContextMenu = (e: MouseEvent<HTMLDivElement>, nodeId: number) => {
-    e.preventDefault();
-    // Select the right-clicked node if not already selected
-    if (!selectedNodeIds.includes(nodeId)) {
-      setSelectedNodeIds([nodeId]);
-      setNodes(nodes.map(n => ({ ...n, selected: n.id === nodeId })));
-    }
-    
-    // Show context menu at mouse position with node-specific options
-    setContextMenu({
-      visible: true,
-      x: e.clientX,
-      y: e.clientY,
-      subMenu: null,
-      targetNodeId: nodeId
-    });
-  };
-
-  // Handle right-click context menu on canvas
-  const handleContextMenu = (e: MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    // Store the canvas position for node creation
-    const canvasPos = screenToCanvas(e.clientX, e.clientY);
-    contextMenuCanvasPosition.current = canvasPos;
-    
-    // Show context menu at mouse position for canvas options
-    setContextMenu({
-      visible: true,
-      x: e.clientX,
-      y: e.clientY,
-      subMenu: null,
-    });
   };
 
   // Handle context menu item clicks
@@ -302,7 +244,7 @@ const NodeCanvas: React.FC = () => {
   const handleDuplicateNode = () => {
     if (!contextMenu.targetNodeId) return;
     
-    // Find the node to duplicate - ensure we check for editing state first
+    // Find the node to duplicate
     let nodeToDuplicate = nodes.find(n => n.id === contextMenu.targetNodeId);
     
     // If we're duplicating the node that's currently being edited
@@ -363,42 +305,7 @@ const NodeCanvas: React.FC = () => {
     
     if (nodeToDuplicate) {
       const newId = nextNodeId.current++;
-      
-      // Create a new node based on the type and properties of the original
-      let newNode: Node;
-      const offsetPosition = { x: nodeToDuplicate.x + 30, y: nodeToDuplicate.y + 30 };
-      
-      switch(nodeToDuplicate.nodeType) {
-        case "Text":
-          newNode = createTextNode(newId, offsetPosition, String(nodeToDuplicate.value));
-          // Preserve the custom title
-          newNode.title = nodeToDuplicate.title;
-          break;
-        case "Number":
-          newNode = createNumberNode(newId, offsetPosition, Number(nodeToDuplicate.value));
-          // Preserve the custom title
-          newNode.title = nodeToDuplicate.title;
-          break;
-        case "Chat":
-          newNode = createChatNode(newId, offsetPosition, String(nodeToDuplicate.value));
-          // Preserve the custom title
-          newNode.title = nodeToDuplicate.title;
-          break;
-        case "Boolean":
-          newNode = createBooleanNode(newId, offsetPosition, Boolean(nodeToDuplicate.value));
-          // Preserve the custom title
-          newNode.title = nodeToDuplicate.title;
-          break;
-        case "Image":
-          newNode = createImageNode(newId, offsetPosition, String(nodeToDuplicate.value));
-          // Preserve the custom title
-          newNode.title = nodeToDuplicate.title;
-          break;
-        default:
-          newNode = createTextNode(newId, offsetPosition, String(nodeToDuplicate.value));
-          // Preserve the custom title
-          newNode.title = nodeToDuplicate.title;
-      }
+      const newNode = duplicateNode(nodeToDuplicate, newId);
       
       // Add the duplicated node
       setNodes(prev => [...prev, newNode]);
@@ -411,112 +318,7 @@ const NodeCanvas: React.FC = () => {
 
   const handleDeleteNode = () => {
     if (!contextMenu.targetNodeId) return;
-    
-    // Find all connections involving this node
-    const nodeToDelete = nodes.find(n => n.id === contextMenu.targetNodeId);
-    if (nodeToDelete) {
-      const socketIds = nodeToDelete.sockets.map(s => s.id);
-      
-      // Remove all connections involving the node's sockets
-      setConnections(prev => 
-        prev.filter(conn => 
-          !socketIds.includes(conn.fromSocket) && !socketIds.includes(conn.toSocket)
-        )
-      );
-      
-      // Remove the node
-      setNodes(prev => prev.filter(n => n.id !== contextMenu.targetNodeId));
-      
-      // Update selection
-      setSelectedNodeIds(prev => prev.filter(id => id !== contextMenu.targetNodeId));
-    }
-  };
-
-  // Handle adding a node from the context menu
-  const handleAddNodeFromContextMenu = (nodeType: "Text" | "Number" | "Chat" | "Boolean" | "Image" | "Add" | "Join", e: MouseEvent) => {
-    e.stopPropagation(); // Prevent the menu from closing immediately
-    
-    // Get the next unique node ID
-    const id = nextNodeId.current++;
-    
-    // Create the node based on type at the stored canvas position
-    let newNode: Node;
-    
-    switch(nodeType) {
-      case "Text":
-        newNode = createTextNode(id, contextMenuCanvasPosition.current, "{{input}}");
-        break;
-      case "Number":
-        newNode = createNumberNode(id, contextMenuCanvasPosition.current, 0);
-        break;
-      case "Chat":
-        newNode = createChatNode(id, contextMenuCanvasPosition.current, "llama-3.1-8b-instant");
-        break;
-      case "Boolean":
-        newNode = createBooleanNode(id, contextMenuCanvasPosition.current, false);
-        break;
-      case "Image":
-        newNode = createImageNode(id, contextMenuCanvasPosition.current);
-        break;
-      case "Add":
-        newNode = createAddNode(id, contextMenuCanvasPosition.current);
-        break;
-      case "Join":
-        newNode = createJoinNode(id, contextMenuCanvasPosition.current, " ");
-        break;
-      default:
-        newNode = createTextNode(id, contextMenuCanvasPosition.current, "{{input}}");
-    }
-    
-    // Add the new node and select it
-    setNodes(prev => [...prev, { ...newNode, selected: true }]);
-    setSelectedNodeIds([id]);
-    
-    // Close context menu
-    setContextMenu(prev => ({ ...prev, visible: false, subMenu: null }));
-  };
-
-  // Add handlers for canvas panning
-  const [isPanningActive, setIsPanningActive] = useState(false);
-  const handleCanvasMouseDown = (e: MouseEvent<HTMLDivElement>) => {
-    // With stopPropagation on nodes, this will only fire when clicking on the canvas itself
-    if (e.button === 0) { // Left mouse button
-      // Clear node selection when clicking on empty canvas
-      if (!e.shiftKey && selectedNodeIds.length > 0) {
-        setSelectedNodeIds([]);
-        setNodes(nodes.map(node => ({ ...node, selected: false })));
-      }
-      
-      isPanning.current = true;
-      setIsPanningActive(true);
-      panStartPos.current = { x: e.clientX, y: e.clientY };
-      e.preventDefault();
-    }
-  };
-
-  // Render context menu
-  const renderContextMenu = () => {
-    if (!contextMenu.visible) return null;
-    
-    // If right-clicked on a node, show node-specific context menu
-    if (contextMenu.targetNodeId !== undefined) {
-      return (
-        <NodeContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onContextMenuAction={handleContextMenuClick}
-        />
-      );
-    }
-
-    // Use the CanvasContextMenu component for canvas context menu
-    return (
-      <CanvasContextMenu 
-        contextMenu={contextMenu}
-        onAddNode={handleAddNodeFromContextMenu}
-        onContextMenuAction={handleCanvasContextMenuAction}
-      />
-    );
+    removeNode(contextMenu.targetNodeId);
   };
 
   // New handler for canvas context menu actions from the extracted component
@@ -548,131 +350,56 @@ const NodeCanvas: React.FC = () => {
     }
   };
 
-  // Handle canvas mouse up
-  const handleCanvasMouseUp = () => {
-    // Handle panning end
-    isPanning.current = false;
-    setIsPanningActive(false);
-    
-    // Handle node drag end
-    draggingNode.current = null;
-    
-    // If we were dragging a connection
-    if (dragConnection) {
-      if (dragConnection.isRemoving) {
-        // For removal drags (from input sockets), we're modifying an existing connection
-        const targetSocket = findSocketUnderMouse(mousePosition.x, mousePosition.y);
-        
-        // Find the existing connection to this input socket
-        const existingConnectionIndex = connections.findIndex(conn => conn.toSocket === dragConnection.fromSocket);
-        
-        if (existingConnectionIndex !== -1) {
-          // We found the connection we're working with
-          const existingConnection = connections[existingConnectionIndex];
-          
-          if (!targetSocket) {
-            // Released in empty space - remove the connection
-            setConnections(connections.filter((_, index) => index !== existingConnectionIndex));
-          } else if (targetSocket.position === "input" && targetSocket.id !== dragConnection.fromSocket) {
-            // Released on another input socket - move the connection
-            // First check if the target input already has a connection
-            const targetConnectionIndex = connections.findIndex(conn => conn.toSocket === targetSocket.id);
-            
-            if (targetConnectionIndex !== -1) {
-              // Target already has a connection, replace it
-              const newConnections = [...connections];
-              newConnections[targetConnectionIndex] = {
-                fromSocket: existingConnection.fromSocket,
-                toSocket: targetSocket.id
-              };
-              // Remove the original connection
-              newConnections.splice(existingConnectionIndex, 1);
-              setConnections(newConnections);
-            } else {
-              // Target doesn't have a connection, just update the existing one
-              const newConnections = [...connections];
-              newConnections[existingConnectionIndex] = {
-                fromSocket: existingConnection.fromSocket,
-                toSocket: targetSocket.id
-              };
-              setConnections(newConnections);
-            }
-          }
-          // If released on an output or the same input, do nothing
-        }
-      } else {
-        // For creation drags (from output sockets)
-        const targetSocket = findSocketUnderMouse(mousePosition.x, mousePosition.y);
-        
-        if (targetSocket && targetSocket.position === "input") {
-          // Create a connection if it's a valid combination (output to input from different nodes)
-          const sourceSocketId = dragConnection.fromSocket;
-          const sourceNode = getNodeBySocketId(sourceSocketId);
-          const targetNode = getNodeBySocketId(targetSocket.id);
-          
-          if (sourceNode && targetNode && sourceNode.id !== targetNode.id) {
-            // Check if input socket already has a connection
-            const existingConnectionIndex = connections.findIndex(conn => conn.toSocket === targetSocket.id);
-            
-            if (existingConnectionIndex !== -1) {
-              // Replace the existing connection
-              const newConnections = [...connections];
-              newConnections[existingConnectionIndex] = { 
-                fromSocket: sourceSocketId, 
-                toSocket: targetSocket.id 
-              };
-              setConnections(newConnections);
-            } else {
-              // Create a new connection
-              setConnections([
-                ...connections,
-                { fromSocket: sourceSocketId, toSocket: targetSocket.id }
-              ]);
-              
-              // If this is a Join node, add a new input socket
-              if (targetNode.nodeType === "Join") {
-                // Check if this was the last available input socket
-                const inputSockets = targetNode.sockets.filter(s => s.position === "input");
-                const allInputsConnected = inputSockets.every(socket => 
-                  connections.some(conn => conn.toSocket === socket.id) || socket.id === targetSocket.id
-                );
-                
-                if (allInputsConnected) {
-                  // Add a new socket to the Join node
-                  setNodes(nodes.map(node => 
-                    node.id === targetNode.id ? addSocketToJoinNode(node) : node
-                  ));
-                }
-              }
-            }
-          }
-        }
+  // Handle canvas mouse down event
+  const handleCanvasMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+    // With stopPropagation on nodes, this will only fire when clicking on the canvas itself
+    if (e.button === 0) { // Left mouse button
+      // Clear node selection when clicking on empty canvas
+      if (!e.shiftKey && selectedNodeIds.length > 0) {
+        setSelectedNodeIds([]);
+        setNodes(nodes.map(node => ({ ...node, selected: false })));
       }
       
-      // Reset drag connection state
-      setDragConnection(null);
+      startPanning(e);
+      e.preventDefault();
     }
   };
 
-  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-    // Handle panning if active
-    if (isPanning.current) {
-      const dx = e.clientX - panStartPos.current.x;
-      const dy = e.clientY - panStartPos.current.y;
-      panStartPos.current = { x: e.clientX, y: e.clientY };
-      
-      setTransform(prevTransform => ({
-        ...prevTransform,
-        translateX: prevTransform.translateX + dx,
-        translateY: prevTransform.translateY + dy
-      }));
-      return;
+  // Render context menu
+  const renderContextMenu = () => {
+    if (!contextMenu.visible) return null;
+    
+    // If right-clicked on a node, show node-specific context menu
+    if (contextMenu.targetNodeId !== undefined) {
+      return (
+        <NodeContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onContextMenuAction={handleContextMenuClick}
+        />
+      );
     }
 
+    // Use the CanvasContextMenu component for canvas context menu
+    return (
+      <CanvasContextMenu 
+        contextMenu={contextMenu}
+        onAddNode={handleAddNodeFromContextMenu}
+        onContextMenuAction={handleCanvasContextMenuAction}
+      />
+    );
+  };
+
+  // Handle mouse move events
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    // Handle panning if active
+    updatePanning(e);
+    
+    // Handle node dragging
     if (draggingNode.current === null) return;
 
     // Convert screen coordinates to canvas coordinates considering zoom and pan
-    const canvasCoords = screenToCanvas(e.clientX, e.clientY);
+    const canvasCoords = screenToCanvas(e.clientX, e.clientY, transform);
     
     // Calculate the delta movement for the dragged node
     const draggedNode = nodes.find(n => n.id === draggingNode.current);
@@ -697,226 +424,16 @@ const NodeCanvas: React.FC = () => {
     setNodes(newNodes);
   };
 
-  // Handle zoom with mouse wheel
-  const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
+  // Handle canvas mouse up
+  const handleCanvasMouseUp = () => {
+    // Handle panning end
+    endPanning();
     
-    const zoomFactor = 0.05;
-    const delta = e.deltaY > 0 ? -zoomFactor : zoomFactor;
+    // Handle node drag end
+    draggingNode.current = null;
     
-    // Calculate new scale, with limits
-    const newScale = Math.max(0.1, Math.min(2, transform.scale + delta));
-    
-    // Get mouse position relative to canvas
-    const rect = e.currentTarget.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    // Calculate new translate values to zoom toward mouse position
-    const newTranslateX = mouseX - (mouseX - transform.translateX) * (newScale / transform.scale);
-    const newTranslateY = mouseY - (mouseY - transform.translateY) * (newScale / transform.scale);
-    
-    setTransform({
-      scale: newScale,
-      translateX: newTranslateX,
-      translateY: newTranslateY
-    });
-  };
-  
-  // Socket positioning helper function
-  const getSocketPosition = (node: Node, socket: Socket) => {
-    // Constants
-     // Keep in sync with NodeComponent
-    
-    // Get all sockets of the same type (input/output)
-    const sockets = node.sockets.filter(s => s.position === socket.position);
-    const socketIndex = sockets.findIndex(s => s.id === socket.id);
-    
-    if (socketIndex === -1) return { x: 0, y: 0 }; // Fallback
-    
-    const x = node.x + (socket.position === "output" ? node.width : 0);
-    
-    // Calculate y position
-    let y;
-    if (sockets.length === 1) {
-      // If only one socket, position at 80% of height
-      y = node.y + (node.height * 0.8);
-    } else {
-      // For multiple sockets, calculate vertical offset
-      const totalSpacing = SOCKET_SPACING * (sockets.length - 1);
-      const startY = node.y + (node.height - totalSpacing) / 2;
-      // Add node.height * 0.2 to match the change in NodeComponent.tsx
-      y = startY + (socketIndex * SOCKET_SPACING) + node.height * 0.2;
-    }
-    
-    // Convert canvas coordinates to screen coordinates for rendering
-    const screenCoords = canvasToScreen(x, y);
-    return screenCoords;
-  };
-
-  // Start dragging a connection from a socket
-  const handleSocketDragStart = (e: MouseEvent<HTMLDivElement>, socketId: number, isRemovingConnection = false) => {
-    e.stopPropagation(); // Prevent node dragging and canvas panning
-    
-    const socket = findSocketById(socketId);
-    if (!socket) return;
-    
-    // For creating connections (from output sockets)
-    if (!isRemovingConnection && socket.position === "output") {
-      // Outputs can connect to multiple inputs, so we always allow starting a connection
-      const node = getNodeBySocketId(socketId);
-      if (!node) return;
-      
-      // Calculate start position of the connection using socket's position
-      const { x: fromX, y: fromY } = getSocketPosition(node, socket);
-      
-      setDragConnection({
-        fromSocket: socketId,
-        fromX,
-        fromY,
-        toX: e.clientX,
-        toY: e.clientY,
-        isRemoving: false
-      });
-    }
-    
-    // For removing/moving connections (from input sockets)
-    if (isRemovingConnection && socket.position === "input") {
-      // Check if this input has a connection
-      const connection = connections.find(conn => conn.toSocket === socketId);
-      
-      if (connection) {
-        const node = getNodeBySocketId(socketId);
-        const sourceSocket = findSocketById(connection.fromSocket);
-        const sourceNode = getNodeBySocketId(connection.fromSocket);
-        
-        if (!node || !sourceNode || !sourceSocket) return;
-        
-        // Calculate start position of the connection from the output socket
-        const { x: fromX, y: fromY } = getSocketPosition(sourceNode, sourceSocket);
-        
-        setDragConnection({
-          fromSocket: socketId, // Store the input socket ID so we know which connection to modify
-          fromX,
-          fromY,
-          toX: e.clientX,
-          toY: e.clientY,
-          isRemoving: true
-        });
-      }
-    }
-  };
-  
-  // Update connection drag position
-  const handleSocketDragMove = (e: MouseEvent<HTMLDivElement>) => {
-    if (dragConnection) {
-      setDragConnection({
-        ...dragConnection,
-        toX: e.clientX,
-        toY: e.clientY
-      });
-    }
-  };
-  
-  // Find a socket under the mouse position
-  const findSocketUnderMouse = (x: number, y: number): Socket | undefined => {
-    // Check all sockets to see if mouse is within its bounds
-    for (const node of nodes) {
-      for (const socket of node.sockets) {
-        // Calculate socket position
-        const socketPos = getSocketPosition(node, socket);
-        
-        // Check if mouse is within socket bounds (20px diameter)
-        const distance = Math.sqrt(
-          Math.pow(socketPos.x - x, 2) + Math.pow(socketPos.y - y, 2)
-        );
-        
-        // If mouse is within 15px of socket center, consider it a hit
-        if (distance < 15) {
-          return socket;
-        }
-      }
-    }
-    
-    return undefined;
-  };
-
-  // Helper function to find a socket by ID
-  const findSocketById = (socketId: number): Socket | undefined => {
-    for (const node of nodes) {
-      const socket = node.sockets.find((s: Socket) => s.id === socketId);
-      if (socket) return socket;
-    }
-    return undefined;
-  };
-
-  // Get node by socket ID
-  const getNodeBySocketId = (socketId: number): Node | undefined => {
-    return nodes.find(node => 
-      node.sockets.some((socket: Socket) => socket.id === socketId)
-    );
-  };
-
-  // Draw lines between connected sockets
-  const drawConnection = (connection: Connection) => {
-    const fromSocket = findSocketById(connection.fromSocket);
-    const toSocket = findSocketById(connection.toSocket);
-    const fromNode = getNodeBySocketId(connection.fromSocket);
-    const toNode = getNodeBySocketId(connection.toSocket);
-    
-    if (!fromNode || !toNode || !fromSocket || !toSocket) return null;
-
-    // Calculate socket positions using their specific positions in the nodes
-    const { x: fromX, y: fromY } = getSocketPosition(fromNode, fromSocket);
-    const { x: toX, y: toY } = getSocketPosition(toNode, toSocket);
-    
-    // Calculate control points for the bezier curve
-    // Distance between nodes affects the curve intensity
-    const distance = Math.abs(toX - fromX);
-    const curvature = Math.min(distance * 0.5, 150); // Limit max curvature
-    
-    // Control points extend horizontally from the connection points
-    const cp1x = fromX + curvature;
-    const cp1y = fromY;
-    const cp2x = toX - curvature;
-    const cp2y = toY;
-    
-    // Create a bezier path
-    const path = `M ${fromX} ${fromY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${toX} ${toY}`;
-    
-    return (
-      <path
-        key={`connection-${connection.fromSocket}-${connection.toSocket}`}
-        d={path}
-        fill="none"
-        stroke="#FFC72C"
-        strokeWidth="2"
-      />
-    );
-  };
-
-  // Reset canvas transform to default (100% zoom, centered)
-  const resetView = () => {
-    setTransform({
-      scale: 1,
-      translateX: 0,
-      translateY: 0
-    });
-  };
-
-  // Zoom controls
-  const zoomIn = () => {
-    setTransform(prev => ({
-      ...prev,
-      scale: Math.min(2, prev.scale + 0.1)
-    }));
-  };
-
-  const zoomOut = () => {
-    setTransform(prev => ({
-      ...prev,
-      scale: Math.max(0.1, prev.scale - 0.1)
-    }));
+    // Handle connection dragging end
+    handleSocketDragEnd();
   };
 
   // Handle Edit Node directly from the settings button
@@ -928,65 +445,146 @@ const NodeCanvas: React.FC = () => {
     }
   };
 
-  // Handle closing the edit panel with animation
-  const handleCloseEditPanel = useCallback(() => {
-    setIsPanelClosing(true);
-    setTimeout(() => {
-      setEditingNode(null);
-      setIsPanelClosing(false);
-    }, 300); // Match with transition duration in NodeEditPanel
-  }, []);
-
-  // Create a new function to add a socket to a Join node
-  const addSocketToJoinNode = (node: Node): Node => {
-    if (node.nodeType !== "Join") return node;
-    
-    // Count current input sockets
-    const inputSockets = node.sockets.filter(s => s.position === "input");
-    const inputCount = inputSockets.length;
-    
-    // Create a new input socket with the next number
-    const newSocket: Socket = {
-      id: node.id * 100 + (inputCount + 1),
-      title: `Input ${inputCount + 1}`,
-      position: "input",
-      nodeId: node.id,
-      dataType: "unknown"
-    };
-    
-    // Calculate new height based on number of sockets
-    // Start with base height and add extra height for each socket beyond the initial two
-    const baseHeight = 230; // Match initial height from createJoinNode
-    const heightPerExtraSocket = 50; // Add this height for each additional socket
-    const newHeight = baseHeight + Math.max(0, inputCount - 1) * heightPerExtraSocket;
-    
-    // Add the new socket to the node and update height
-    return {
-      ...node,
-      sockets: [...node.sockets, newSocket],
-      height: newHeight
-    };
+  // Handle exporting the flow as a JS package
+  const exportAsJSPackage = () => {
+    exportFlowRunner(nodes, connections);
   };
 
-  // Helper function to build a graph of node dependencies for execution tracking
-  const buildExecutionGraph = (nodes: Node[], connections: Connection[]): [number, number][] => {
-    const graph: [number, number][] = [];
-    
-    // Build edges from connections
-    connections.forEach(conn => {
-      // Find source and target nodes for this connection
-      const fromSocket = nodes.flatMap(n => n.sockets).find(s => s.id === conn.fromSocket);
-      const toSocket = nodes.flatMap(n => n.sockets).find(s => s.id === conn.toSocket);
+  // Handle saving the canvas state
+  const handleSaveCanvasState = () => {
+    saveCanvasState(nodes, connections, nextNodeId.current);
+  };
+
+  // Handle loading the canvas state
+  const handleLoadCanvasState = () => {
+    const loadedState = loadCanvasState();
+    if (loadedState) {
+      setNodes(loadedState.nodes);
+      setConnections(loadedState.connections);
+      nextNodeId.current = loadedState.nextNodeId;
+    }
+  };
+
+  // Execute the flow
+  const executeFlow = async () => {
+    if (executionStatus.isExecuting) return;
+
+    try {
+      // Set execution status to running
+      setExecutionStatus({
+        isExecuting: true,
+        progress: 0,
+        total: 0
+      });
+
+      // Create a promise-based cache to store calculated node results and prevent redundant calculations
+      const nodeResultCache = new Map<number, Promise<NodeValue>>();
       
-      if (fromSocket && toSocket) {
-        const sourceNodeId = fromSocket.nodeId;
-        const targetNodeId = toSocket.nodeId;
-        
-        graph.push([sourceNodeId, targetNodeId]);
+      // Find end nodes (nodes with no outgoing connections)
+      const endNodes = nodes.filter(node => {
+        return node.sockets
+          .filter(socket => socket.position === "output")
+          .every(socket => 
+            !connections.some(conn => conn.fromSocket === socket.id)
+          );
+      });
+      
+      console.log(`Found ${endNodes.length} end nodes to execute`);
+      
+      if (endNodes.length === 0) {
+        alert("No end nodes found. Your flow needs at least one node with unused outputs.");
+        setExecutionStatus({
+          isExecuting: false,
+          progress: 0,
+          total: 0
+        });
+        return;
       }
-    });
-    
-    return graph;
+
+      // Create a counter to track execution progress
+      let completedNodes = 0;
+      
+      // Override the map set method to track progress
+      const originalSet = nodeResultCache.set.bind(nodeResultCache);
+      nodeResultCache.set = (key: number, value: Promise<NodeValue>) => {
+        // Count the total number of nodes in the execution graph
+        if (nodeResultCache.size === 0) {
+          // First node being executed, estimate total nodes
+          const graph = buildExecutionGraph(nodes, connections);
+          const totalNodes = new Set(graph.flatMap(([from, to]) => [from, to])).size;
+          setExecutionStatus(prev => ({
+            ...prev,
+            total: totalNodes
+          }));
+        }
+        
+        // Track when the promise completes to update progress
+        value.then(() => {
+          completedNodes++;
+          setExecutionStatus(prev => ({
+            ...prev,
+            progress: completedNodes
+          }));
+        }).catch(() => {
+          // Still count failed nodes in progress
+          completedNodes++;
+          setExecutionStatus(prev => ({
+            ...prev,
+            progress: completedNodes
+          }));
+        });
+        
+        return originalSet(key, value);
+      };
+      
+      // Execute only the end nodes - the dependency tracing will handle executing
+      // all required upstream nodes in the correct order
+      const results = await Promise.all(
+        endNodes.map(async (node) => {
+          try {
+            // Execute the node and its dependencies
+            node.processing = true;
+            const result = await executeNode(node, nodes, connections, nodeResultCache);
+            return { nodeId: node.id, title: node.title, result };
+          } catch (error) {
+            console.error(`Error executing node ${node.id}:`, error);
+            return { nodeId: node.id, title: node.title, error: error instanceof Error ? error.message : String(error) };
+          } finally {
+            node.processing = false;
+          }
+        })
+      );
+      
+      // Format results for display
+      const resultText = results
+        .map(r => {
+          if ('error' in r) {
+            return `Node ${r.title} (ID: ${r.nodeId}): Error - ${r.error}`;
+          }
+          return `Node ${r.title} (ID: ${r.nodeId}): ${JSON.stringify(r.result)}`;
+        })
+        .join('\n\n');
+      
+      // Reset execution status
+      setExecutionStatus({
+        isExecuting: false,
+        progress: 0,
+        total: 0
+      });
+      
+      alert(`Execution Results:\n\n${resultText}`);
+    } catch (error) {
+      console.error("Error during graph execution:", error);
+      
+      // Reset execution status on error
+      setExecutionStatus({
+        isExecuting: false,
+        progress: 0,
+        total: 0
+      });
+      
+      alert(`Error during execution: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   return (
@@ -1038,140 +636,44 @@ const NodeCanvas: React.FC = () => {
             pointerEvents: 'none'
             }}
         />
-        
-        {/* Run button */}
-        <button 
-          className={`absolute top-5 right-5 ${executionStatus.isExecuting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer'} transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20`}
-          onClick={async () => {
-            if (executionStatus.isExecuting) return;
-
-            try {
-              // Set execution status to running
-              setExecutionStatus({
-                isExecuting: true,
-                progress: 0,
-                total: 0
-              });
-
-              // Create a promise-based cache to store calculated node results and prevent redundant calculations
-              const nodeResultCache = new Map<number, Promise<NodeValue>>();
-              
-              // Find end nodes (nodes with no outgoing connections)
-              const endNodes = nodes.filter(node => {
-                return node.sockets
-                  .filter(socket => socket.position === "output")
-                  .every(socket => 
-                    !connections.some(conn => conn.fromSocket === socket.id)
-                  );
-              });
-              
-              console.log(`Found ${endNodes.length} end nodes to execute`);
-              
-              if (endNodes.length === 0) {
-                alert("No end nodes found. Your flow needs at least one node with unused outputs.");
-                setExecutionStatus({
-                  isExecuting: false,
-                  progress: 0,
-                  total: 0
-                });
-                return;
-              }
-
-              // Create a counter to track execution progress
-              let completedNodes = 0;
-              
-              // Override the map set method to track progress
-              const originalSet = nodeResultCache.set.bind(nodeResultCache);
-              nodeResultCache.set = (key: number, value: Promise<NodeValue>) => {
-                // Count the total number of nodes in the execution graph
-                if (nodeResultCache.size === 0) {
-                  // First node being executed, estimate total nodes
-                  const graph = buildExecutionGraph(nodes, connections);
-                  const totalNodes = new Set(graph.flatMap(([from, to]) => [from, to])).size;
-                  setExecutionStatus(prev => ({
-                    ...prev,
-                    total: totalNodes
-                  }));
-                }
-                
-                // Track when the promise completes to update progress
-                value.then(() => {
-                  completedNodes++;
-                  setExecutionStatus(prev => ({
-                    ...prev,
-                    progress: completedNodes
-                  }));
-                }).catch(() => {
-                  // Still count failed nodes in progress
-                  completedNodes++;
-                  setExecutionStatus(prev => ({
-                    ...prev,
-                    progress: completedNodes
-                  }));
-                });
-                
-                return originalSet(key, value);
-              };
-              
-              // Execute only the end nodes - the dependency tracing will handle executing
-              // all required upstream nodes in the correct order
-              const results = await Promise.all(
-                endNodes.map(async (node) => {
-                  try {
-                    // Execute the node and its dependencies
-                    node.processing = true;
-                    const result = await executeNode(node, nodes, connections, nodeResultCache);
-                    return { nodeId: node.id, title: node.title, result };
-                  } catch (error) {
-                    console.error(`Error executing node ${node.id}:`, error);
-                    return { nodeId: node.id, title: node.title, error: error instanceof Error ? error.message : String(error) };
-                  } finally {
-                    node.processing = false;
-                  }
-                })
-              );
-              
-              // Format results for display
-              const resultText = results
-                .map(r => {
-                  if ('error' in r) {
-                    return `Node ${r.title} (ID: ${r.nodeId}): Error - ${r.error}`;
-                  }
-                  return `Node ${r.title} (ID: ${r.nodeId}): ${JSON.stringify(r.result)}`;
-                })
-                .join('\n\n');
-              
-              // Reset execution status
-              setExecutionStatus({
-                isExecuting: false,
-                progress: 0,
-                total: 0
-              });
-              
-              alert(`Execution Results:\n\n${resultText}`);
-            } catch (error) {
-              console.error("Error during graph execution:", error);
-              
-              // Reset execution status on error
-              setExecutionStatus({
-                isExecuting: false,
-                progress: 0,
-                total: 0
-              });
-              
-              alert(`Error during execution: ${error instanceof Error ? error.message : String(error)}`);
-            }
-          }}
-        >
-          <Play size={18} className="mr-2" />
-          {executionStatus.isExecuting 
-            ? `Running (${executionStatus.progress}/${executionStatus.total || '?'})` 
-            : 'Run Flow'}
-        </button>
+        <div className="absolute top-5 right-5 flex flex-col gap-2 z-20">
+          {/* Run button */}
+          <button 
+            className={` ${executionStatus.isExecuting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer'} transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20`}
+            onClick={executeFlow}
+          >
+            <Play size={18} className="mr-2" />
+            {executionStatus.isExecuting 
+              ? `Running (${executionStatus.progress}/${executionStatus.total || '?'})` 
+              : 'Run Flow'}
+          </button>
+          
+          <button 
+            onClick={handleSaveCanvasState} 
+            className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20"
+          >
+            <Save size={18} className="mr-2" /> Save Canvas State
+          </button>
+          
+          <button 
+            onClick={handleLoadCanvasState} 
+            className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20"
+          >
+            <ArrowDown size={18} className="mr-2" /> Load Canvas State
+          </button>
+          
+          <button 
+            onClick={exportAsJSPackage} 
+            className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20"
+          >
+            <Globe size={18} className="mr-2" /> Export as JS Package
+          </button>
+        </div>
         
         {/* Context menu */}
         {renderContextMenu()}
         
+        {/* SVG layer for connections */}
         <svg 
           className="z-10" 
           style={{ 
@@ -1184,39 +686,51 @@ const NodeCanvas: React.FC = () => {
             overflow: "visible" // Allow drawing outside the SVG bounds
           }}
         >
-          {/* Existing connections */}
-          {connections.map((connection) => drawConnection(connection))}
+          {/* Manual rendering of connections for TypeScript compatibility */}
+          {connections.map(connection => {
+            const fromSocket = findSocketById(nodes, connection.fromSocket);
+            const toSocket = findSocketById(nodes, connection.toSocket);
+            const fromNode = getNodeBySocketId(nodes, connection.fromSocket);
+            const toNode = getNodeBySocketId(nodes, connection.toSocket);
+            
+            if (!fromNode || !toNode || !fromSocket || !toSocket) return null;
+            
+            // Calculate socket positions
+            const fromPos = getSocketPosition(fromNode, fromSocket, transform);
+            const toPos = getSocketPosition(toNode, toSocket, transform);
+            
+            // Generate path
+            const path = generateConnectionPath(fromPos.x, fromPos.y, toPos.x, toPos.y);
+            
+            return (
+              <path
+                key={`connection-${connection.fromSocket}-${connection.toSocket}`}
+                d={path}
+                fill="none"
+                stroke="#FFC72C"
+                strokeWidth="2"
+              />
+            );
+          })}
           
           {/* Connection being dragged */}
           {dragConnection && (
-            (() => {
-              // Calculate control points for the bezier curve
-              const distance = Math.abs(dragConnection.toX - dragConnection.fromX);
-              const curvature = Math.min(distance * 0.5, 150); // Limit max curvature
-              
-              // Control points extend horizontally from the connection points
-              const cp1x = dragConnection.fromX + curvature;
-              const cp1y = dragConnection.fromY;
-              const cp2x = dragConnection.toX - curvature;
-              const cp2y = dragConnection.toY;
-              
-              // Create a bezier path
-              const path = `M ${dragConnection.fromX} ${dragConnection.fromY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${dragConnection.toX} ${dragConnection.toY}`;
-              
-              return (
-                <path
-                  d={path}
-                  fill="none"
-                  stroke="#FFC72C88"
-                  strokeWidth="2"
-                  strokeDasharray="5,5"
-                />
-              );
-            })()
+            <path
+              d={generateConnectionPath(
+                dragConnection.fromX, 
+                dragConnection.fromY, 
+                dragConnection.toX, 
+                dragConnection.toY
+              )}
+              fill="none"
+              stroke="#FFC72C88"
+              strokeWidth="2"
+              strokeDasharray="5,5"
+            />
           )}
         </svg>
         
-        {/* Render nodes using the separate NodeComponent */}
+        {/* Nodes container with transform */}
         <div style={{
           transform: `translate(${transform.translateX}px, ${transform.translateY}px) scale(${transform.scale})`,
           transformOrigin: "0 0",
@@ -1285,7 +799,7 @@ const NodeCanvas: React.FC = () => {
         <NodeEditPanel
           node={editingNode}
           onClose={handleCloseEditPanel}
-          onSave={(updatedNode) => {
+          onSave={(updatedNode: Partial<Node>) => {
             setIsPanelClosing(true);
             setTimeout(() => {
               setNodes(nodes.map(node => 
