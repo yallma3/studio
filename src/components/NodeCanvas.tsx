@@ -80,7 +80,7 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
     handleContextMenu,
     handleNodeContextMenu,
     handleAddNodeFromContextMenu
-  } = useContextMenu(nodes, setNodes, setSelectedNodeIds, transform, nextNodeId);
+  } = useContextMenu( setNodes, setSelectedNodeIds, transform, nextNodeId);
   
   // State for execution status
   const [executionStatus, setExecutionStatus] = useState<{

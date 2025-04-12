@@ -17,7 +17,7 @@ export interface ContextMenuState {
  * Custom hook for managing context menus
  */
 export const useContextMenu = (
-  nodes: Node[],
+  // nodes: Node[],
   setNodes: React.Dispatch<React.SetStateAction<Node[]>>,
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<number[]>>,
   transform: CanvasTransform,
