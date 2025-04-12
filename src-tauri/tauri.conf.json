@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "yallma3-studio",
+  "productName": "yaLLMa3 Studio",
   "version": "0.1.0",
   "identifier": "com.tauri.dev",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "yallma3-studio",
+        "title": "yaLLMa3 Studio",
         "width": 800,
         "height": 600,
         "resizable": true,
@@ -21,7 +21,8 @@
     ],
     "security": {
       "csp": null
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,

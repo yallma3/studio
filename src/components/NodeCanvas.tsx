@@ -5,7 +5,7 @@ import CanvasContextMenu from "./CanvasContextMenu";
 import NodeContextMenu from "./NodeContextMenu";
 import NodeEditPanel from "./NodeEditPanel";
 import { executeNode } from "../types/NodeProcessor";
-import { Play, Save, ArrowDown, Globe } from "lucide-react";
+import { Play, Save, Globe, ArrowLeft, Menu } from "lucide-react";
 import { exportFlowRunner } from "../utils/exportFlowRunner";
 
 // Import utilities
@@ -16,17 +16,16 @@ import {
   getSocketPosition, 
   buildExecutionGraph 
 } from "../utils/socketUtils";
-import { saveCanvasState, loadCanvasState } from "../utils/storageUtils";
+import { saveCanvasState,CanvasState } from "../utils/storageUtils";
 import { generateConnectionPath } from "../utils/connectionUtils";
 import { duplicateNode } from "../utils/nodeOperations";
-
 // Import hooks
 import { useCanvasState } from "../hooks/useCanvasState";
 import { useCanvasTransform } from "../hooks/useCanvasTransform";
 import { useConnectionDrag } from "../hooks/useConnectionDrag";
 import { useContextMenu } from "../hooks/useContextMenu";
 
-const NodeCanvas: React.FC = () => {
+const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onReturnToHome: () => void}> = ({ graphId, graph, onReturnToHome }) => {
   // Canvas state (nodes and connections)
   const {
     nodes,
@@ -35,7 +34,7 @@ const NodeCanvas: React.FC = () => {
     setConnections,
     nextNodeId,
     removeNode
-  } = useCanvasState();
+  } = useCanvasState(graph?.nodes, graph?.connections);
   
   // Canvas transform state (zoom and pan)
   const {
@@ -94,6 +93,31 @@ const NodeCanvas: React.FC = () => {
     total: 0
   });
 
+  // State for dropdown menu
+  const [fileMenuOpen, setFileMenuOpen] = useState<boolean>(false);
+  const fileMenuRef = useRef<HTMLDivElement>(null);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
+      if (fileMenuRef.current && !fileMenuRef.current.contains(event.target as HTMLElement)) {
+        setFileMenuOpen(false);
+      }
+    };
+    
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      // Remove event listener on cleanup
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [fileMenuRef]);
+  
+  // Toggle file menu
+  const toggleFileMenu = () => {
+    setFileMenuOpen(!fileMenuOpen);
+  };
+
   // Handle closing the edit panel with animation
   const handleCloseEditPanel = useCallback(() => {
     setIsPanelClosing(true);
@@ -120,6 +144,12 @@ const NodeCanvas: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // Close dropdown menu if open
+        if (fileMenuOpen) {
+          setFileMenuOpen(false);
+          return; // Skip other actions if we closed the menu
+        }
+        
         // Close edit panel if open
         if (editingNode) {
           handleCloseEditPanel();
@@ -139,7 +169,7 @@ const NodeCanvas: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [editingNode, setContextMenu, setNodes, handleCloseEditPanel]);
+  }, [editingNode, setContextMenu, setNodes, handleCloseEditPanel, fileMenuOpen]);
 
   const handleMouseDown = (e: MouseEvent<HTMLDivElement>, id: number) => {
     // Since we stop propagation in NodeComponent, this will only be called when clicking on nodes
@@ -448,20 +478,17 @@ const NodeCanvas: React.FC = () => {
   // Handle exporting the flow as a JS package
   const exportAsJSPackage = () => {
     exportFlowRunner(nodes, connections);
+    setFileMenuOpen(false);
   };
 
   // Handle saving the canvas state
-  const handleSaveCanvasState = () => {
-    saveCanvasState(nodes, connections, nextNodeId.current);
-  };
-
-  // Handle loading the canvas state
-  const handleLoadCanvasState = () => {
-    const loadedState = loadCanvasState();
-    if (loadedState) {
-      setNodes(loadedState.nodes);
-      setConnections(loadedState.connections);
-      nextNodeId.current = loadedState.nextNodeId;
+  const handleSaveCanvasState = async () => {
+    try {
+      await saveCanvasState(graphId, nodes, connections, nextNodeId.current);
+      setFileMenuOpen(false);
+    } catch (error) {
+      console.error("Error saving canvas state:", error);
+      alert(`Failed to save canvas state: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -636,38 +663,75 @@ const NodeCanvas: React.FC = () => {
             pointerEvents: 'none'
             }}
         />
-        <div className="absolute top-5 right-5 flex flex-col gap-2 z-20">
+        <div className="absolute top-5 left-5 flex gap-2 z-20 items-center justify-center">
+          <button 
+            onClick={onReturnToHome}
+            className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20"
+          >
+            <ArrowLeft size={18}  />
+          </button>
+          <p className="text-gray-400 text-xs">{graphId}</p>
+        </div>
+        <div className="absolute top-5 right-5 flex gap-2 z-20">
           {/* Run button */}
           <button 
-            className={` ${executionStatus.isExecuting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer'} transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20`}
+            className={` ${executionStatus.isExecuting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer'} px-4 transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20`}
             onClick={executeFlow}
           >
-            <Play size={18} className="mr-2" />
+            <Play size={18} className="mr-1" />
             {executionStatus.isExecuting 
               ? `Running (${executionStatus.progress}/${executionStatus.total || '?'})` 
-              : 'Run Flow'}
+              : 'Run'}
           </button>
           
-          <button 
-            onClick={handleSaveCanvasState} 
-            className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20"
-          >
-            <Save size={18} className="mr-2" /> Save Canvas State
-          </button>
-          
-          <button 
-            onClick={handleLoadCanvasState} 
-            className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20"
-          >
-            <ArrowDown size={18} className="mr-2" /> Load Canvas State
-          </button>
-          
-          <button 
-            onClick={exportAsJSPackage} 
-            className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20"
-          >
-            <Globe size={18} className="mr-2" /> Export as JS Package
-          </button>
+          {/* File dropdown menu */}
+          <div className="relative" ref={fileMenuRef}>
+            <button 
+              onClick={toggleFileMenu}
+              className="bg-[#666] hover:bg-[#444] cursor-pointer transition-colors duration-200 text-white font-bold p-4 rounded-md flex items-center justify-center z-20"
+            >
+               <Menu size={18} className="font-bold" />
+            </button>
+            
+            {fileMenuOpen && (
+              <div className="absolute right-0 mt-1 w-56 rounded-md shadow-lg bg-[#111] ring-1 ring-black/50 ring-opacity-5 focus:outline-none z-30 border border-[#FFB30055] origin-top-right animate-dropdown">
+                {/* File Operations Section */}
+                <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="file-menu">
+                  <button
+                    onClick={handleSaveCanvasState}
+                    className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors"
+                    role="menuitem"
+                  >
+                    <Save size={16} className="inline-block mr-2 text-[#FFC72C]" /> Save Canvas State
+                  </button>
+                  <button
+                    onClick={exportAsJSPackage}
+                    className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors"
+                    role="menuitem"
+                  >
+                    <Globe size={16} className="inline-block mr-2 text-[#FFC72C]" /> Export as JS Package
+                  </button>
+                </div>
+                
+                {/* Divider */}
+                <div className="border-t border-gray-800"></div>
+                
+                {/* Future Export Options Section - commented out for now */}
+                {/* 
+                <div className="py-1" role="menu" aria-orientation="vertical">
+                  <span className="block px-4 py-1 text-xs text-gray-500">Export Options</span>
+                  <button
+                    className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors opacity-50"
+                    role="menuitem"
+                    disabled
+                  >
+                    <span className="inline-block mr-2 text-[#FFC72C]">→</span> Additional options coming soon
+                  </button>
+                </div>
+                */}
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Context menu */}

@@ -1,3 +1,10 @@
+export interface GraphState {
+  id: string;
+  name: string;
+  path: string;
+  lastModified: number;
+}
+
 // Define types for node, socket, and connection
 export type Socket = {
     id: number;

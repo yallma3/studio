@@ -1,13 +1,15 @@
 import { Node, Connection } from "../types/NodeTypes";
 import { executeNode } from "../types/NodeProcessor";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 
 /**
  * Exports the current flow as a standalone JavaScript file that can be run with Node.js
  * @param nodes The current nodes in the flow
  * @param connections The current connections between nodes
- * @returns void - Triggers a file download
+ * @returns Promise<void> - Saves a file using Tauri's file system API
  */
-export const exportFlowRunner = (nodes: Node[], connections: Connection[]) => {
+export const exportFlowRunner = async (nodes: Node[], connections: Connection[]) => {
   // Create a simplified version of the flow to avoid circular references
   const flowExport = {
     nodes: nodes.map(node => ({
@@ -308,18 +310,27 @@ if (require.main === module) {
 }
   `;
   
-  // Create a Blob containing the JavaScript code
-  const blob = new Blob([jsCode], { type: 'application/javascript' });
-  
-  // Create a URL for the Blob
-  const url = URL.createObjectURL(blob);
-  
-  // Create a link element and trigger download
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'flow-runner.js';
-  link.click();
-  
-  // Clean up
-  URL.revokeObjectURL(url);
+  try {
+    // Use Tauri dialog to let the user choose where to save the file
+    const filePath = await save({
+      defaultPath: 'flow-runner.js',
+      filters: [{
+        name: 'JavaScript',
+        extensions: ['js']
+      }]
+    });
+    
+    if (filePath) {
+      // Use Tauri file system API to save the file
+      await writeTextFile(filePath, jsCode);
+      console.log(`Flow exported successfully to ${filePath}`);
+      return filePath;
+    } else {
+      console.log("Export canceled by user");
+      return null;
+    }
+  } catch (error) {
+    console.error("Failed to export flow:", error);
+    throw error;
+  }
 }; 

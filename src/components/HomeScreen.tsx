@@ -1,19 +1,21 @@
-import React, { useState, useEffect } from "react";
-import { Plus, FolderOpen, FileText } from "lucide-react";
-
+import React, { useEffect, useState } from "react";
+import { Plus, FolderUp, Clock } from "lucide-react";
+import { Button } from "./ui/button";
 
 interface AgentGraph {
   id: string;
+  path: string;
   name: string;
   lastModified: Date;
 }
 
 interface HomeScreenProps {
   onCreateNew: () => void;
-  onOpenExisting: (graphId: string) => void;
+  onOpenFromFile: () => void;
+  onOpenFromPath: (path: string, id: string) => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenExisting }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenFromFile, onOpenFromPath }) => {
   const [recentGraphs, setRecentGraphs] = useState<AgentGraph[]>([]);
   
   useEffect(() => {
@@ -28,6 +30,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenExisting }) 
           // Default values
           let graph: AgentGraph = {
             id: key.replace("agent-graph-", ""),
+            path: "",
             name: `Untitled (${key.replace("agent-graph-", "")})`,
             lastModified: new Date()
           };
@@ -36,6 +39,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenExisting }) 
             const savedState = JSON.parse(localStorage.getItem(key) || "");
             graph = {
               id: key.replace("agent-graph-", ""),
+              path: savedState.path,
               name: savedState.name || graph.name,
               lastModified: new Date(savedState.lastModified || Date.now())
             };
@@ -58,77 +62,98 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenExisting }) 
     loadRecentGraphs();
   }, []);
 
+  // Format date to a readable format
+  const formatDate = (date: Date) => {
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (diffDays === 1) {
+      return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else {
+      return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+  };
+
+  // Format name to remove .json extension
+  const formatName = (name: string) => {
+    return name.replace(/\.json$/i, '');
+  };
+
   return (
-    <div className="flex flex-col items-center justify-start p-12 min-h-screen bg-gray-900 text-gray-100 font-sans">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary-400 bg-clip-text text-transparent">
-          Agent Graph Studio
-        </h1>
-        <p className="text-lg opacity-80">Create, edit, and execute agent workflows</p>
-      </div>
-      
-      <div className="flex gap-6 mb-16 md:flex-row flex-col">
-        <button 
-          className="flex items-center justify-center gap-2 bg-gray-800 border border-gray-700 text-gray-100 py-3 px-6 rounded-lg text-base font-medium cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20 focus:outline-none focus:ring-2 focus:ring-primary"
-          onClick={onCreateNew}
-        >
-          <Plus size={24} className="text-primary" />
-          <span>Create New Graph</span>
-        </button>
-        
-        <label className="flex items-center justify-center gap-2 bg-gray-800 border border-gray-700 text-gray-100 py-3 px-6 rounded-lg text-base font-medium cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20 focus:outline-none focus:ring-2 focus:ring-primary">
-          <input
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                  try {
-                    const graphData = JSON.parse(event.target?.result as string);
-                    // Generate a unique ID for the imported graph
-                    const importId = `imported-${Date.now()}`;
-                    localStorage.setItem(`agent-graph-${importId}`, JSON.stringify({
-                      ...graphData,
-                      lastModified: Date.now()
-                    }));
-                    onOpenExisting(importId);
-                  } catch (error) {
-                    console.error("Error parsing imported file:", error);
-                    alert("Invalid graph file format.");
-                  }
-                };
-                reader.readAsText(file);
-              }
-            }}
-          />
-          <FolderOpen size={24} className="text-primary" />
-          <span>Import Graph</span>
-        </label>
-      </div>
-      
-      {recentGraphs.length > 0 && (
-        <div className="w-full max-w-5xl">
-          <h2 className="text-2xl mb-6 pb-2 border-b border-gray-700">Recent Graphs</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recentGraphs.map((graph) => (
-              <div 
-                key={graph.id} 
-                className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center gap-4 cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20"
-                onClick={() => onOpenExisting(graph.id)}
-              >
-                <FileText size={20} className="text-primary" />
-                <div className="flex-1">
-                  <h3 className="m-0 mb-2 text-lg">{graph.name}</h3>
-                  <p className="m-0 text-sm opacity-60">Last modified: {graph.lastModified.toLocaleDateString()}</p>
-                </div>
-              </div>
-            ))}
+    <div className="min-h-screen bg-black relative overflow-hidden">
+      {/* Header */}
+      <header className="relative z-10 px-8 py-6">
+        <div className="flex items-center">
+          <div className="text-2xl md:text-3xl font-bold text-white flex items-center font-mono">
+            <img src="/yaLLMa3.svg" alt="yaLLMa3" className="w-32" />
           </div>
         </div>
-      )}
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 flex flex-col items-center justify-center py-8 md:py-12 relative z-10">
+        <div className="text-center max-w-3xl mx-auto">
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 font-mono">
+            Create, edit, and execute agent workflows
+          </h1>
+          <p className="text-lg text-gray-300 mb-12 max-w-2xl mx-auto font-mono">
+            Build powerful AI agent workflows with our intuitive graph-based interface
+          </p>
+
+          <div className="flex flex-col md:flex-row gap-4 max-w-xl mx-auto justify-center">
+            <Button
+              size="lg"
+              onClick={onCreateNew}
+              className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium border-0 flex items-center justify-center gap-2 h-14 px-8 text-lg font-mono"
+            >
+              <Plus className="h-5 w-5" />
+              Create New Graph
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={onOpenFromFile}
+              className="bg-transparent hover:bg-black/40 text-white border-gray-700 flex items-center justify-center gap-2 h-14 px-8 text-lg font-mono"
+            >
+              <FolderUp className="h-5 w-5" />
+              Import Graph
+            </Button>
+          </div>
+        </div>
+
+        
+          <div className="w-full max-w-6xl mt-24">
+            <div className="flex items-center mb-6">
+              <Clock className="h-5 w-5 text-gray-400 mr-2" />
+              <h2 className="text-xl font-bold text-white font-mono">Recent Graphs</h2>
+            </div>
+            {recentGraphs.length === 0 ? (
+                <div className="text-gray-400 text-sm font-mono w-full text-center">No recent graphs</div>
+            ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {recentGraphs.map((graph) => (
+                <div 
+                  key={graph.id} 
+                  onClick={() => onOpenFromPath(graph.path, graph.id)}
+                  className="bg-[#111827] hover:bg-[#1a2234] border border-gray-800 rounded-md p-4 transition-colors cursor-pointer"
+                >
+                  <h3 className="text-white font-mono mb-1 truncate">{formatName(graph.name)}</h3>
+                  <p className="text-gray-400 text-xs font-mono truncate mb-3">{graph.id}</p>
+                  <p title={graph.path} className="text-gray-400 text-sm font-mono truncate mb-3">{graph.path}</p>
+                  <div className="flex items-center">
+                    <Clock className="h-3 w-3 text-gray-500 mr-1" />
+                    <span className="text-gray-500 text-xs font-mono">{formatDate(graph.lastModified)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            )}
+          </div>
+      </main>
     </div>
   );
 };

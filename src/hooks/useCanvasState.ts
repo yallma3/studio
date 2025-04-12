@@ -1,28 +1,14 @@
 import { useState, useRef } from 'react';
-import { Node, Connection, createTextNode, createChatNode } from '../types/NodeTypes';
+import { Node, Connection } from '../types/NodeTypes';
 
 /**
  * Custom hook for managing canvas state
  */
 export const useCanvasState = (initialNodes?: Node[], initialConnections?: Connection[]) => {
   // Default initial nodes and connections
-  const defaultNodes: Node[] = [
-    createTextNode(1, { x: 100, y: 100 }, "Sci-Fi"),
-    createTextNode(2, { x: 100, y: 400 }, "You are an expert Book Recommender. You are given a genre you should recommend 5 books in that genre. Just reply with the titles of the books."),
-    createChatNode(3, { x: 600, y: 350 }, "llama-3.1-8b-instant"),
-    createTextNode(4, {x: 600, y: 100}, "You are given a list of Books in the following genre {{input}}.You select the best title based on review and ratings. Make the answer very concise with a brief explaination in 5 words or less."),
-    createChatNode(5, { x: 1100, y: 200 }, "llama-3.1-8b-instant"),
-    createTextNode(6, {x: 1000, y: 500}, "Recommendations: {{input}}")
-  ];
+  const defaultNodes: Node[] = [];
 
-  const defaultConnections: Connection[] = [
-    { fromSocket: 100 + 2, toSocket: 300 + 1 },  // Connect first text node's output to chat input
-    { fromSocket: 200 + 2, toSocket: 300 + 2 },  // Connect second text node's output to chat system prompt
-    { fromSocket: 100 + 2, toSocket: 400 + 1 },  // Connect chat output to text node input
-    { fromSocket: 300 + 3, toSocket: 500 + 1 },  // Connect chat output to text node input
-    { fromSocket: 400 + 2, toSocket: 500 + 2 },  // Connect chat output to text node input
-    { fromSocket: 300 + 3, toSocket: 600 + 1 }   // Connect chat output to text node input
-  ];
+  const defaultConnections: Connection[] = [];
 
   // Initialize state with provided values or defaults
   const [nodes, setNodes] = useState<Node[]>(initialNodes || defaultNodes);
