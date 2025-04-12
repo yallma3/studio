@@ -2,9 +2,9 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "yallma3-studio",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "org.yallma3.studio",
   "build": {
-    "frontendDist": ".",
+    "frontendDist": "../dist",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": "yarn start",
     "beforeBuildCommand": "yarn build"
@@ -13,8 +13,7 @@
     "windows": [
       {
         "title": "yallma3-studio",
-        "width": 800,
-        "height": 600,
+        "maximized": true,
         "resizable": true,
         "fullscreen": false
       }
