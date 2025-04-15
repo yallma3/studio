@@ -1,0 +1,51 @@
+{
+    "app": {
+        "title": "yaLLMa3",
+        "subtitle": "Create, edit, and execute agent workflows",
+        "description": "Build powerful AI agent workflows with our intuitive graph-based interface"
+    },
+    "home": {
+        "createNewGraph": "Create New Graph",
+        "importGraph": "Import Graph",
+        "recentGraphs": "Recent Graphs",
+        "noRecentGraphs": "No recent graphs",
+        "time": {
+            "today": "Today at {{time}}",
+            "yesterday": "Yesterday at {{time}}",
+            "daysAgo": "{{days}} days ago"
+        }
+    },
+    "canvas": {
+        "returnToHome": "Return to Home",
+        "run": "Run",
+        "running": "Running ({{progress}}/{{total}})",
+        "save": "Save Canvas State",
+        "export": "Export as JS Package"
+    },
+    "nodeEdit": {
+        "title": "Edit Node",
+        "nodeTitle": "Node Title",
+        "socketInfo": "Socket Information",
+        "input": "INPUT",
+        "output": "OUTPUT",
+        "cancel": "Cancel",
+        "saveChanges": "Save Changes",
+        "noImagePreview": "No image preview",
+        "valueLabels": {
+            "chat": "Model",
+            "image": "Image URL",
+            "boolean": "Boolean Output",
+            "number": "Number Output",
+            "text": "Text Output",
+            "add": "Add Output",
+            "join": "Text separator",
+            "generic": "Output",
+            "default": "Node Value"
+        }
+    },
+    "common": {
+        "language": "Language",
+        "english": "English",
+        "arabic": "العربية"
+    }
+}

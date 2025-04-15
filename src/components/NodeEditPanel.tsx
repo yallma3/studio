@@ -1,6 +1,7 @@
 import React, { useState, useEffect, MouseEvent, useRef } from "react";
 import { Node, NodeValue } from "../types/NodeTypes";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface NodeEditPanelProps {
   node: Node | null;
@@ -13,6 +14,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
   const [value, setValue] = useState<NodeValue>("");
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const { t, i18n } = useTranslation();
   
   // Initialize form values when node changes
   useEffect(() => {
@@ -74,25 +76,27 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
   };
 
   const getValueLabel = () => {
-    switch (node?.nodeType) {
+    if (!node) return t('nodeEdit.valueLabels.default');
+    
+    switch (node.nodeType) {
       case "Chat":
-        return "Model";
+        return t('nodeEdit.valueLabels.chat');
       case "Image":
-        return "Image URL";
+        return t('nodeEdit.valueLabels.image');
       case "Boolean":
-        return "Boolean Output";
+        return t('nodeEdit.valueLabels.boolean');
       case "Number":
-        return "Number Output";
+        return t('nodeEdit.valueLabels.number');
       case "Text":
-        return "Text Output";
+        return t('nodeEdit.valueLabels.text');
       case "Add":
-        return "Add Output";
+        return t('nodeEdit.valueLabels.add');
       case "Join":
-        return "Text separator";
+        return t('nodeEdit.valueLabels.join');
       case "Generic":
-        return "Output";
+        return t('nodeEdit.valueLabels.generic');
       default:
-        return "Node Value";
+        return t('nodeEdit.valueLabels.default');
     }
   };
 
@@ -100,12 +104,15 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
   const renderValueInput = () => {
     if (!node) return null;
 
+    // Get text alignment class based on language direction
+    const textAlignClass = i18n.language === 'ar' ? 'text-right' : 'text-left';
+
     switch (node.nodeType) {
       case "Text":
         return (
           <textarea
             id="node-value-textarea"
-            className="w-full h-32 bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none resize-none"
+            className={`w-full h-32 bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none resize-none ${textAlignClass}`}
             value={String(value)}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Text value..."
@@ -117,7 +124,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
           <div className="space-y-4">
             <select
               id="node-value-dropdown"
-              className="w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none"
+              className={`w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none ${textAlignClass}`}
               value={String(value) ? String(value) : "llama-3.1-8b-instant"}
               onChange={(e) => setValue(e.target.value)}
             >
@@ -139,10 +146,6 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
               <option value="qwen-2.5-coder-32b">qwen-2.5-coder-32b</option>
               <option value="qwen-qwq-32b">qwen-qwq-32b (reasoning)</option>
             </select>
-            
-            <div className="text-xs text-gray-400 mt-1">
-              Select a model from the Groq free tier
-            </div>
           </div>
         );
       case "Number":
@@ -150,7 +153,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
           <input
             id="node-value-number"
             type="number"
-            className="w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none"
+            className={`w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none ${textAlignClass}`}
             value={Number(value)}
             onChange={(e) => setValue(Number(e.target.value))}
           />
@@ -158,7 +161,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
       case "Boolean":
         return (
           <div className="flex items-center space-x-2">
-            <label className="text-white cursor-pointer">
+            <label className={`text-white cursor-pointer ${textAlignClass}`}>
               <input
                 id="node-value-checkbox"
                 type="checkbox"
@@ -176,7 +179,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
             <input
               id="node-value-image"
               type="text"
-              className="w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none"
+              className={`w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none ${textAlignClass}`}
               value={String(value)}
               onChange={(e) => setValue(e.target.value)}
               placeholder="Image URL or base64 string..."
@@ -194,7 +197,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
                   }}
                 />
               ) : (
-                <span className="text-[#FFC72C]/50">No image preview</span>
+                <span className={`text-[#FFC72C]/50 ${textAlignClass}`}>{t('nodeEdit.noImagePreview')}</span>
               )}
             </div>
           </div>
@@ -204,7 +207,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
           <input
             id="node-value-text"
             type="text"
-            className="w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none"
+            className={`w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none ${textAlignClass}`}
             value={String(value)}
             onChange={(e) => setValue(e.target.value)}
           />
@@ -213,6 +216,9 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
   };
 
   if (!node) return null;
+
+  // Get text alignment class based on language direction
+  const textAlignClass = i18n.language === 'ar' ? 'text-right' : 'text-left';
 
   return (
     <div 
@@ -227,13 +233,15 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
       onMouseMove={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
       onMouseUp={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
+      dir="ltr" // Always keep the panel in LTR mode for consistency
     >
       <div className="sticky top-0 bg-[#0D0D0D] z-10">
         <div className="flex items-center justify-between p-4 border-b border-[#FFC72C]/20">
-          <h2 className="text-[#FFC72C] text-lg font-bold">Edit Node</h2>
+          <h2 className={`text-[#FFC72C] text-lg font-bold ${textAlignClass}`}>{t('nodeEdit.title')}</h2>
           <button 
             onClick={handleClose}
             className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-800 transition-colors"
+            aria-label="Close"
           >
             <X size={20} />
           </button>
@@ -250,23 +258,23 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
 
       <form id="node-edit-form" onSubmit={handleSubmit} className="p-4 space-y-6 flex-grow">
         <div className="space-y-2">
-          <label htmlFor="node-title-input" className="block text-sm font-medium text-gray-300">Node Title</label>
+          <label htmlFor="node-title-input" className={`block text-sm font-medium text-gray-300 ${textAlignClass}`}>{t('nodeEdit.nodeTitle')}</label>
           <input
             id="node-title-input"
             type="text"
-            className="w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none"
+            className={`w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none ${textAlignClass}`}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="node-value-input" className="block text-sm font-medium text-gray-300">{getValueLabel()}</label>
+          <label htmlFor="node-value-input" className={`block text-sm font-medium text-gray-300 ${textAlignClass}`}>{getValueLabel()}</label>
           {renderValueInput()}
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-300">Socket Information</label>
+          <label className={`block text-sm font-medium text-gray-300 ${textAlignClass}`}>{t('nodeEdit.socketInfo')}</label>
           <div className="bg-[#161616] border border-[#FFC72C]/20 rounded-md p-3">
             <ul className="space-y-2">
               {node.sockets.map(socket => (
@@ -276,7 +284,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
                     <span>{socket.title}</span>
                   </div>
                   <div className="text-xs text-gray-400">
-                    <span className="uppercase">{socket.position}</span>
+                    <span className="uppercase">{t(`nodeEdit.${socket.position}`)}</span>
                     {socket.dataType && <span className="ml-1">- {socket.dataType}</span>}
                   </div>
                 </li>
@@ -292,13 +300,13 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
               onClick={handleClose}
               className="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-800 transition-colors"
             >
-              Cancel
+              {t('nodeEdit.cancel')}
             </button>
             <button
               type="submit"
               className="flex-1 px-4 py-2 bg-[#FFC72C] text-black font-medium rounded-md hover:bg-[#FFB300] transition-colors"
             >
-              Save Changes
+              {t('nodeEdit.saveChanges')}
             </button>
           </div>
         </div>
@@ -307,4 +315,4 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
   );
 };
 
-export default NodeEditPanel; 
+export default NodeEditPanel;

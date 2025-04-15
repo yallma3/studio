@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import NodeCanvas from "./components/NodeCanvas.tsx";
 import HomeScreen from "./components/HomeScreen.tsx";
 import { loadCanvasState, loadCanvasStateFromPath } from "./utils/storageUtils.ts";
@@ -9,6 +10,13 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<"home" | "canvas">("home");
   const [currentGraphId, setCurrentGraphId] = useState<string>("");
   const [currentGraph, setCurrentGraph] = useState<CanvasState | null>(null);
+  const { i18n } = useTranslation();
+  
+  // Setup language direction based on current language
+  useEffect(() => {
+    document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
   
   // Handle creating a new graph
   const handleCreateNewGraph = () => {
