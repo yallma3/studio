@@ -51,7 +51,7 @@ const processors: Record<NodeType, NodeProcessor> = {
       .replace(/\\n/g, "\n");          // Also support \n for newlines
       
     // Count input sockets to determine how many inputs to process
-    const inputSockets = node.sockets.filter(s => s.position === "input");
+    const inputSockets = node.sockets.filter(s => s.type === "input");
     
     // Collect all input values
     const inputValues = await Promise.all(

@@ -513,7 +513,7 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
       // Find end nodes (nodes with no outgoing connections)
       const endNodes = nodes.filter(node => {
         return node.sockets
-          .filter(socket => socket.position === "output")
+          .filter(socket => socket.type === "output")
           .every(socket => 
             !connections.some(conn => conn.fromSocket === socket.id)
           );

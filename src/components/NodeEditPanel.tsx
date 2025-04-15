@@ -280,11 +280,11 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
               {node.sockets.map(socket => (
                 <li key={socket.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${socket.position === 'input' ? 'bg-blue-400' : 'bg-[#FFC72C]'}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${socket.type === 'input' ? 'bg-blue-400' : 'bg-[#FFC72C]'}`}></div>
                     <span>{socket.title}</span>
                   </div>
                   <div className="text-xs text-gray-400">
-                    <span className="uppercase">{t(`nodeEdit.${socket.position}`)}</span>
+                    <span className="uppercase">{t(`nodeEdit.${socket.type}`)}</span>
                     {socket.dataType && <span className="ml-1">- {socket.dataType}</span>}
                   </div>
                 </li>

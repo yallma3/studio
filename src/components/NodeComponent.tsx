@@ -27,8 +27,8 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
   
   
   // Filter input and output sockets
-  const inputSockets = node.sockets.filter(socket => socket.position === "input");
-  const outputSockets = node.sockets.filter(socket => socket.position === "output");
+  const inputSockets = node.sockets.filter(socket => socket.type === "input");
+  const outputSockets = node.sockets.filter(socket => socket.type === "output");
   
   // Calculate vertical offset for centering sockets
   const getSocketsVerticalOffset = (socketsCount: number) => {

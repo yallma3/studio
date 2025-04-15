@@ -11,12 +11,12 @@ export const getSocketPosition = (
   transform: { scale: number; translateX: number; translateY: number }
 ) => {
   // Get all sockets of the same type (input/output)
-  const sockets = node.sockets.filter(s => s.position === socket.position);
+  const sockets = node.sockets.filter(s => s.type === socket.type);
   const socketIndex = sockets.findIndex(s => s.id === socket.id);
   
   if (socketIndex === -1) return { x: 0, y: 0 }; // Fallback
   
-  const x = node.x + (socket.position === "output" ? node.width : 0);
+  const x = node.x + (socket.type === "output" ? node.width : 0);
   
   // Calculate y position
   let y;
@@ -92,14 +92,14 @@ export const addSocketToJoinNode = (node: Node): Node => {
   if (node.nodeType !== "Join") return node;
   
   // Count current input sockets
-  const inputSockets = node.sockets.filter(s => s.position === "input");
+  const inputSockets = node.sockets.filter(s => s.type === "input");
   const inputCount = inputSockets.length;
   
   // Create a new input socket with the next number
   const newSocket: Socket = {
     id: node.id * 100 + (inputCount + 1),
     title: `Input ${inputCount + 1}`,
-    position: "input",
+    type: "input",
     nodeId: node.id,
     dataType: "unknown"
   };
