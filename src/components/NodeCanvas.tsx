@@ -1,11 +1,12 @@
 import React, { useState, useRef, MouseEvent, useEffect, useCallback } from "react";
 import { NodeComponent } from "./NodeComponent";
-import { Node, NodeValue } from "../types/NodeTypes";
+import { NodeType, NodeValue, Socket } from "../types/NodeTypes";
 import CanvasContextMenu from "./CanvasContextMenu";
 import NodeContextMenu from "./NodeContextMenu";
 import NodeEditPanel from "./NodeEditPanel";
+import GraphNameDialog from "./GraphNameDialog";
 import { executeNode } from "../types/NodeProcessor";
-import { Play, Save, Globe, ArrowLeft, Menu } from "lucide-react";
+import { Play, Save, ArrowLeft, Menu, CheckCircle, AlertCircle, FileDown, Code } from "lucide-react";
 import { exportFlowRunner } from "../utils/exportFlowRunner";
 import { useTranslation } from "react-i18next";
 
@@ -17,7 +18,7 @@ import {
   getSocketPosition, 
   buildExecutionGraph 
 } from "../utils/socketUtils";
-import { saveCanvasState,CanvasState } from "../utils/storageUtils";
+import { saveCanvasState, CanvasState, exportCanvasState } from "../utils/storageUtils";
 import { generateConnectionPath } from "../utils/connectionUtils";
 import { duplicateNode } from "../utils/nodeOperations";
 // Import hooks
@@ -26,7 +27,46 @@ import { useCanvasTransform } from "../hooks/useCanvasTransform";
 import { useConnectionDrag } from "../hooks/useConnectionDrag";
 import { useContextMenu } from "../hooks/useContextMenu";
 
-const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onReturnToHome: () => void}> = ({ graphId, graph, onReturnToHome }) => {
+// Toast notification component
+interface ToastProps {
+  message: string;
+  type: 'success' | 'error';
+  onClose: () => void;
+  isClosing?: boolean;
+}
+
+const Toast: React.FC<ToastProps> = ({ message, type, onClose, isClosing = false }) => {
+  useEffect(() => {
+    if (!isClosing) {
+      // Auto-hide toast after a delay if not manually closing
+      const autoHideTimer = setTimeout(() => {
+        onClose();
+      }, 2000); // Show for 2 seconds instead of 3
+      
+      return () => clearTimeout(autoHideTimer);
+    }
+  }, [onClose, isClosing]);
+
+  return (
+    <div 
+      className={`
+        fixed bottom-8 left-1/2 transform -translate-x-1/2 
+        py-2 px-4 rounded-md shadow-lg flex items-center gap-2 z-50
+        transition-all duration-200 ease-out
+        ${isClosing ? 'opacity-0 translate-y-3' : 'opacity-100 translate-y-0'}
+        ${type === 'success' ? 'bg-[#27272A] text-[#FFC72C]' : 'bg-[#272724] text-red-400'}
+      `}
+    >
+      {type === 'success' ? 
+        <CheckCircle size={18} className="text-green-400" /> : 
+        <AlertCircle size={18} className="text-red-400" />
+      }
+      <span>{message}</span>
+    </div>
+  );
+};
+
+const NodeCanvas: React.FC<{graph: CanvasState | null , onReturnToHome: () => void}> = ({graph, onReturnToHome }) => {
   const { t } = useTranslation();
   
   // Canvas state (nodes and connections)
@@ -63,10 +103,13 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
   const offset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   
   // Node being edited
-  const [editingNode, setEditingNode] = useState<Node | null>(null);
+  const [editingNode, setEditingNode] = useState<NodeType | null>(null);
   
   // Track when panel is animating out
   const [isPanelClosing, setIsPanelClosing] = useState<boolean>(false);
+  
+  // Graph name dialog state
+  const [graphNameDialogOpen, setGraphNameDialogOpen] = useState<boolean>(false);
   
   // Connection dragging
   const {
@@ -484,15 +527,101 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
     setFileMenuOpen(false);
   };
 
-  // Handle saving the canvas state
-  const handleSaveCanvasState = async () => {
+  // Export graph as JSON file to user-selected location
+  const exportAsJson = async () => {
+    if (!graph) return;
     try {
-      await saveCanvasState(graphId, nodes, connections, nextNodeId.current);
+      await exportCanvasState(graph, nodes, connections, nextNodeId.current);
+      
+      showToast(t('canvas.jsonExportSuccess'), 'success');
       setFileMenuOpen(false);
     } catch (error) {
-      console.error("Error saving canvas state:", error);
-      alert(`Failed to save canvas state: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('Error exporting graph as JSON:', error);
+      showToast(t('canvas.jsonExportError', { message: error instanceof Error ? error.message : String(error) }), 'error');
     }
+  };
+
+  // Toast notification state
+  const [toast, setToast] = useState<{ visible: boolean, message: string, type: 'success' | 'error', isClosing: boolean } | null>(null);
+  const [pendingToast, setPendingToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+  
+  // Handle toast transitions
+  useEffect(() => {
+    // If we have a pending toast and no current toast (or current toast is closing)
+    if (pendingToast && (!toast || toast.isClosing)) {
+      // Wait for current toast to finish closing animation
+      const timer = setTimeout(() => {
+        setToast({ 
+          visible: true, 
+          message: pendingToast.message, 
+          type: pendingToast.type,
+          isClosing: false 
+        });
+        setPendingToast(null);
+      }, toast ? 200 : 0); // If there's a toast closing, wait 200ms (down from 300ms), otherwise show immediately
+      
+      return () => clearTimeout(timer);
+    }
+  }, [toast, pendingToast]);
+
+  // Show toast notification
+  const showToast = (message: string, type: 'success' | 'error') => {
+    if (toast && !toast.isClosing) {
+      // If a toast is currently shown, close it and queue the new one
+      setToast(prev => prev ? {...prev, isClosing: true} : null);
+      setPendingToast({ message, type });
+    } else if (!toast) {
+      // If no toast is shown, show it immediately
+      setToast({ visible: true, message, type, isClosing: false });
+    } else {
+      // Toast is in closing state, queue the new one
+      setPendingToast({ message, type });
+    }
+  };
+
+  // Hide toast notification
+  const hideToast = () => {
+    // Only apply closing animation if toast exists and is not already closing
+    if (toast && !toast.isClosing) {
+      setToast(prev => prev ? {...prev, isClosing: true} : null);
+      
+      // Remove toast after animation completes
+      setTimeout(() => {
+        setToast(null);
+      }, 200); // 200ms instead of 300ms to match shorter transition
+    } else {
+      setToast(null);
+    }
+  };
+
+  // Handle saving the canvas state
+  const handleSaveCanvasState = async (graphName?: string) => {
+    if (!graph) return;
+    try {
+      const nameToUse = graphName || graph?.graphName;
+
+      if (!nameToUse) {
+        setGraphNameDialogOpen(true);
+        return;
+      }
+
+      await saveCanvasState(graph?.graphId, nodes, connections, nextNodeId.current, nameToUse);
+      setFileMenuOpen(false);
+      showToast(t('canvas.saveSuccess', { name: nameToUse }), 'success');
+    } catch (error) {
+      console.error("Error saving canvas state:", error);
+      showToast(t('canvas.saveError', { message: error instanceof Error ? error.message : String(error) }), 'error');
+    }
+  };
+
+  // Handle saving graph with a new name
+  const handleSaveWithName = async (name: string) => {
+    setGraphNameDialogOpen(false);
+    // Update the graph's name if it exists
+    if (graph) {
+      graph.graphName = name;
+    }
+    await handleSaveCanvasState(name);
   };
 
   // Execute the flow
@@ -513,8 +642,8 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
       // Find end nodes (nodes with no outgoing connections)
       const endNodes = nodes.filter(node => {
         return node.sockets
-          .filter(socket => socket.type === "output")
-          .every(socket => 
+          .filter((socket: Socket) => socket.type === "output")
+          .every((socket: Socket) => 
             !connections.some(conn => conn.fromSocket === socket.id)
           );
       });
@@ -676,7 +805,7 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
           >
             <ArrowLeft size={18} className="ltr-icon" />
           </button>
-          <p className="text-gray-400 text-xs">{graphId}</p>
+          <p className="text-gray-400 text-xs">{graph?.graphName || graph?.graphId}</p>
         </div>
         <div className="absolute top-5 right-5 flex gap-2 z-20">
           {/* Run button */}
@@ -704,18 +833,25 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
                 {/* File Operations Section */}
                 <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="file-menu">
                   <button
-                    onClick={handleSaveCanvasState}
+                    onClick={() => handleSaveCanvasState()}
                     className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors"
                     role="menuitem"
                   >
                     <Save size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" /> {t('canvas.save')}
                   </button>
                   <button
+                    onClick={exportAsJson}
+                    className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors"
+                    role="menuitem"
+                  >
+                    <FileDown size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" /> {t('canvas.exportToJson')}
+                  </button>
+                  <button
                     onClick={exportAsJSPackage}
                     className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors"
                     role="menuitem"
                   >
-                    <Globe size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" /> {t('canvas.export')}
+                    <Code size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" /> {t('canvas.export')}
                   </button>
                 </div>
                 
@@ -869,7 +1005,7 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
         <NodeEditPanel
           node={editingNode}
           onClose={handleCloseEditPanel}
-          onSave={(updatedNode: Partial<Node>) => {
+          onSave={(updatedNode: Partial<NodeType>) => {
             setIsPanelClosing(true);
             setTimeout(() => {
               setNodes(nodes.map(node => 
@@ -881,6 +1017,26 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
               setIsPanelClosing(false);
             }, 300); // Match with transition duration in NodeEditPanel
           }}
+        />
+      )}
+
+      {/* Graph Name Dialog */}
+      {graphNameDialogOpen && (
+        <GraphNameDialog
+          isOpen={graphNameDialogOpen}
+          initialName={graph?.graphName || ""}
+          onClose={() => setGraphNameDialogOpen(false)}
+          onSave={handleSaveWithName}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {toast?.visible && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          isClosing={toast.isClosing}
+          onClose={hideToast} 
         />
       )}
     </>

@@ -1,11 +1,11 @@
-import { NodeType, Socket, Node, NodeValue, Connection } from "./NodeTypes";
+import { NodeType, Socket, NodeValue, Connection, TextNode, NumberNode, BooleanNode, GenericNode, AddNode, JoinNode, ImageNode, ChatNode } from "./NodeTypes";
 
 type NodeExecutionContext = {
-  node: Node;
+  node: NodeType;
   getInputValue: (socketId: number) => Promise<NodeValue | undefined>;
 };
 
-type NodeProcessor = (context: NodeExecutionContext) => Promise<NodeValue>;
+type NodeProcessor = (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
 
 /**
  * Process text templates by replacing variables like {{input}} with their values
@@ -25,25 +25,37 @@ const processTextTemplate = async (template: string, getInputValue: (socketId: n
   return result;
 };
 
-const processors: Record<NodeType, NodeProcessor> = {
+const processors: Record<string, NodeProcessor> = {
   Text: async ({ node, getInputValue }) => {
     // If the node value is a string and contains template variables, process them
-    if (typeof node.value === 'string') {
-      return processTextTemplate(node.value, getInputValue, node.id);
+    const n = node as TextNode;
+    if (typeof n.value === 'string') {
+      return processTextTemplate(n.value, getInputValue, n.id);
     }
-    return node.value;
+    return n.value;
   },
-  Number: async ({ node }) => node.value,
-  Boolean: async ({ node }) => node.value,
-  Generic: async ({ node }) => node.value,
+  Number: async ({ node }) => {
+    const n = node as NumberNode;
+    return n.value;
+  },
+  Boolean: async ({ node }) => {
+    const n = node as BooleanNode;
+    return n.value;
+  },
+  Generic: async ({ node }) => {
+    const n = node as GenericNode;
+    return n.value;
+  },
   Add: async ({ node, getInputValue }) => {
-    const a = Number(await getInputValue(node.id * 100 + 1) || 0);
-    const b = Number(await getInputValue(node.id * 100 + 2) || 0);
+    const n = node as AddNode;
+    const a = Number(await getInputValue(n.id * 100 + 1) || 0);
+    const b = Number(await getInputValue(n.id * 100 + 2) || 0);
     return a + b;
   },
   Join: async ({ node, getInputValue }) => {
+    const n = node as JoinNode;
     // Process special separator values
-    let separator = String(node.value || "");
+    let separator = String(n.value || "");
     
     // Replace special separator placeholders
     separator = separator
@@ -51,7 +63,7 @@ const processors: Record<NodeType, NodeProcessor> = {
       .replace(/\\n/g, "\n");          // Also support \n for newlines
       
     // Count input sockets to determine how many inputs to process
-    const inputSockets = node.sockets.filter(s => s.type === "input");
+    const inputSockets = n.sockets.filter(s => s.type === "input");
     
     // Collect all input values
     const inputValues = await Promise.all(
@@ -65,19 +77,21 @@ const processors: Record<NodeType, NodeProcessor> = {
     return inputValues.filter(val => val !== "").join(separator);
   },
   Image: async ({ node, getInputValue }) => {
+    const n = node as ImageNode;
     // If there's an input source, use that, otherwise use the node's value
-    const sourceValue = await getInputValue(node.id * 100 + 1);
-    return sourceValue !== undefined ? sourceValue : node.value;
+    const sourceValue = await getInputValue(n.id * 100 + 1);
+    return sourceValue !== undefined ? sourceValue : n.value;
   },
   Chat: async ({ node, getInputValue }) => {
+    const n = node as ChatNode;
     // If we have a cached result for this node, use it
-    const promptValue = await getInputValue(node.id * 100 + 1);
-    const systemPrompt = await getInputValue(node.id * 100 + 2);
+    const promptValue = await getInputValue(n.id * 100 + 1);
+    const systemPrompt = await getInputValue(n.id * 100 + 2);
     
     const prompt = String(promptValue || "");
     
     // Extract model name from node value
-    const modelMatch = String(node.value || "");
+    const modelMatch = String(n.value || "");
     const model = modelMatch ? modelMatch : "llama-3.1-8b-instant"; // Default fallback
     
     // Use system prompt from input, but don't use the node.value (which now contains the model)
@@ -92,7 +106,7 @@ const processors: Record<NodeType, NodeProcessor> = {
       }
       
       console.log(`Using model: ${model}`);
-      console.log(`Executing Chat node ${node.id} with prompt: "${prompt.substring(0, 50)}..."`);
+      console.log(`Executing Chat node ${n.id} with prompt: "${prompt.substring(0, 50)}..."`);
       const messages =  system ? [{ role: "user", content: prompt }, { role: "system", content: system }] : [{ role: "user", content: prompt }];
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -116,27 +130,27 @@ const processors: Record<NodeType, NodeProcessor> = {
       }
       
       const json = await res.json();
-      console.log(`Chat node ${node.id} received response:`, json.choices[0].message.content.substring(0, 50) + "...");
+      console.log(`Chat node ${n.id} received response:`, json.choices[0].message.content.substring(0, 50) + "...");
       
       // Return an object with both values to support multiple outputs
       return {
         // Socket id 3 is for Response content
-        [node.id * 100 + 3]: json.choices[0].message.content,
+        [n.id * 100 + 3]: json.choices[0].message.content,
         // Socket id 4 is for Token count 
-        [node.id * 100 + 4]: json.usage?.total_tokens || 0
+        [n.id * 100 + 4]: json.usage?.total_tokens || 0
       };
     } catch (error) {
       console.error("Error in Chat node:", error);
       // Return error in the response output
       return {
-        [node.id * 100 + 3]: `Error: ${error instanceof Error ? error.message : String(error)}`,
-        [node.id * 100 + 4]: 0
+        [n.id * 100 + 3]: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        [n.id * 100 + 4]: 0
       };
     }
   },
 };
 
-export async function executeNode(node: Node, allNodes: Node[], connections: Connection[], cache?: Map<number, Promise<NodeValue>>): Promise<NodeValue> {
+export async function executeNode(node: NodeType, allNodes: NodeType[], connections: Connection[], cache?: Map<number, Promise<NodeValue>>): Promise<NodeValue> {
   // Use cache if provided to avoid redundant calculations
   const executionCache = cache || new Map<number, Promise<NodeValue>>();
   
@@ -199,17 +213,17 @@ export async function executeNode(node: Node, allNodes: Node[], connections: Con
   })();
   
   // Store the promise in the cache
-  executionCache.set(node.id, executionPromise);
+  executionCache.set(node.id, executionPromise as Promise<NodeValue>);
   
   // Await and return the result
-  return await executionPromise;
+  return await executionPromise as NodeValue;
 }
 
-export function findNodeById(id: number, nodes: Node[]): Node | undefined {
+export function findNodeById(id: number, nodes: NodeType[]): NodeType | undefined {
   return nodes.find(n => n.id === id);
 }
 
-export function findSocketById(id: number, nodes: Node[]): Socket | undefined {
+export function findSocketById(id: number, nodes: NodeType[]): Socket | undefined {
   for (const node of nodes) {
     const socket = node.sockets.find(s => s.id === id);
     if (socket) return socket;
@@ -221,7 +235,7 @@ export function findSocketById(id: number, nodes: Node[]): Socket | undefined {
  * Sort nodes in topological order based on their connections
  * This ensures that nodes are executed in the correct dependency order
  */
-export function topologicalSort(nodes: Node[], connections: Connection[]): Node[] {
+export function topologicalSort(nodes: NodeType[], connections: Connection[]): NodeType[] {
   // Create an adjacency list representation of the dependency graph
   // Where node A depends on node B if B's output is connected to A's input
   const dependencyGraph: Map<number, number[]> = new Map();

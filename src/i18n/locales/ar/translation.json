@@ -8,6 +8,8 @@
         "createNewGraph": "رسم جديد",
         "importGraph": "رفع الرسم البياني",
         "recentGraphs": "الرسوم الأخيرة",
+        "allGraphs": "جميع الرسومات",
+        "viewAll": "عرض الكل",
         "noRecentGraphs": "لا توجد رسوم بيانية حديثة",
         "time": {
             "today": "اليوم في {{time}}",
@@ -20,7 +22,24 @@
         "run": "تشغيل",
         "running": "جارٍ التشغيل ({{progress}}/{{total}})",
         "save": "حفظ حالة اللوحة",
-        "export": "تصدير كحزمة جافا سكريبت"
+        "export": "تصدير كحزمة جافا سكريبت",
+        "exportToJson": "تصدير كملف JSON",
+        "jsonExportSuccess": "تم تصدير الرسم البياني بنجاح",
+        "jsonExportError": "خطأ في تصدير الرسم البياني: {{message}}",
+        "saveSuccess": "تم الحفظ: {{name}}",
+        "saveError": "خطأ: {{message}}"
+    },
+    "dialog": {
+        "nameYourGraph": "تسمية الرسم البياني",
+        "graphName": "اسم الرسم البياني",
+        "graphPath": "المسار",
+        "lastModified": "آخر تعديل",
+        "enterGraphName": "أدخل اسم الرسم البياني...",
+        "nameRequired": "الاسم مطلوب",
+        "graphSingular": "رسم بياني",
+        "graphPlural": "رسوم بيانية",
+        "cancel": "إلغاء",
+        "save": "حفظ"
     },
     "nodeEdit": {
         "title": "تعديل العنصر",

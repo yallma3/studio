@@ -1,6 +1,5 @@
 import React, { useRef } from "react";
 import { Plus, Settings, Trash2, Type, MessageSquare, Hash, ToggleLeft, Image, ChevronRight, PlusCircle, Link } from "lucide-react";
-
 // Define types for the context menu
 interface ContextMenuPosition {
   visible: boolean;
@@ -12,7 +11,7 @@ interface ContextMenuPosition {
 
 interface CanvasContextMenuProps {
   contextMenu: ContextMenuPosition;
-  onAddNode: (nodeType: "Text" | "Number" | "Chat" | "Boolean" | "Image" | "Add" | "Join", e: React.MouseEvent) => void;
+  onAddNode: (nodeType: string, e: React.MouseEvent) => void;
   onContextMenuAction: (action: string, e: React.MouseEvent) => void;
 }
 
@@ -129,7 +128,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           <p className="text-xs text-[#FFC72C]/80 font-mono p-2">Add Node</p>
           <div 
             style={menuItemStyle}
-            onClick={(e) => onAddNode('Text', e)}
+            onClick={(e) => onAddNode("Text", e)}
             className="hover:bg-[#222]"
           >
             <Type size={16} style={iconStyle} />
@@ -137,7 +136,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           </div>
           <div 
             style={menuItemStyle}
-            onClick={(e) => onAddNode('Chat', e)}
+            onClick={(e) => onAddNode("Chat", e)}
             className="hover:bg-[#222]"
           >
             <MessageSquare size={16} style={iconStyle} />
@@ -145,7 +144,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           </div>
           <div 
             style={menuItemStyle}
-            onClick={(e) => onAddNode('Number', e)}
+            onClick={(e) => onAddNode("Number", e)}
             className="hover:bg-[#222]"
           >
             <Hash size={16} style={iconStyle} />
@@ -153,7 +152,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           </div>
           <div 
             style={menuItemStyle}
-            onClick={(e) => onAddNode('Boolean', e)}
+            onClick={(e) => onAddNode("Boolean", e)}
             className="hover:bg-[#222]"
           >
             <ToggleLeft size={16} style={iconStyle} />
@@ -161,7 +160,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           </div>
           <div 
             style={menuItemStyle}
-            onClick={(e) => onAddNode('Image', e)}
+            onClick={(e) => onAddNode("Image", e)}
             className="hover:bg-[#222]"
           >
             <Image size={16} style={iconStyle} />
@@ -169,7 +168,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           </div>
           <div 
             style={menuItemStyle}
-            onClick={(e) => onAddNode('Add', e)}
+            onClick={(e) => onAddNode("Add", e)}
             className="hover:bg-[#222]"
           >
             <PlusCircle size={16} style={iconStyle} />
@@ -177,7 +176,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           </div>
           <div 
             style={menuItemStyle}
-            onClick={(e) => onAddNode('Join', e)}
+            onClick={(e) => onAddNode("Join", e)}
             className="hover:bg-[#222]"
           >
             <Link size={16} style={iconStyle} />

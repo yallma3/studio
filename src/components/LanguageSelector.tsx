@@ -19,7 +19,7 @@ const LanguageSelector: React.FC = () => {
       <div className="flex items-center space-x-2 rtl:space-x-reverse">
         <button 
           onClick={() => changeLanguage('en')} 
-          className={`text-sm px-2 py-1 rounded ${i18n.language === 'en' ? 'bg-yellow-400 text-black' : 'text-gray-300'}`}
+          className={`text-sm px-2 py-1 rounded ${i18n.language != 'ar' ? 'bg-yellow-400 text-black' : 'text-gray-300'}`}
         >
           {t('common.english')}
         </button>

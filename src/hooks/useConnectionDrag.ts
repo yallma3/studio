@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Connection, Node } from '../types/NodeTypes';
+import { Connection, NodeType } from '../types/NodeTypes';
 import { findSocketById, getNodeBySocketId, getSocketPosition, findSocketUnderMouse } from '../utils/socketUtils';
 import { CanvasTransform } from './useCanvasTransform';
 
@@ -19,7 +19,7 @@ export interface DragConnection {
  * Custom hook for managing connection dragging
  */
 export const useConnectionDrag = (
-  nodes: Node[],
+  nodes: NodeType[],
   connections: Connection[],
   setConnections: React.Dispatch<React.SetStateAction<Connection[]>>,
   transform: CanvasTransform,

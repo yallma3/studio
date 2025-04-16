@@ -1,31 +1,31 @@
 import { useState, useRef } from 'react';
-import { Node, Connection } from '../types/NodeTypes';
+import { NodeType, Connection } from '../types/NodeTypes';
 
 /**
  * Custom hook for managing canvas state
  */
-export const useCanvasState = (initialNodes?: Node[], initialConnections?: Connection[]) => {
+export const useCanvasState = (initialNodes?: NodeType[], initialConnections?: Connection[]) => {
   // Default initial nodes and connections
-  const defaultNodes: Node[] = [];
+  const defaultNodes: NodeType[] = [];
 
   const defaultConnections: Connection[] = [];
 
   // Initialize state with provided values or defaults
-  const [nodes, setNodes] = useState<Node[]>(initialNodes || defaultNodes);
+  const [nodes, setNodes] = useState<NodeType[]>(initialNodes || defaultNodes);
   const [connections, setConnections] = useState<Connection[]>(initialConnections || defaultConnections);
   
   // Track next node ID to ensure uniqueness
   const nextNodeId = useRef(nodes.length > 0 ? Math.max(...nodes.map(n => n.id)) + 1 : 1);
   
   // Add a new node
-  const addNode = (node: Node) => {
+  const addNode = (node: NodeType) => {
     const id = nextNodeId.current++;
     setNodes(prevNodes => [...prevNodes, { ...node, id }]);
     return id;
   };
   
   // Update a node
-  const updateNode = (updatedNode: Node) => {
+  const updateNode = (updatedNode: NodeType) => {
     setNodes(prevNodes => 
       prevNodes.map(node => node.id === updatedNode.id ? updatedNode : node)
     );

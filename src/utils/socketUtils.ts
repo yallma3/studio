@@ -1,4 +1,4 @@
-import { Node, Socket, Connection } from "../types/NodeTypes";
+import { BaseNode, Socket, Connection } from "../types/NodeTypes";
 import { SOCKET_SPACING } from "../components/vars";
 import { canvasToScreen } from "./canvasTransforms";
 
@@ -6,7 +6,7 @@ import { canvasToScreen } from "./canvasTransforms";
  * Get socket position in screen coordinates
  */
 export const getSocketPosition = (
-  node: Node, 
+  node: BaseNode, 
   socket: Socket, 
   transform: { scale: number; translateX: number; translateY: number }
 ) => {
@@ -38,7 +38,7 @@ export const getSocketPosition = (
 /**
  * Find a socket by ID
  */
-export const findSocketById = (nodes: Node[], socketId: number): Socket | undefined => {
+export const findSocketById = (nodes: BaseNode[], socketId: number): Socket | undefined => {
   for (const node of nodes) {
     const socket = node.sockets.find((s: Socket) => s.id === socketId);
     if (socket) return socket;
@@ -49,7 +49,7 @@ export const findSocketById = (nodes: Node[], socketId: number): Socket | undefi
 /**
  * Get node by socket ID
  */
-export const getNodeBySocketId = (nodes: Node[], socketId: number): Node | undefined => {
+export const getNodeBySocketId = (nodes: BaseNode[], socketId: number): BaseNode | undefined => {
   return nodes.find(node => 
     node.sockets.some((socket: Socket) => socket.id === socketId)
   );
@@ -61,7 +61,7 @@ export const getNodeBySocketId = (nodes: Node[], socketId: number): Node | undef
 export const findSocketUnderMouse = (
   x: number, 
   y: number, 
-  nodes: Node[], 
+  nodes: BaseNode[], 
   transform: { scale: number; translateX: number; translateY: number }
 ): Socket | undefined => {
   // Check all sockets to see if mouse is within its bounds
@@ -88,7 +88,7 @@ export const findSocketUnderMouse = (
 /**
  * Add a socket to a Join node
  */
-export const addSocketToJoinNode = (node: Node): Node => {
+export const addSocketToJoinNode = (node: BaseNode): BaseNode => {
   if (node.nodeType !== "Join") return node;
   
   // Count current input sockets
@@ -121,7 +121,7 @@ export const addSocketToJoinNode = (node: Node): Node => {
 /**
  * Build a graph of node dependencies for execution tracking
  */
-export const buildExecutionGraph = (nodes: Node[], connections: Connection[]): [number, number][] => {
+export const buildExecutionGraph = (nodes: BaseNode[], connections: Connection[]): [number, number][] => {
   const graph: [number, number][] = [];
   
   // Build edges from connections

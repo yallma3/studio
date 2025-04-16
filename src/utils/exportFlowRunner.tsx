@@ -1,4 +1,4 @@
-import { Node, Connection } from "../types/NodeTypes";
+import { NodeType, Connection } from "../types/NodeTypes";
 import { executeNode } from "../types/NodeProcessor";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
@@ -9,7 +9,7 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
  * @param connections The current connections between nodes
  * @returns Promise<void> - Saves a file using Tauri's file system API
  */
-export const exportFlowRunner = async (nodes: Node[], connections: Connection[]) => {
+export const exportFlowRunner = async (nodes: NodeType[], connections: Connection[]) => {
   // Create a simplified version of the flow to avoid circular references
   const flowExport = {
     nodes: nodes.map(node => ({
