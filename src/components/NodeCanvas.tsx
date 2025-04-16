@@ -7,6 +7,7 @@ import NodeEditPanel from "./NodeEditPanel";
 import { executeNode } from "../types/NodeProcessor";
 import { Play, Save, Globe, ArrowLeft, Menu } from "lucide-react";
 import { exportFlowRunner } from "../utils/exportFlowRunner";
+import { useTranslation } from "react-i18next";
 
 // Import utilities
 import { screenToCanvas } from "../utils/canvasTransforms";
@@ -26,6 +27,8 @@ import { useConnectionDrag } from "../hooks/useConnectionDrag";
 import { useContextMenu } from "../hooks/useContextMenu";
 
 const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onReturnToHome: () => void}> = ({ graphId, graph, onReturnToHome }) => {
+  const { t } = useTranslation();
+  
   // Canvas state (nodes and connections)
   const {
     nodes,
@@ -618,6 +621,7 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
     <>
       <div
         className="bg-black/98"
+        dir="ltr" 
         style={{
           width: "100vw",
           height: "100vh",
@@ -667,8 +671,10 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
           <button 
             onClick={onReturnToHome}
             className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20"
+            aria-label={t('canvas.returnToHome')}
+            title={t('canvas.returnToHome')}
           >
-            <ArrowLeft size={18}  />
+            <ArrowLeft size={18} className="ltr-icon" />
           </button>
           <p className="text-gray-400 text-xs">{graphId}</p>
         </div>
@@ -678,10 +684,10 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
             className={` ${executionStatus.isExecuting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer'} px-4 transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20`}
             onClick={executeFlow}
           >
-            <Play size={18} className="mr-1" />
+            <Play size={18} className="ltr-icon mr-1" />
             {executionStatus.isExecuting 
-              ? `Running (${executionStatus.progress}/${executionStatus.total || '?'})` 
-              : 'Run'}
+              ? t('canvas.running', { progress: executionStatus.progress, total: executionStatus.total || '?' })
+              : t('canvas.run')}
           </button>
           
           {/* File dropdown menu */}
@@ -702,14 +708,14 @@ const NodeCanvas: React.FC<{graphId: string, graph: CanvasState | null , onRetur
                     className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors"
                     role="menuitem"
                   >
-                    <Save size={16} className="inline-block mr-2 text-[#FFC72C]" /> Save Canvas State
+                    <Save size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" /> {t('canvas.save')}
                   </button>
                   <button
                     onClick={exportAsJSPackage}
                     className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors"
                     role="menuitem"
                   >
-                    <Globe size={16} className="inline-block mr-2 text-[#FFC72C]" /> Export as JS Package
+                    <Globe size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" /> {t('canvas.export')}
                   </button>
                 </div>
                 

@@ -1,0 +1,98 @@
+/* RTL specific styles */
+html[dir="rtl"] {
+  /* Adjustments for right-to-left layout */
+  text-align: right;
+}
+
+/* Elements that should maintain LTR direction in RTL mode */
+html[dir="rtl"] [dir="ltr"] {
+  /* Override RTL text direction */
+  text-align: left;
+  direction: ltr;
+}
+
+/* Fix for NodeEditPanel to always slide in from the right side */
+html[dir="rtl"] [dir="ltr"].fixed.right-0 {
+  right: 0 !important;
+  left: auto !important;
+}
+
+/* Maintain icon directionality regardless of text direction */
+.ltr-icon {
+  transform: none !important; /* Prevent automatic mirroring of icons */
+}
+
+/* Make sure icons with margins are correctly positioned in RTL context but not inside LTR containers */
+html[dir="rtl"] .ltr-icon.mr-1:not([dir="ltr"] *),
+html[dir="rtl"] .ltr-icon.mr-2:not([dir="ltr"] *) {
+  margin-right: 0;
+  margin-left: 0.25rem;
+}
+
+html[dir="rtl"] .ltr-icon.mr-2:not([dir="ltr"] *) {
+  margin-left: 0.5rem;
+}
+
+/* Fix alignment of buttons with icons */
+html[dir="rtl"] .button-icon-rtl {
+  flex-direction: row-reverse;
+}
+
+/* Fix margins for RTL layout */
+html[dir="rtl"] .mr-2 {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+html[dir="rtl"] .mr-1 {
+  margin-right: 0;
+  margin-left: 0.25rem;
+}
+
+/* NodeCanvas specific RTL exclusions */
+html[dir="rtl"] [dir="ltr"] .mr-1,
+html[dir="rtl"] [dir="ltr"] .mr-2 {
+  /* Reset to original LTR margins inside LTR containers */
+  margin-right: 0.25rem;
+  margin-left: 0;
+}
+
+html[dir="rtl"] [dir="ltr"] .mr-2 {
+  margin-right: 0.5rem;
+}
+
+/* Override flex direction for RTL when needed */
+html[dir="rtl"] .flex-rtl-row-reverse {
+  flex-direction: row-reverse;
+}
+
+/* Adapt padding and margins for RTL layout */
+html[dir="rtl"] .pl-4 {
+  padding-left: 0;
+  padding-right: 1rem;
+}
+
+html[dir="rtl"] .pr-4 {
+  padding-right: 0;
+  padding-left: 1rem;
+}
+
+/* Reset padding for LTR elements within RTL mode */
+html[dir="rtl"] [dir="ltr"] .pl-4,
+html[dir="rtl"] [dir="ltr"] .pr-4 {
+  padding-left: 1rem;
+  padding-right: 0;
+}
+
+/* RTL specific fixes for Canvas elements - excluded since we're keeping NodeCanvas in LTR */
+html[dir="rtl"] .canvas-controls {
+  left: auto;
+  right: 1rem;
+}
+
+html[dir="rtl"] .canvas-sidebar {
+  right: auto;
+  left: 0;
+  border-right: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+} 

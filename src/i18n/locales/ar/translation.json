@@ -1,0 +1,51 @@
+{
+    "app": {
+        "title": "ياLLMa3",
+        "subtitle": "أنشئ، عدّل، ونفّذ مهام الوكلاء الذكية",
+        "description": "قم ببناء مهام قوية للوكلاء باستخدام واجهتنا البصرية المعتمدة على الرسم البياني"
+    },
+    "home": {
+        "createNewGraph": "رسم جديد",
+        "importGraph": "رفع الرسم البياني",
+        "recentGraphs": "الرسوم الأخيرة",
+        "noRecentGraphs": "لا توجد رسوم بيانية حديثة",
+        "time": {
+            "today": "اليوم في {{time}}",
+            "yesterday": "أمس في {{time}}",
+            "daysAgo": "منذ {{days}} أيام"
+        }
+    },
+    "canvas": {
+        "returnToHome": "العودة إلى الصفحة الرئيسية",
+        "run": "تشغيل",
+        "running": "جارٍ التشغيل ({{progress}}/{{total}})",
+        "save": "حفظ حالة اللوحة",
+        "export": "تصدير كحزمة جافا سكريبت"
+    },
+    "nodeEdit": {
+        "title": "تعديل العنصر",
+        "nodeTitle": "عنوان العنصر",
+        "socketInfo": "معلومات المنافذ",
+        "input": "مدخل",
+        "output": "مخرج",
+        "cancel": "إلغاء",
+        "saveChanges": "حفظ التغييرات",
+        "noImagePreview": "لا توجد معاينة للصورة",
+        "valueLabels": {
+            "chat": "النموذج",
+            "image": "رابط الصورة",
+            "boolean": "قيمة منطقية",
+            "number": "قيمة رقمية",
+            "text": "قيمة نصية",
+            "add": "قيمة الإضافة",
+            "join": "فاصل النصوص",
+            "generic": "المخرج",
+            "default": "قيمة العنصر"
+        }
+    },
+    "common": {
+        "language": "اللغة",
+        "english": "English",
+        "arabic": "العربية"
+    }
+}
