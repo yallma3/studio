@@ -1,4 +1,4 @@
-import { Node, NodeType, NodeValue } from "../types/NodeTypes";
+import { NodeType, NodeValue } from "../types/NodeTypes";
 import { 
   createTextNode, 
   createNumberNode, 
@@ -14,10 +14,10 @@ import {
  */
 export const createNodeOfType = (
   id: number, 
-  nodeType: NodeType, 
+  nodeType: string, 
   position: { x: number, y: number },
   defaultValue?: NodeValue
-): Node => {
+): NodeType => {
   switch(nodeType) {
     case "Text":
       return createTextNode(id, position, String(defaultValue || "{{input}}"));
@@ -42,10 +42,10 @@ export const createNodeOfType = (
  * Duplicate a node with new ID and slightly offset position
  */
 export const duplicateNode = (
-  node: Node, 
+  node: NodeType, 
   newId: number, 
   positionOffset = { x: 30, y: 30 }
-): Node => {
+): NodeType => {
   const offsetPosition = { 
     x: node.x + positionOffset.x, 
     y: node.y + positionOffset.y 
@@ -69,10 +69,10 @@ export const duplicateNode = (
  * Update node selection state
  */
 export const updateNodeSelection = (
-  nodes: Node[], 
+  nodes: NodeType[], 
   selectedIds: number[], 
   addToSelection: boolean = false
-): Node[] => {
+): NodeType[] => {
   if (addToSelection) {
     // Update only the nodes in selectedIds
     return nodes.map(node => ({

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Node, NodeType } from '../types/NodeTypes';
+import {  NodeType } from '../types/NodeTypes';
 import { createNodeOfType } from '../utils/nodeOperations';
 import { screenToCanvas } from '../utils/canvasTransforms';
 import { CanvasTransform } from './useCanvasTransform';
@@ -18,7 +18,7 @@ export interface ContextMenuState {
  */
 export const useContextMenu = (
   // nodes: Node[],
-  setNodes: React.Dispatch<React.SetStateAction<Node[]>>,
+  setNodes: React.Dispatch<React.SetStateAction<NodeType[]>>,
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<number[]>>,
   transform: CanvasTransform,
   nextNodeId: React.MutableRefObject<number>
@@ -83,7 +83,7 @@ export const useContextMenu = (
   };
   
   // Handle adding a node from the context menu
-  const handleAddNodeFromContextMenu = (nodeType: NodeType, e: React.MouseEvent) => {
+  const handleAddNodeFromContextMenu = (nodeType: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent the menu from closing immediately
     
     // Get the next unique node ID

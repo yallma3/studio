@@ -8,7 +8,6 @@ import { CanvasState } from "./utils/storageUtils.ts";
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<"home" | "canvas">("home");
-  const [currentGraphId, setCurrentGraphId] = useState<string>("");
   const [currentGraph, setCurrentGraph] = useState<CanvasState | null>(null);
   const { i18n } = useTranslation();
   
@@ -22,33 +21,16 @@ const App: React.FC = () => {
   const handleCreateNewGraph = () => {
     // Generate a unique ID for the new graph
     const newGraphId = `graph-${Date.now()}`;
-    
-    // Set the current graph ID and navigate to canvas
-    // setCurrentGraph(initialState);
-    setCurrentGraphId(newGraphId);
+    const canvasState: CanvasState = {
+      graphId: newGraphId,
+      graphName: null,
+      nodes: [],
+      connections: [],
+      nextNodeId: 0
+    };
+    setCurrentGraph(canvasState);
     setCurrentView("canvas");
   };
-  
-  //  // Handle opening an existing graph from localStorage by ID
-  //  const handleOpenRecentGraph = (graphId: string) => {
-  //   try {
-  //     const savedState = localStorage.getItem(`agent-graph-${graphId}`);
-  //     if (savedState) {
-  //       const parsedState = JSON.parse(savedState);
-  //       console.log(parsedState);
-  //      setCurrentGraphId(graphId);
-       
-  //     loadCanvasStateFromPath(parsedState.path, graphId);
-       
-  //      setCurrentView("canvas");
-  //       // console.log(parsedState);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error loading graph:", error);
-  //     alert(`Failed to load graph: ${error instanceof Error ? error.message : String(error)}`);
-  //   }
-  // };
-
    // Handle opening a graph from file system
    const handleLoadFromFile = async () => {
     try {
@@ -56,7 +38,6 @@ const App: React.FC = () => {
       if (loadedState) {
         console.log('Loaded state:', loadedState);
        
-        setCurrentGraphId(loadedState.newGraphId);
         setCurrentGraph(loadedState.canvasState);
         setCurrentView("canvas");
       }
@@ -71,14 +52,12 @@ const App: React.FC = () => {
     if (loadedState) {
       console.log('Loaded state:', loadedState);
       setCurrentGraph(loadedState);
-      setCurrentGraphId(id);
       setCurrentView("canvas");
     }
   };
   
   // Handle returning to home screen
   const handleReturnToHome = () => {
-    setCurrentGraphId("");
     setCurrentGraph(null);
     setCurrentView("home");
   };
@@ -93,7 +72,6 @@ const App: React.FC = () => {
         />  
       ) : (
         <NodeCanvas 
-          graphId={currentGraphId}
           graph={currentGraph}
           onReturnToHome={handleReturnToHome}
         />

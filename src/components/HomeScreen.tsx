@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Plus, FolderUp, Clock } from "lucide-react";
+import { Plus, FolderUp, Clock, ChevronRight } from "lucide-react";
 import { Button } from "./ui/button";
 import { useTranslation } from "react-i18next";
 import LanguageSelector from "./LanguageSelector";
 import i18n from "../i18n/i18n";
+import { loadRecentGraphs } from "../utils/storageUtils";
+import AllGraphsDialog from "./AllGraphsDialog";
 
 interface AgentGraph {
   id: string;
@@ -20,50 +22,60 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenFromFile, onOpenFromPath }) => {
   const [recentGraphs, setRecentGraphs] = useState<AgentGraph[]>([]);
+  const [allGraphsDialogOpen, setAllGraphsDialogOpen] = useState(false);
   const { t } = useTranslation();
   
   useEffect(() => {
     // Load recent graphs from localStorage
-    const loadRecentGraphs = () => {
-      try {
-        const savedGraphKeys = Object.keys(localStorage).filter(key => 
-          key.startsWith("agent-graph-")
-        );
+    // const loadRecentGraphs = () => {
+    //   try {
+    //     const savedGraphKeys = Object.keys(localStorage).filter(key => 
+    //       key.startsWith("agent-graph-")
+    //     );
         
-        const graphs: AgentGraph[] = savedGraphKeys.map(key => {
-          // Default values
-          let graph: AgentGraph = {
-            id: key.replace("agent-graph-", ""),
-            path: "",
-            name: `Untitled (${key.replace("agent-graph-", "")})`,
-            lastModified: new Date()
-          };
+    //     const graphs: AgentGraph[] = savedGraphKeys.map(key => {
+    //       // Default values
+    //       let graph: AgentGraph = {
+    //         id: key.replace("agent-graph-", ""),
+    //         path: "",
+    //         name: `Untitled (${key.replace("agent-graph-", "")})`,
+    //         lastModified: new Date()
+    //       };
           
-          try {
-            const savedState = JSON.parse(localStorage.getItem(key) || "");
-            graph = {
-              id: key.replace("agent-graph-", ""),
-              path: savedState.path,
-              name: savedState.name || graph.name,
-              lastModified: new Date(savedState.lastModified || Date.now())
-            };
-          } catch {
-            // Use default values on error
-          }
+    //       try {
+    //         const savedState = JSON.parse(localStorage.getItem(key) || "");
+    //         graph = {
+    //           id: key.replace("agent-graph-", ""),
+    //           path: savedState.path,
+    //           name: savedState.name || graph.name,
+    //           lastModified: new Date(savedState.lastModified || Date.now())
+    //         };
+    //       } catch {
+    //         // Use default values on error
+    //       }
           
-          return graph;
-        });
+    //       return graph;
+    //     });
         
-        // Sort by most recently modified
-        graphs.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
-        setRecentGraphs(graphs);
-      } catch (error) {
-        console.error("Error loading recent graphs:", error);
-        setRecentGraphs([]);
-      }
-    };
+    //     // Sort by most recently modified
+    //     graphs.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+    //     setRecentGraphs(graphs);
+    //   } catch (error) {
+    //     console.error("Error loading recent graphs:", error);
+    //     setRecentGraphs([]);
+    //   }
+    // };
     
-    loadRecentGraphs();
+    // loadRecentGraphs();
+    loadRecentGraphs().then((graphs) => {
+      console.log(graphs);
+      setRecentGraphs(graphs.map((graph) => ({
+        id: graph.id,
+        path: graph.path,
+        name: graph.name,
+        lastModified: new Date(graph.lastModified)
+      })));
+    });
   }, []);
 
   // Format date to a readable format
@@ -132,9 +144,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenFromFile, on
 
         
           <div className="w-full max-w-6xl mt-24">
-            <div className="flex items-center mb-6" style={{ direction: i18n.language === 'ar' ? 'rtl' : 'ltr' }}>
-              <Clock className="h-5 w-5 text-gray-400 mr-2" />
-              <h2 className="text-xl font-bold text-white font-mono">{t('home.recentGraphs')}</h2>
+            <div className="flex items-center justify-between mb-6" style={{ direction: i18n.language === 'ar' ? 'rtl' : 'ltr' }}>
+              <div className="flex items-center">
+                <Clock className="h-5 w-5 text-gray-400 mr-2" />
+                <h2 className="text-xl font-bold text-white font-mono">{t('home.recentGraphs')}</h2>
+              </div>
+              {recentGraphs.length >= 4 && (
+                <button
+                  onClick={() => setAllGraphsDialogOpen(true)}
+                  className="text-gray-400 hover:text-yellow-400 text-sm font-mono flex items-center transition-colors"
+                >
+                  {t('home.viewAll')}
+                  <ChevronRight className="h-3 w-3 m-1" style={i18n.language === 'ar' ? { transform: 'rotate(180deg)', translate: '0 2px' } : {}} />
+                </button>
+              )}
             </div>
             {recentGraphs.length === 0 ? (
                 <div className="text-gray-400 text-sm font-mono w-full text-center">{t('home.noRecentGraphs')}</div>
@@ -159,6 +182,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenFromFile, on
             )}
           </div>
       </main>
+
+      {/* All Graphs Dialog */}
+      <AllGraphsDialog
+        isOpen={allGraphsDialogOpen}
+        graphs={recentGraphs}
+        onClose={() => setAllGraphsDialogOpen(false)}
+        onOpenGraph={onOpenFromPath}
+      />
     </div>
   );
 };

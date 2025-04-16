@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Connection, Node } from '../types/NodeTypes';
+import { Connection, NodeType } from '../types/NodeTypes';
 import { findSocketById, getNodeBySocketId, getSocketPosition, findSocketUnderMouse } from '../utils/socketUtils';
 import { CanvasTransform } from './useCanvasTransform';
 
@@ -19,7 +19,7 @@ export interface DragConnection {
  * Custom hook for managing connection dragging
  */
 export const useConnectionDrag = (
-  nodes: Node[],
+  nodes: NodeType[],
   connections: Connection[],
   setConnections: React.Dispatch<React.SetStateAction<Connection[]>>,
   transform: CanvasTransform,
@@ -40,7 +40,7 @@ export const useConnectionDrag = (
     if (!socket) return;
     
     // For creating connections (from output sockets)
-    if (!isRemovingConnection && socket.position === "output") {
+    if (!isRemovingConnection && socket.type === "output") {
       // Outputs can connect to multiple inputs, so we always allow starting a connection
       const node = getNodeBySocketId(nodes, socketId);
       if (!node) return;
@@ -59,7 +59,7 @@ export const useConnectionDrag = (
     }
     
     // For removing/moving connections (from input sockets)
-    if (isRemovingConnection && socket.position === "input") {
+    if (isRemovingConnection && socket.type === "input") {
       // Check if this input has a connection
       const connection = connections.find(conn => conn.toSocket === socketId);
       
@@ -114,7 +114,7 @@ export const useConnectionDrag = (
         if (!targetSocket) {
           // Released in empty space - remove the connection
           setConnections(connections.filter((_, index) => index !== existingConnectionIndex));
-        } else if (targetSocket.position === "input" && targetSocket.id !== dragConnection.fromSocket) {
+        } else if (targetSocket.type === "input" && targetSocket.id !== dragConnection.fromSocket) {
           // Released on another input socket - move the connection
           // First check if the target input already has a connection
           const targetConnectionIndex = connections.findIndex(conn => conn.toSocket === targetSocket.id);
@@ -145,7 +145,7 @@ export const useConnectionDrag = (
       // For creation drags (from output sockets)
       const targetSocket = findSocketUnderMouse(mousePosition.x, mousePosition.y, nodes, transform);
       
-      if (targetSocket && targetSocket.position === "input") {
+      if (targetSocket && targetSocket.type === "input") {
         // Create a connection if it's a valid combination (output to input from different nodes)
         const sourceSocketId = dragConnection.fromSocket;
         const sourceNode = getNodeBySocketId(nodes, sourceSocketId);

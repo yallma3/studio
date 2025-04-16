@@ -1,5 +1,5 @@
 import React from "react";
-import { Connection, Node } from "../types/NodeTypes";
+import { Connection, NodeType } from "../types/NodeTypes";
 import { findSocketById, getNodeBySocketId, getSocketPosition } from "./socketUtils";
 
 /**
@@ -31,7 +31,7 @@ export const generateConnectionPath = (
  */
 export const drawConnection = (
   connection: Connection, 
-  nodes: Node[], 
+  nodes: NodeType[], 
   transform: { scale: number; translateX: number; translateY: number }
 ): React.ReactElement | null => {
   const fromSocket = findSocketById(nodes, connection.fromSocket);

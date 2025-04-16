@@ -1,17 +1,17 @@
 import React, { useState, useEffect, MouseEvent, useRef } from "react";
-import { Node, NodeValue } from "../types/NodeTypes";
+import { NodeType, NodeValue, Socket } from "../types/NodeTypes";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface NodeEditPanelProps {
-  node: Node | null;
+  node: NodeType | null;
   onClose: () => void;
-  onSave: (updatedNode: Partial<Node>) => void;
+  onSave: (updatedNode: Partial<NodeType>) => void;
 }
 
 const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) => {
   const [title, setTitle] = useState<string>("");
-  const [value, setValue] = useState<NodeValue>("");
+  const [value, setValue] = useState<NodeValue | undefined>(undefined);
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const { t, i18n } = useTranslation();
@@ -277,14 +277,14 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
           <label className={`block text-sm font-medium text-gray-300 ${textAlignClass}`}>{t('nodeEdit.socketInfo')}</label>
           <div className="bg-[#161616] border border-[#FFC72C]/20 rounded-md p-3">
             <ul className="space-y-2">
-              {node.sockets.map(socket => (
+              {node.sockets.map((socket: Socket) => (
                 <li key={socket.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${socket.position === 'input' ? 'bg-blue-400' : 'bg-[#FFC72C]'}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${socket.type === 'input' ? 'bg-blue-400' : 'bg-[#FFC72C]'}`}></div>
                     <span>{socket.title}</span>
                   </div>
                   <div className="text-xs text-gray-400">
-                    <span className="uppercase">{t(`nodeEdit.${socket.position}`)}</span>
+                    <span className="uppercase">{t(`nodeEdit.${socket.type}`)}</span>
                     {socket.dataType && <span className="ml-1">- {socket.dataType}</span>}
                   </div>
                 </li>

@@ -8,6 +8,8 @@
         "createNewGraph": "Create New Graph",
         "importGraph": "Import Graph",
         "recentGraphs": "Recent Graphs",
+        "allGraphs": "All Graphs",
+        "viewAll": "View All",
         "noRecentGraphs": "No recent graphs",
         "time": {
             "today": "Today at {{time}}",
@@ -20,7 +22,24 @@
         "run": "Run",
         "running": "Running ({{progress}}/{{total}})",
         "save": "Save Canvas State",
-        "export": "Export as JS Package"
+        "export": "Export as JS Package",
+        "exportToJson": "Export to JSON",
+        "jsonExportSuccess": "Graph exported successfully",
+        "jsonExportError": "Error exporting graph: {{message}}",
+        "saveSuccess": "Saved: {{name}}",
+        "saveError": "Error: {{message}}"
+    },
+    "dialog": {
+        "nameYourGraph": "Name Your Graph",
+        "graphName": "Graph Name",
+        "graphPath": "Path",
+        "lastModified": "Last Modified",
+        "enterGraphName": "Enter graph name...",
+        "nameRequired": "Name is required",
+        "graphSingular": "graph",
+        "graphPlural": "graphs",
+        "cancel": "Cancel",
+        "save": "Save"
     },
     "nodeEdit": {
         "title": "Edit Node",

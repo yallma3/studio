@@ -9,6 +9,7 @@
     "core:default",
     "dialog:default",
     "fs:default",
-    "fs:allow-app-write"
+    "fs:allow-app-write",
+    "fs:allow-app-read"
   ]
 }

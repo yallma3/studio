@@ -1,10 +1,10 @@
 import React, { MouseEvent } from "react";
-import { Node, Connection, NodeValue } from "../types/NodeTypes";
+import { NodeType, Connection, NodeValue, Socket } from "../types/NodeTypes";
 import { Loader2, Settings } from "lucide-react";
 import { SOCKET_SPACING, SOCKET_SIZE } from "./vars";
 // Node Component Props
 export interface NodeComponentProps {
-  node: Node;
+  node: NodeType;
   connections: Connection[];
   onMouseDown: (e: MouseEvent<HTMLDivElement>, id: number) => void;
   onSocketDragStart: (e: MouseEvent<HTMLDivElement>, socketId: number, isRemovingConnection?: boolean) => void;
@@ -27,8 +27,13 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
   
   
   // Filter input and output sockets
-  const inputSockets = node.sockets.filter(socket => socket.position === "input");
-  const outputSockets = node.sockets.filter(socket => socket.position === "output");
+  const inputSockets = node.sockets.filter(
+    (socket): socket is Socket & { type: "input" } => socket.type === "input"
+  );
+  const outputSockets = node.sockets.filter(
+    (socket): socket is Socket & { type: "output" } => socket.type === "output"
+  );
+  
   
   // Calculate vertical offset for centering sockets
   const getSocketsVerticalOffset = (socketsCount: number) => {
@@ -150,7 +155,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
         ${node.selected 
           ? 'border-[#FFC72C] shadow-[0_0_10px_rgba(255,199,44,0.6)]' 
           : isBeingEdited 
-            ? 'border-[#FFC72C] shadow-[0_0_8px_rgba(255,199,44,0.5)] outline outline-1 outline-[#FFC72C]/30 outline-offset-1' 
+            ? 'border-[#FFC72C] shadow-[0_0_8px_rgba(255,199,44,0.5)] outline-1 outline-[#FFC72C]/30 outline-offset-1' 
             : 'border-gray-600'
         } shadow-xl`}
       style={{

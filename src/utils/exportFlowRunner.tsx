@@ -1,4 +1,4 @@
-import { Node, Connection } from "../types/NodeTypes";
+import { NodeType, Connection } from "../types/NodeTypes";
 import { executeNode } from "../types/NodeProcessor";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
@@ -9,7 +9,7 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
  * @param connections The current connections between nodes
  * @returns Promise<void> - Saves a file using Tauri's file system API
  */
-export const exportFlowRunner = async (nodes: Node[], connections: Connection[]) => {
+export const exportFlowRunner = async (nodes: NodeType[], connections: Connection[]) => {
   // Create a simplified version of the flow to avoid circular references
   const flowExport = {
     nodes: nodes.map(node => ({
@@ -22,7 +22,7 @@ export const exportFlowRunner = async (nodes: Node[], connections: Connection[])
       sockets: node.sockets.map(socket => ({
         id: socket.id,
         title: socket.title,
-        position: socket.position,
+        position: socket.type,
         nodeId: socket.nodeId,
         dataType: socket.dataType
       }))
@@ -87,7 +87,7 @@ const processors = {
       .replace(/\\\\n/g, "\\n");          // Also support \\n for newlines
       
     // Count input sockets to determine how many inputs to process
-    const inputSockets = node.sockets.filter(s => s.position === "input");
+    const inputSockets = node.sockets.filter(s => s.type === "input");
     
     // Collect all input values
     const inputValues = await Promise.all(
@@ -216,7 +216,7 @@ async function runFlow(inputOverrides = {}) {
   // Find end nodes
   const endNodes = nodes.filter(node => {
     return node.sockets
-      .filter(socket => socket.position === "output")
+      .filter(socket => socket.type === "output")
       .every(socket => 
         !flowData.connections.some(conn => conn.fromSocket === socket.id)
       );

@@ -1,10 +1,13 @@
-import { Node, Connection, GraphState } from "../types/NodeTypes";
+import { appDataDir } from "@tauri-apps/api/path";
+import { join } from "@tauri-apps/api/path";
+import { NodeType, Connection, GraphState } from "../types/NodeTypes";
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
+import { readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs';
 
 export interface CanvasState {
   graphId: string;
-  nodes: Node[];
+  graphName: string | null;
+  nodes: NodeType[];
   connections: Connection[];
   nextNodeId: number;
 }
@@ -12,10 +15,11 @@ export interface CanvasState {
 /**
  * Save canvas state to a JSON file
  */
-export const saveCanvasState = async (graphId: string, nodes: Node[], connections: Connection[], nextNodeId: number): Promise<void> => {
+export const saveCanvasState = async (graphId: string, nodes: NodeType[], connections: Connection[], nextNodeId: number, graphName: string): Promise<void> => {
  
   const canvasState: CanvasState = {
     graphId,
+    graphName,
     nodes,
     connections,
     nextNodeId
@@ -27,13 +31,16 @@ export const saveCanvasState = async (graphId: string, nodes: Node[], connection
   
   try {
     // Open a save dialog to let the user choose the file location and name
-    const filePath = await save({
-      filters: [{
-        name: 'JSON',
-        extensions: ['json']
-      }],
-      defaultPath: `${graphId}.json`
-    });
+    // const filePath = await save({
+    //   filters: [{
+    //     name: 'JSON',
+    //     extensions: ['json']
+    //   }],
+    //   defaultPath: `${graphId}.json`
+    // });
+
+    const filePath = await join(await appDataDir(), `${graphName}.json`);
+    await writeTextFile(filePath, stateJson);
 
     console.log('Selected save path:', filePath);
 
@@ -43,7 +50,7 @@ export const saveCanvasState = async (graphId: string, nodes: Node[], connection
     }
 
     // Write the file to the selected location
-    await writeTextFile(filePath, stateJson);
+    // await writeTextFile(filePath, stateJson);
     
     // Store graph state information
     const newGraphState: GraphState = {
@@ -53,7 +60,11 @@ export const saveCanvasState = async (graphId: string, nodes: Node[], connection
       lastModified: Date.now()
     };
 
+    // Save to localStorage for current session
     localStorage.setItem(`agent-graph-${graphId}`, JSON.stringify(newGraphState));
+    
+    // Also save to persistent storage
+    await saveRecentGraphs(newGraphState);
     
     console.log('Canvas state saved to file successfully');
   } catch (error) {
@@ -75,6 +86,7 @@ export const loadCanvasState = async (): Promise<{canvasState: CanvasState, newG
     const file = await open({
         multiple: false,
         directory: false,
+        extensions: ['json']
       });
       
 
@@ -82,8 +94,20 @@ export const loadCanvasState = async (): Promise<{canvasState: CanvasState, newG
         return null;
       }
       const content = await readTextFile(file);
+
+      const fileName = file.split('/').pop() || file
+      const graphDir =await appDataDir();
+      
+      const newGraphPath = await join(graphDir, fileName);
+      
+      await mkdir(graphDir, { recursive: true });
+
+      // Copy file into internal storage
+      await writeTextFile(newGraphPath, content);
+
       
       const canvasState = JSON.parse(content);
+      
 
     try {
       // Parse the JSON string
@@ -91,11 +115,13 @@ export const loadCanvasState = async (): Promise<{canvasState: CanvasState, newG
       const newGraphId = `graph-${Date.now()}`;
       const newGraphState: GraphState = {
         id: newGraphId,
-        name: file.split('/').pop() || file,
-        path: file,
+        name: fileName,
+        path: newGraphPath,
         lastModified: Date.now()
       };
       localStorage.setItem(`agent-graph-${newGraphId}`, JSON.stringify(newGraphState));
+
+      await saveRecentGraphs(newGraphState);
 
 
       console.log('Canvas state loaded from file successfully');
@@ -125,6 +151,38 @@ export const loadCanvasState = async (): Promise<{canvasState: CanvasState, newG
     return null;
   }
 };
+
+export const exportCanvasState = async (graph: CanvasState, nodes: NodeType[], connections: Connection[], nextNodeId: number): Promise<void> => {
+  const canvasState: CanvasState = {
+    graphId: graph?.graphId,
+    graphName: graph?.graphName,
+    nodes,
+    connections,
+    nextNodeId: nextNodeId
+  };
+ 
+  
+  // Convert to JSON string
+  const stateJson = JSON.stringify(canvasState, null, 2);
+  
+  // Open a save dialog to let the user choose where to save the file
+  const filePath = await save({
+    filters: [{
+      name: 'JSON',
+      extensions: ['json']
+    }],
+    defaultPath: `${graph.graphName || 'untitled'}.json`
+  });
+  
+  // If user cancels the save dialog
+  if (!filePath) {
+    return;
+  }
+  
+  // Write the file to the selected location
+  await writeTextFile(filePath, stateJson);
+}
+
 /**
  * Load canvas state from a specified file path
  * Returns the canvas state if found, null otherwise
@@ -148,6 +206,7 @@ export const loadCanvasStateFromPath = async (filePath: string, graphId: string)
     console.log('No file found', e);
     const canvasState: CanvasState = {
         graphId: graphId,
+        graphName: null,
         nodes: [],
         connections: [],
         nextNodeId: 0
@@ -188,4 +247,89 @@ declare global {
     showOpenFilePicker(options?: OpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
     showSaveFilePicker(options?: SaveFilePickerOptions): Promise<FileSystemFileHandle>;
   }
-} 
+}
+
+// Define the type for storing multiple graph states
+export interface RecentGraphsState {
+  graphs: GraphState[];
+  lastAccessed: number;
+}
+
+/**
+ * Save recent graphs data to a system file
+ */
+export const saveRecentGraphs = async (graphState: GraphState): Promise<void> => {
+  try {
+    // Define a standard location to store the recent graphs data
+    const appConfigDir = await import('@tauri-apps/api/path').then(path => path.appConfigDir());
+    const path = await import('@tauri-apps/api/path');
+    const recentGraphsPath = await path.join(appConfigDir, 'recent_graphs.json');
+
+    console.log('Recent graphs path:', recentGraphsPath);
+    
+    // Check if directory exists, create if not
+    
+    // Load existing recent graphs or create a new list
+    let recentGraphs: RecentGraphsState;
+    try {
+      const content = await readTextFile(recentGraphsPath);
+      recentGraphs = JSON.parse(content);
+      
+      // Update or add the graph state
+      const existingIndex = recentGraphs.graphs.findIndex(g => g.id === graphState.id);
+      if (existingIndex >= 0) {
+        recentGraphs.graphs[existingIndex] = graphState;
+      } else {
+        // Limit to most recent X graphs (e.g., 10)
+        if (recentGraphs.graphs.length >= 10) {
+          recentGraphs.graphs.pop(); // Remove oldest
+        }
+        recentGraphs.graphs.unshift(graphState); // Add as most recent
+      }
+    } catch (error) {
+      // Create new recent graphs list if it doesn't exist
+      console.log('Error loading recent graphs:', error);
+      recentGraphs = {
+        graphs: [graphState],
+        lastAccessed: Date.now()
+      };
+    }
+    
+    recentGraphs.lastAccessed = Date.now();
+    
+    // Write the updated recent graphs list to file
+    await writeTextFile(recentGraphsPath, JSON.stringify(recentGraphs, null, 2));
+    
+    // Still keep in localStorage for immediate access in current session
+    localStorage.setItem(`agent-graph-${graphState.id}`, JSON.stringify(graphState));
+    
+    console.log('Recent graphs saved to file successfully');
+  } catch (error) {
+    console.error('Error saving recent graphs to file:', error);
+  }
+};
+
+/**
+ * Load recent graphs data from system file
+ */
+export const loadRecentGraphs = async (): Promise<GraphState[]> => {
+  try {
+    const appConfigDir = await import('@tauri-apps/api/path').then(path => path.appConfigDir());
+    const path = await import('@tauri-apps/api/path');
+    const recentGraphsPath = await path.join(appConfigDir, 'recent_graphs.json');
+
+    if (!(await exists(appConfigDir))) {
+      await mkdir(appConfigDir);
+      return [];
+    }
+    
+    const content = await readTextFile(recentGraphsPath);
+    const recentGraphs: RecentGraphsState = JSON.parse(content);
+    
+    console.log('Recent graphs loaded from file successfully');
+    return recentGraphs.graphs;
+  } catch (error) {
+    console.log('No recent graphs file found or error reading it:', error);
+    return [];
+  }
+}; 
