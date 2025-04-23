@@ -41,6 +41,7 @@ export interface BaseNode {
   sockets: Socket[];
   selected?: boolean;
   processing?: boolean;
+  result?: string | number | true | Record<string, unknown>
 }
 
 export interface TextNode extends BaseNode {

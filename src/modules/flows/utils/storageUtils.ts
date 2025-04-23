@@ -1,6 +1,6 @@
 import { appDataDir } from "@tauri-apps/api/path";
 import { join } from "@tauri-apps/api/path";
-import { NodeType, Connection, GraphState } from "../types/NodeTypes";
+import { NodeType, Connection, GraphState } from "../types/NodeTypes.ts";
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs';
 

@@ -182,6 +182,8 @@ export async function executeNode(node: NodeType, allNodes: NodeType[], connecti
 
       // Execute the source node to get its output value, passing along the cache
       const result = await executeNode(fromNode, allNodes, connections, executionCache);
+      console.log("RESULT", result)
+      // Don't directly mutate node state here, as it's now handled in NodeCanvas.tsx
       
       // If result is an object with socket IDs as keys, return the value for the output socket
       if (typeof result === 'object' && result !== null && !Array.isArray(result)) {
@@ -212,7 +214,7 @@ export async function executeNode(node: NodeType, allNodes: NodeType[], connecti
     return result;
   })();
   
-  // Store the promise in the cache
+  // Store the promise in the cache, using node.id as the key to ensure each node's result is cached
   executionCache.set(node.id, executionPromise as Promise<NodeValue>);
   
   // Await and return the result

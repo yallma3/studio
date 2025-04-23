@@ -1,5 +1,5 @@
 import { BaseNode, Socket, Connection } from "../types/NodeTypes";
-import { SOCKET_SPACING } from "../components/vars";
+import { SOCKET_SPACING } from "../vars";
 import { canvasToScreen } from "./canvasTransforms";
 
 /**

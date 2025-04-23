@@ -4,6 +4,28 @@
         "subtitle": "Create, edit, and execute agent workflows",
         "description": "Build powerful AI agent workflows with our intuitive graph-based interface"
     },
+    "tabs": {
+        "projects": "Projects",
+        "agents": "Agents",
+        "flows": "Flows"
+    },
+    "projects": {
+        "title": "Projects",
+        "description": "Create and manage your AI development projects",
+        "createNew": "Create New Project",
+        "import": "Import Project",
+        "noProjects": "No projects yet. Create a new project to get started."
+    },
+    "agents": {
+        "title": "Agents",
+        "description": "Create, customize and deploy your AI agents",
+        "createNew": "Create New Agent",
+        "import": "Import Agent",
+        "noAgents": "No agents yet. Create a new agent to get started."
+    },
+    "flows": {
+        "title": "Flows"
+    },
     "home": {
         "createNewGraph": "Create New Graph",
         "importGraph": "Import Graph",
