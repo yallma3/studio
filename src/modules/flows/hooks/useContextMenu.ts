@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import {  NodeType } from '../types/NodeTypes';
-import { createNodeOfType } from '../utils/nodeOperations';
 import { screenToCanvas } from '../utils/canvasTransforms';
 import { CanvasTransform } from './useCanvasTransform';
+import { nodeRegistry } from '../types/NodeRegistry';
 
 // Context menu state interface
 export interface ContextMenuState {
@@ -90,15 +90,17 @@ export const useContextMenu = (
     const id = nextNodeId.current++;
     
     // Create the node at the stored canvas position
-    const newNode = createNodeOfType(
+    const newNode = nodeRegistry.createNode(
+      nodeType,
       id, 
-      nodeType, 
-      contextMenuCanvasPosition.current
+      contextMenuCanvasPosition.current,
     );
     
     // Add the new node and select it
-    setNodes(prev => [...prev, { ...newNode, selected: true }]);
-    setSelectedNodeIds([id]);
+    if (newNode) {
+      setNodes(prev => [...prev, { ...newNode, selected: true } as NodeType]);
+      setSelectedNodeIds([id]);
+    }
     
     // Close context menu
     setContextMenu(prev => ({ ...prev, visible: false, subMenu: null }));

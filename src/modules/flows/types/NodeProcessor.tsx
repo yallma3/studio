@@ -1,154 +1,5 @@
-import { NodeType, Socket, NodeValue, Connection, TextNode, NumberNode, BooleanNode, GenericNode, AddNode, JoinNode, ImageNode, ChatNode } from "./NodeTypes";
+import { NodeType, Socket, NodeValue, Connection, NodeExecutionContext } from "./NodeTypes";
 
-type NodeExecutionContext = {
-  node: NodeType;
-  getInputValue: (socketId: number) => Promise<NodeValue | undefined>;
-};
-
-type NodeProcessor = (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
-
-/**
- * Process text templates by replacing variables like {{input}} with their values
- */
-const processTextTemplate = async (template: string, getInputValue: (socketId: number) => Promise<NodeValue | undefined>, nodeId: number): Promise<string> => {
-  // Handle {{input}} variable
-  const inputRegex = /\{\{input\}\}/g;
-  let result = template;
-  
-  if (inputRegex.test(template)) {
-    // Get the input value from the first input socket
-    const inputValue = await getInputValue(nodeId * 100 + 1);
-    // Replace {{input}} with the actual input value, or empty string if undefined
-    result = template.replace(inputRegex, inputValue !== undefined ? String(inputValue) : "");
-  }
-  
-  return result;
-};
-
-const processors: Record<string, NodeProcessor> = {
-  Text: async ({ node, getInputValue }) => {
-    // If the node value is a string and contains template variables, process them
-    const n = node as TextNode;
-    if (typeof n.value === 'string') {
-      return processTextTemplate(n.value, getInputValue, n.id);
-    }
-    return n.value;
-  },
-  Number: async ({ node }) => {
-    const n = node as NumberNode;
-    return n.value;
-  },
-  Boolean: async ({ node }) => {
-    const n = node as BooleanNode;
-    return n.value;
-  },
-  Generic: async ({ node }) => {
-    const n = node as GenericNode;
-    return n.value;
-  },
-  Add: async ({ node, getInputValue }) => {
-    const n = node as AddNode;
-    const a = Number(await getInputValue(n.id * 100 + 1) || 0);
-    const b = Number(await getInputValue(n.id * 100 + 2) || 0);
-    return a + b;
-  },
-  Join: async ({ node, getInputValue }) => {
-    const n = node as JoinNode;
-    // Process special separator values
-    let separator = String(n.value || "");
-    
-    // Replace special separator placeholders
-    separator = separator
-      .replace(/\(new line\)/g, "\n")  // Replace (new line) with actual newline
-      .replace(/\\n/g, "\n");          // Also support \n for newlines
-      
-    // Count input sockets to determine how many inputs to process
-    const inputSockets = n.sockets.filter(s => s.type === "input");
-    
-    // Collect all input values
-    const inputValues = await Promise.all(
-      inputSockets.map(async (socket) => {
-        const value = await getInputValue(socket.id);
-        return value !== undefined ? String(value) : "";
-      })
-    );
-    
-    // Join all non-empty values with the separator
-    return inputValues.filter(val => val !== "").join(separator);
-  },
-  Image: async ({ node, getInputValue }) => {
-    const n = node as ImageNode;
-    // If there's an input source, use that, otherwise use the node's value
-    const sourceValue = await getInputValue(n.id * 100 + 1);
-    return sourceValue !== undefined ? sourceValue : n.value;
-  },
-  Chat: async ({ node, getInputValue }) => {
-    const n = node as ChatNode;
-    // If we have a cached result for this node, use it
-    const promptValue = await getInputValue(n.id * 100 + 1);
-    const systemPrompt = await getInputValue(n.id * 100 + 2);
-    
-    const prompt = String(promptValue || "");
-    
-    // Extract model name from node value
-    const modelMatch = String(n.value || "");
-    const model = modelMatch ? modelMatch : "llama-3.1-8b-instant"; // Default fallback
-    
-    // Use system prompt from input, but don't use the node.value (which now contains the model)
-    const system = String(systemPrompt || "");
-    
-    try {
-      // Get API key from .env using Vite's environment variable format
-      const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-      
-      if (!GROQ_API_KEY) {
-        throw new Error("GROQ API key not found. Please check your .env file and ensure it has VITE_GROQ_API_KEY defined.");
-      }
-      
-      console.log(`Using model: ${model}`);
-      console.log(`Executing Chat node ${n.id} with prompt: "${prompt.substring(0, 50)}..."`);
-      const messages =  system ? [{ role: "user", content: prompt }, { role: "system", content: system }] : [{ role: "user", content: prompt }];
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`
-        },
-        body: JSON.stringify({ 
-          model: model,
-          messages: messages,
-          max_tokens: 1000,
-          temperature: 0.7,
-          top_p: 1,
-          frequency_penalty: 0,
-          presence_penalty: 0
-        }),
-      });
-      
-      if (!res.ok) {
-        throw new Error(`Chat API returned status ${res.status}`);
-      }
-      
-      const json = await res.json();
-      console.log(`Chat node ${n.id} received response:`, json.choices[0].message.content.substring(0, 50) + "...");
-      
-      // Return an object with both values to support multiple outputs
-      return {
-        // Socket id 3 is for Response content
-        [n.id * 100 + 3]: json.choices[0].message.content,
-        // Socket id 4 is for Token count 
-        [n.id * 100 + 4]: json.usage?.total_tokens || 0
-      };
-    } catch (error) {
-      console.error("Error in Chat node:", error);
-      // Return error in the response output
-      return {
-        [n.id * 100 + 3]: `Error: ${error instanceof Error ? error.message : String(error)}`,
-        [n.id * 100 + 4]: 0
-      };
-    }
-  },
-};
 
 export async function executeNode(node: NodeType, allNodes: NodeType[], connections: Connection[], cache?: Map<number, Promise<NodeValue>>): Promise<NodeValue> {
   // Use cache if provided to avoid redundant calculations
@@ -182,8 +33,6 @@ export async function executeNode(node: NodeType, allNodes: NodeType[], connecti
 
       // Execute the source node to get its output value, passing along the cache
       const result = await executeNode(fromNode, allNodes, connections, executionCache);
-      console.log("RESULT", result)
-      // Don't directly mutate node state here, as it's now handled in NodeCanvas.tsx
       
       // If result is an object with socket IDs as keys, return the value for the output socket
       if (typeof result === 'object' && result !== null && !Array.isArray(result)) {
@@ -202,13 +51,15 @@ export async function executeNode(node: NodeType, allNodes: NodeType[], connecti
       return result;
     };
 
-    // Get processor for this node type
-    const processor = processors[node.nodeType];
-    if (!processor) throw new Error(`Processor for node type ${node.nodeType} not found`);
+    // Use the node's process function directly instead of via the processors object
+    if (!node.process) {
+      throw new Error(`Node ${node.nodeType} (ID: ${node.id}) does not have a process function`);
+    }
 
-    // Execute node processor
+    // Execute the node's process function
     console.log(`Executing processor for node ${node.id} (${node.title})`);
-    const result = await processor({ node, getInputValue });
+    const context: NodeExecutionContext = { node, getInputValue };
+    const result = await node.process(context);
     console.log(`Completed execution of node ${node.id} (${node.title})`);
     
     return result;

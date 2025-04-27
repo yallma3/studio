@@ -8,6 +8,8 @@ import { loadCanvasState, loadCanvasStateFromPath, CanvasState } from "./modules
 import { loadAgentState, loadAgentStateFromPath, AgentState } from "./modules/agents/utils/storageUtils.ts";
 import { loadProjectState, loadProjectStateFromPath, ProjectState } from "./modules/projects/utils/storageUtils.ts";
 
+import { initFlowSystem } from "./modules/flows/initFlowSystem.ts";
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<"home" | "canvas">("home");
   const [currentGraph, setCurrentGraph] = useState<CanvasState | null>(null);
@@ -16,8 +18,10 @@ const App: React.FC = () => {
   const [projectType, setProjectType] = useState<"flows" | "agents" | "projects">("flows");
   const { i18n } = useTranslation();
   
+  
   // Setup language direction based on current language
   useEffect(() => {
+    initFlowSystem()
     document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);

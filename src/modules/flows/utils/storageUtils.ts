@@ -3,6 +3,7 @@ import { join } from "@tauri-apps/api/path";
 import { NodeType, Connection, GraphState } from "../types/NodeTypes.ts";
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs';
+import { nodeRegistry } from "../types/NodeRegistry.ts";
 
 export interface CanvasState {
   graphId: string;
@@ -10,6 +11,21 @@ export interface CanvasState {
   nodes: NodeType[];
   connections: Connection[];
   nextNodeId: number;
+}
+
+function reattachNodeProcessors(nodes: NodeType[]): NodeType[] {
+  console.log("REATTACHING")
+  return nodes.map(node => {
+    const factory = nodeRegistry.getFactory(node.nodeType);
+    
+    if (factory) {
+      // Create a new node with the same properties but with the processor function
+      return { ...factory(node.id, { x: node.x, y: node.y }), ...node };
+    } else {
+      console.warn(`No factory found for node type: ${node.nodeType}`);
+      return node;
+    }
+  });
 }
 
 /**
@@ -106,7 +122,12 @@ export const loadCanvasState = async (): Promise<{canvasState: CanvasState, newG
       await writeTextFile(newGraphPath, content);
 
       
-      const canvasState = JSON.parse(content);
+      const parsedContent = JSON.parse(content);
+      const nodes = reattachNodeProcessors(parsedContent.nodes)
+      const canvasState = {
+        ...parsedContent,
+        nodes
+      }
       
 
     try {
@@ -195,8 +216,12 @@ export const loadCanvasStateFromPath = async (filePath: string, graphId: string)
         
     try {
       // Parse the JSON string
-      const canvasState = JSON.parse(content);
-      console.log('Canvas state loaded from specified path successfully:', filePath);
+      const parsedContent = JSON.parse(content);
+      const nodes = reattachNodeProcessors(parsedContent.nodes)
+      const canvasState = {
+        ...parsedContent,
+        nodes
+      }
       return canvasState;
     } catch (parseError) {
       console.error('Failed to parse JSON from file:', parseError);
