@@ -5,12 +5,12 @@
     "description": "Start creating a new project or import an existing one."
   },
   "home": {
-    "createNewGraph": "Create project",
-    "importGraph": "Import project",
-    "recentGraphs": "Recent projects",
-    "allGraphs": "All projects",
+    "createNewGraph": "Create flow",
+    "importGraph": "Import flow",
+    "recentGraphs": "Recent flows",
+    "allGraphs": "All flows",
     "viewAll": "View All",
-    "noRecentGraphs": "No recent projects",
+    "noRecentGraphs": "No recent flows",
     "time": {
       "today": "Today at {{time}}",
       "yesterday": "Yesterday at {{time}}",
