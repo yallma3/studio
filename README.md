@@ -6,7 +6,7 @@
 
 This repo contains the IDE for yaLLMa3 (yaLLMa3-studio), which is a visual IDE that allows you to build agents and packages that can be used to build applications.
 
-## building
+## Running from Source
 
 ### Prerequisites
 
