@@ -26,6 +26,7 @@ import { useCanvasState } from "../hooks/useCanvasState";
 import { useCanvasTransform } from "../hooks/useCanvasTransform";
 import { useConnectionDrag } from "../hooks/useConnectionDrag";
 import { useContextMenu } from "../hooks/useContextMenu";
+import { ResultDialog } from "./ResultDialog";
 
 // Toast notification component
 interface ToastProps {
@@ -110,6 +111,9 @@ const NodeCanvas: React.FC<{graph: CanvasState | null , onReturnToHome: () => vo
   
   // Graph name dialog state
   const [graphNameDialogOpen, setGraphNameDialogOpen] = useState<boolean>(false);
+
+  const [grapResultDialogOpen, setResultDialogOpen] = useState<boolean>(false);
+  const [selectedNode, setSelectedNode] =  useState<number | null>(null);
   
   // Connection dragging
   const {
@@ -163,6 +167,8 @@ const NodeCanvas: React.FC<{graph: CanvasState | null , onReturnToHome: () => vo
   const toggleFileMenu = () => {
     setFileMenuOpen(!fileMenuOpen);
   };
+
+  
 
   // Handle closing the edit panel with animation
   const handleCloseEditPanel = useCallback(() => {
@@ -316,6 +322,12 @@ const NodeCanvas: React.FC<{graph: CanvasState | null , onReturnToHome: () => vo
       setEditingNode(nodeToEdit);
     }
   };
+
+  const handleShowResult = (node : NodeType) => {
+      // Store only the node ID instead of the entire node reference
+      setSelectedNode(node.id)
+      setResultDialogOpen(true)
+  }
 
   const handleDuplicateNode = () => {
     if (!contextMenu.targetNodeId) return;
@@ -639,6 +651,9 @@ const NodeCanvas: React.FC<{graph: CanvasState | null , onReturnToHome: () => vo
       // Create a promise-based cache to store calculated node results and prevent redundant calculations
       const nodeResultCache = new Map<number, Promise<NodeValue>>();
       
+      // Create a map to collect all node results during execution
+      const allNodeResults = new Map<number, NodeValue>();
+      
       // Find end nodes (nodes with no outgoing connections)
       const endNodes = nodes.filter(node => {
         return node.sockets
@@ -663,7 +678,7 @@ const NodeCanvas: React.FC<{graph: CanvasState | null , onReturnToHome: () => vo
       // Create a counter to track execution progress
       let completedNodes = 0;
       
-      // Override the map set method to track progress
+      // Override the map set method to track progress and collect results
       const originalSet = nodeResultCache.set.bind(nodeResultCache);
       nodeResultCache.set = (key: number, value: Promise<NodeValue>) => {
         // Count the total number of nodes in the execution graph
@@ -678,12 +693,15 @@ const NodeCanvas: React.FC<{graph: CanvasState | null , onReturnToHome: () => vo
         }
         
         // Track when the promise completes to update progress
-        value.then(() => {
+        value.then((result) => {
           completedNodes++;
           setExecutionStatus(prev => ({
             ...prev,
             progress: completedNodes
           }));
+          
+          // Store the result for this node
+          allNodeResults.set(key, result);
         }).catch(() => {
           // Still count failed nodes in progress
           completedNodes++;
@@ -696,33 +714,77 @@ const NodeCanvas: React.FC<{graph: CanvasState | null , onReturnToHome: () => vo
         return originalSet(key, value);
       };
       
+      // Store updated nodes with results
+      const updatedNodes: NodeType[] = [...nodes];
+      
       // Execute only the end nodes - the dependency tracing will handle executing
       // all required upstream nodes in the correct order
       const results = await Promise.all(
         endNodes.map(async (node) => {
           try {
+            // Find the node in our updatedNodes array
+            const nodeIndex = updatedNodes.findIndex(n => n.id === node.id);
+            if (nodeIndex >= 0) {
+              updatedNodes[nodeIndex] = { ...updatedNodes[nodeIndex], processing: true };
+            }
+            
             // Execute the node and its dependencies
-            node.processing = true;
             const result = await executeNode(node, nodes, connections, nodeResultCache);
+            
+            // End node result is handled the same way as before
             return { nodeId: node.id, title: node.title, result };
           } catch (error) {
             console.error(`Error executing node ${node.id}:`, error);
+            
+            // Track errors for end nodes as before
             return { nodeId: node.id, title: node.title, error: error instanceof Error ? error.message : String(error) };
-          } finally {
-            node.processing = false;
           }
         })
       );
       
+      // Now update all nodes with their results that were processed during execution
+      const finalNodes = nodes.map(node => {
+        // If this node was executed and has a result
+        if (allNodeResults.has(node.id)) {
+          const result = allNodeResults.get(node.id);
+          const processedResult = result === null 
+            ? undefined 
+            : (typeof result === 'boolean' && result === false)
+              ? 'false' // Convert false to string 'false'
+              : result;
+          
+          return { 
+            ...node, 
+            processing: false,
+            result: processedResult
+          };
+        }
+        // If this node is an end node with an error (not in allNodeResults)
+        const endNodeWithError = results.find(r => r.nodeId === node.id && 'error' in r);
+        if (endNodeWithError && 'error' in endNodeWithError) {
+          return { 
+            ...node, 
+            processing: false,
+            result: `Error: ${endNodeWithError.error}`
+          };
+        }
+        
+        return node;
+      });
+      
+      // Update all nodes with their results
+      // This causes a re-render with the new results
+      setNodes(finalNodes);
+      
       // Format results for display
-      const resultText = results
-        .map(r => {
-          if ('error' in r) {
-            return `Node ${r.title} (ID: ${r.nodeId}): Error - ${r.error}`;
-          }
-          return `Node ${r.title} (ID: ${r.nodeId}): ${JSON.stringify(r.result)}`;
-        })
-        .join('\n\n');
+      // const resultText = results
+      //   .map(r => {
+      //     if ('error' in r) {
+      //       return `Node ${r.title} (ID: ${r.nodeId}): Error - ${r.error}`;
+      //     }
+      //     return `Node ${r.title} (ID: ${r.nodeId}): ${JSON.stringify(r.result)}`;
+      //   })
+      //   .join('\n\n');
       
       // Reset execution status
       setExecutionStatus({
@@ -731,7 +793,7 @@ const NodeCanvas: React.FC<{graph: CanvasState | null , onReturnToHome: () => vo
         total: 0
       });
       
-      alert(`Execution Results:\n\n${resultText}`);
+      // alert(`Execution Results:\n\n${resultText}`);
     } catch (error) {
       console.error("Error during graph execution:", error);
       
@@ -953,6 +1015,7 @@ const NodeCanvas: React.FC<{graph: CanvasState | null , onReturnToHome: () => vo
               onSocketDragStart={handleSocketDragStart}
               onNodeContextMenu={handleNodeContextMenu}
               onEditNode={handleEditNodeFromComponent}
+              onShowResult={handleShowResult}
               isBeingEdited={editingNode?.id === node.id}
             />
           ))}
@@ -1027,6 +1090,14 @@ const NodeCanvas: React.FC<{graph: CanvasState | null , onReturnToHome: () => vo
           initialName={graph?.graphName || ""}
           onClose={() => setGraphNameDialogOpen(false)}
           onSave={handleSaveWithName}
+        />
+      )}
+      {/* {Result Dialog} */}
+      {(grapResultDialogOpen && selectedNode !== null) && ( 
+        <ResultDialog 
+          // Find the latest node instance from the nodes array using the stored ID
+          node={nodes.find(n => n.id === selectedNode) || nodes[0]} 
+          onClose={() => setResultDialogOpen(false)}
         />
       )}
 

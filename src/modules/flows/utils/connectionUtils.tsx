@@ -50,6 +50,7 @@ export const drawConnection = (
   
   return (
     <path
+       style={{zIndex: 2}}
       key={`connection-${connection.fromSocket}-${connection.toSocket}`}
       d={path}
       fill="none"
@@ -83,6 +84,7 @@ export const drawDragConnection = (
   return (
     <path
       d={path}
+      style={{zIndex: 2}}
       fill="none"
       stroke="#FFC72C88"
       strokeWidth="2"

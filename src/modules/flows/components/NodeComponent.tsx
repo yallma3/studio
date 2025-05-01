@@ -1,7 +1,7 @@
-import React, { MouseEvent } from "react";
+import React, { MouseEvent, useState, useEffect, useRef } from "react";
 import { NodeType, Connection, NodeValue, Socket } from "../types/NodeTypes";
-import { Loader2, Settings } from "lucide-react";
-import { SOCKET_SPACING, SOCKET_SIZE } from "./vars";
+import { Loader2, Settings, FileText } from "lucide-react";
+import { SOCKET_SPACING, SOCKET_SIZE } from "../vars";
 // Node Component Props
 export interface NodeComponentProps {
   node: NodeType;
@@ -10,6 +10,7 @@ export interface NodeComponentProps {
   onSocketDragStart: (e: MouseEvent<HTMLDivElement>, socketId: number, isRemovingConnection?: boolean) => void;
   onNodeContextMenu: (e: MouseEvent<HTMLDivElement>, id: number) => void;
   onEditNode?: (nodeId: number) => void;
+  onShowResult: (node: NodeType) => void;
   isBeingEdited?: boolean; // New prop to indicate if this node is being edited
 }
 
@@ -21,10 +22,24 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
   onSocketDragStart,
   onNodeContextMenu,
   onEditNode,
+  onShowResult,
   isBeingEdited = false
 }) => {
-  // Socket dimensions
   
+  // Add state for animation
+  const [isAnimating, setIsAnimating] = useState(false);
+  const prevResultRef = useRef<unknown>(node.result);
+  
+  // Detect result changes and trigger animation
+  useEffect(() => {
+    // Always animate when there's a result, ensuring it runs on every update
+    if (node.result) {
+      setIsAnimating(true);
+      const timer = setTimeout(() => setIsAnimating(false), 800); // Extended animation duration
+      return () => clearTimeout(timer);
+    }
+    prevResultRef.current = node.result;
+  }, [node.result]);
   
   // Filter input and output sockets
   const inputSockets = node.sockets.filter(
@@ -126,6 +141,37 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
         );
     }
   };
+
+  const renderResult = () => {
+    if(node.result) {
+      return (
+        <div className="absolute -bottom-3 -right-3 z-50">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onShowResult(node)
+            }}
+            className={`bg-[#FFC72C] hover:bg-[#FFB300] text-black rounded-full w-7 h-7 flex items-center justify-center shadow-md border border-[#FFB300] ${isAnimating ? 'animate-ping-once scale-110' : 'animate-pulse-once'} relative`}
+            title="View Result"
+            data-testid="view-result-button"
+          >
+            <FileText size={14} className={isAnimating ? 'animate-spin-slow' : ''} />
+            
+            {/* Multiple animated rings for a more pronounced effect */}
+            {isAnimating && (
+              <>
+                <span className="absolute w-full h-full rounded-full bg-[#FFC72C]/40 animate-ripple"></span>
+                <span className="absolute w-full h-full rounded-full bg-[#FFC72C]/30 animate-ripple-delayed"></span>
+                <span className="absolute w-16 h-16 -top-4 -left-4 rounded-full border-2 border-[#FFC72C]/20 animate-ping"></span>
+              </>
+            )}
+          </button>
+        </div>
+      );
+    } else {
+      return null;
+    }
+  }
 
   // Handle right-click on the node
   const handleContextMenu = (e: MouseEvent<HTMLDivElement>) => {
@@ -263,6 +309,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
       </div>
       
       {renderNodeValue()}
+      {renderResult()}
     </div>
     </div>
   );

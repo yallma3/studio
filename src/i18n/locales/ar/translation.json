@@ -1,70 +1,70 @@
 {
-    "app": {
-        "title": "ياLLMa3",
-        "subtitle": "أنشئ، عدّل، ونفّذ مهام الوكلاء الذكية",
-        "description": "قم ببناء مهام قوية للوكلاء باستخدام واجهتنا البصرية المعتمدة على الرسم البياني"
-    },
-    "home": {
-        "createNewGraph": "رسم جديد",
-        "importGraph": "رفع الرسم البياني",
-        "recentGraphs": "الرسوم الأخيرة",
-        "allGraphs": "جميع الرسومات",
-        "viewAll": "عرض الكل",
-        "noRecentGraphs": "لا توجد رسوم بيانية حديثة",
-        "time": {
-            "today": "اليوم في {{time}}",
-            "yesterday": "أمس في {{time}}",
-            "daysAgo": "منذ {{days}} أيام"
-        }
-    },
-    "canvas": {
-        "returnToHome": "العودة إلى الصفحة الرئيسية",
-        "run": "تشغيل",
-        "running": "جارٍ التشغيل ({{progress}}/{{total}})",
-        "save": "حفظ حالة اللوحة",
-        "export": "تصدير كحزمة جافا سكريبت",
-        "exportToJson": "تصدير كملف JSON",
-        "jsonExportSuccess": "تم تصدير الرسم البياني بنجاح",
-        "jsonExportError": "خطأ في تصدير الرسم البياني: {{message}}",
-        "saveSuccess": "تم الحفظ: {{name}}",
-        "saveError": "خطأ: {{message}}"
-    },
-    "dialog": {
-        "nameYourGraph": "تسمية الرسم البياني",
-        "graphName": "اسم الرسم البياني",
-        "graphPath": "المسار",
-        "lastModified": "آخر تعديل",
-        "enterGraphName": "أدخل اسم الرسم البياني...",
-        "nameRequired": "الاسم مطلوب",
-        "graphSingular": "رسم بياني",
-        "graphPlural": "رسوم بيانية",
-        "cancel": "إلغاء",
-        "save": "حفظ"
-    },
-    "nodeEdit": {
-        "title": "تعديل العنصر",
-        "nodeTitle": "عنوان العنصر",
-        "socketInfo": "معلومات المنافذ",
-        "input": "مدخل",
-        "output": "مخرج",
-        "cancel": "إلغاء",
-        "saveChanges": "حفظ التغييرات",
-        "noImagePreview": "لا توجد معاينة للصورة",
-        "valueLabels": {
-            "chat": "النموذج",
-            "image": "رابط الصورة",
-            "boolean": "قيمة منطقية",
-            "number": "قيمة رقمية",
-            "text": "قيمة نصية",
-            "add": "قيمة الإضافة",
-            "join": "فاصل النصوص",
-            "generic": "المخرج",
-            "default": "قيمة العنصر"
-        }
-    },
-    "common": {
-        "language": "اللغة",
-        "english": "English",
-        "arabic": "العربية"
+  "app": {
+    "title": "يلمع",
+    "subtitle": "يلمع هو محرر تطبيقات الذكاء الإصطناعي ذاتية التصرف ومخططات العمل للذكاء الإصطناعي",
+    "description": "أنشيء مشروعاً جديداً أو استورد مشروعًا موجودًا"
+  },
+  "home": {
+    "createNewGraph": "مشروع جديد",
+    "importGraph": "تحميل مشروع موجود",
+    "recentGraphs": "المشروعات الأخيرة",
+    "allGraphs": "جميع المشروعات",
+    "viewAll": "عرض الكل",
+    "noRecentGraphs": "لا توجد مشروعات محفوظة حديثاً",
+    "time": {
+      "today": "اليوم في {{time}}",
+      "yesterday": "أمس في {{time}}",
+      "daysAgo": "منذ {{days}} أيام"
     }
+  },
+  "canvas": {
+    "returnToHome": "العودة إلى الصفحة الرئيسية",
+    "run": "تشغيل",
+    "running": "جارٍ التشغيل ({{progress}}/{{total}})",
+    "save": "حفظ حالة المخطط",
+    "export": "تصدير كحزمة JavaScript ",
+    "exportToJson": "تصدير كملف JSON ",
+    "jsonExportSuccess": "تم تصدير مخطط العمل بنجاح",
+    "jsonExportError": "خطأ في تصدير مخطط العمل: {{message}}",
+    "saveSuccess": "تم الحفظ: {{name}}",
+    "saveError": "خطأ: {{message}}"
+  },
+  "dialog": {
+    "nameYourGraph": "تسمية مخطط العمل",
+    "graphName": "اسم مخطط العمل",
+    "graphPath": "المسار",
+    "lastModified": "آخر تعديل",
+    "enterGraphName": "أدخل اسم مخطط العمل...",
+    "nameRequired": "الاسم مطلوب",
+    "graphSingular": "رسم بياني",
+    "graphPlural": "رسوم بيانية",
+    "cancel": "إلغاء",
+    "save": "حفظ"
+  },
+  "nodeEdit": {
+    "title": "تعديل العنصر",
+    "nodeTitle": "عنوان العنصر",
+    "socketInfo": "معلومات المنافذ",
+    "input": "مدخل",
+    "output": "مخرج",
+    "cancel": "إلغاء",
+    "saveChanges": "حفظ التغييرات",
+    "noImagePreview": "لا توجد معاينة للصورة",
+    "valueLabels": {
+      "chat": "النموذج",
+      "image": "رابط الصورة",
+      "boolean": "قيمة منطقية",
+      "number": "قيمة رقمية",
+      "text": "قيمة نصية",
+      "add": "قيمة الإضافة",
+      "join": "فاصل النصوص",
+      "generic": "المخرج",
+      "default": "قيمة العنصر"
+    }
+  },
+  "common": {
+    "language": "اللغة",
+    "english": "English",
+    "arabic": "العربية"
+  }
 }

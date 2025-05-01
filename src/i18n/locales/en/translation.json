@@ -1,70 +1,70 @@
 {
-    "app": {
-        "title": "yaLLMa3",
-        "subtitle": "Create, edit, and execute agent workflows",
-        "description": "Build powerful AI agent workflows with our intuitive graph-based interface"
-    },
-    "home": {
-        "createNewGraph": "Create New Graph",
-        "importGraph": "Import Graph",
-        "recentGraphs": "Recent Graphs",
-        "allGraphs": "All Graphs",
-        "viewAll": "View All",
-        "noRecentGraphs": "No recent graphs",
-        "time": {
-            "today": "Today at {{time}}",
-            "yesterday": "Yesterday at {{time}}",
-            "daysAgo": "{{days}} days ago"
-        }
-    },
-    "canvas": {
-        "returnToHome": "Return to Home",
-        "run": "Run",
-        "running": "Running ({{progress}}/{{total}})",
-        "save": "Save Canvas State",
-        "export": "Export as JS Package",
-        "exportToJson": "Export to JSON",
-        "jsonExportSuccess": "Graph exported successfully",
-        "jsonExportError": "Error exporting graph: {{message}}",
-        "saveSuccess": "Saved: {{name}}",
-        "saveError": "Error: {{message}}"
-    },
-    "dialog": {
-        "nameYourGraph": "Name Your Graph",
-        "graphName": "Graph Name",
-        "graphPath": "Path",
-        "lastModified": "Last Modified",
-        "enterGraphName": "Enter graph name...",
-        "nameRequired": "Name is required",
-        "graphSingular": "graph",
-        "graphPlural": "graphs",
-        "cancel": "Cancel",
-        "save": "Save"
-    },
-    "nodeEdit": {
-        "title": "Edit Node",
-        "nodeTitle": "Node Title",
-        "socketInfo": "Socket Information",
-        "input": "INPUT",
-        "output": "OUTPUT",
-        "cancel": "Cancel",
-        "saveChanges": "Save Changes",
-        "noImagePreview": "No image preview",
-        "valueLabels": {
-            "chat": "Model",
-            "image": "Image URL",
-            "boolean": "Boolean Output",
-            "number": "Number Output",
-            "text": "Text Output",
-            "add": "Add Output",
-            "join": "Text separator",
-            "generic": "Output",
-            "default": "Node Value"
-        }
-    },
-    "common": {
-        "language": "Language",
-        "english": "English",
-        "arabic": "العربية"
+  "app": {
+    "title": "yaLLMa3",
+    "subtitle": "Create and execute AI Agent applications & workflows with yaLLMa3 Studio",
+    "description": "Start creating a new project or import an existing one."
+  },
+  "home": {
+    "createNewGraph": "Create flow",
+    "importGraph": "Import flow",
+    "recentGraphs": "Recent flows",
+    "allGraphs": "All flows",
+    "viewAll": "View All",
+    "noRecentGraphs": "No recent flows",
+    "time": {
+      "today": "Today at {{time}}",
+      "yesterday": "Yesterday at {{time}}",
+      "daysAgo": "{{days}} days ago"
     }
+  },
+  "canvas": {
+    "returnToHome": "Return to Home",
+    "run": "Run",
+    "running": "Running ({{progress}}/{{total}})",
+    "save": "Save Canvas State",
+    "export": "Export as JS Package",
+    "exportToJson": "Export to JSON",
+    "jsonExportSuccess": "Graph exported successfully",
+    "jsonExportError": "Error exporting graph: {{message}}",
+    "saveSuccess": "Saved: {{name}}",
+    "saveError": "Error: {{message}}"
+  },
+  "dialog": {
+    "nameYourGraph": "Name Your Graph",
+    "graphName": "Graph Name",
+    "graphPath": "Path",
+    "lastModified": "Last Modified",
+    "enterGraphName": "Enter graph name...",
+    "nameRequired": "Name is required",
+    "graphSingular": "graph",
+    "graphPlural": "graphs",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "nodeEdit": {
+    "title": "Edit Node",
+    "nodeTitle": "Node Title",
+    "socketInfo": "Socket Information",
+    "input": "INPUT",
+    "output": "OUTPUT",
+    "cancel": "Cancel",
+    "saveChanges": "Save Changes",
+    "noImagePreview": "No image preview",
+    "valueLabels": {
+      "chat": "Model",
+      "image": "Image URL",
+      "boolean": "Boolean Output",
+      "number": "Number Output",
+      "text": "Text Output",
+      "add": "Add Output",
+      "join": "Text separator",
+      "generic": "Output",
+      "default": "Node Value"
+    }
+  },
+  "common": {
+    "language": "Language",
+    "english": "English",
+    "arabic": "العربية"
+  }
 }
