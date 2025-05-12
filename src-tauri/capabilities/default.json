@@ -10,6 +10,19 @@
     "dialog:default",
     "fs:default",
     "fs:allow-app-write",
-    "fs:allow-app-read"
+    "fs:allow-app-read",
+    "fs:allow-appdata-write",
+    "fs:allow-appdata-read",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://tauri.app"
+        },
+        {
+          "url": "https://console.groq.com/keys"
+        }
+      ]
+    }
   ]
 }
