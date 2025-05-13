@@ -28,6 +28,10 @@ interface TaskCanvasProps {
   onTaskEdit?: (taskId: string) => void;
   onTaskDelete?: (taskId: string) => void;
   onshowTaskDialog?: () => void;
+  projectData?: {
+    agents: { id: string; name: string }[];
+    workflows?: { id: string; name: string; description: string }[];
+  };
 }
 
 interface CanvasTransform {
@@ -65,7 +69,7 @@ const screenToCanvas = (
   };
 };
 
-const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete, onshowTaskDialog }) => {
+const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete, onshowTaskDialog, projectData }) => {
   const { t } = useTranslation();
   const [taskNodes, setTaskNodes] = useState<TaskNode[]>([]);
   const [connections, setConnections] = useState<TaskConnection[]>([]);
@@ -660,7 +664,20 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
               }}
             />
             <div className="flex justify-between items-start mb-2">
-              <h3 className="font-medium text-white text-lg">{task.name}</h3>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium text-white text-lg">{task.name}</h3>
+                  {task.executeWorkflow ? (
+                    <span className="bg-purple-600/20 text-purple-400 text-xs px-2 py-0.5 rounded-full border border-purple-600/30">
+                      {t('projects.workflow', 'Workflow')}
+                    </span>
+                  ) : (
+                    <span className="bg-blue-600/20 text-blue-400 text-xs px-2 py-0.5 rounded-full border border-blue-600/30">
+                      {t('projects.agent', 'Agent')}
+                    </span>
+                  )}
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button 
                   className="text-blue-400 hover:text-blue-300 p-1"
@@ -695,10 +712,25 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
                 <span className="text-gray-300 line-clamp-1">{task.expectedOutput || t('projects.none', 'None')}</span>
               </div>
               <div>
-                <span className="text-gray-400 block">{t('projects.assignedAgent', 'Assigned Agent')}:</span>
-                <span className="text-gray-300 line-clamp-1">
-                  {task.assignedAgent || t('projects.autoAssign', 'Auto-assign')}
-                </span>
+                {task.executeWorkflow ? (
+                  <>
+                    <span className="text-gray-400 block">{t('projects.workflow', 'Workflow')}:</span>
+                    <span className="text-purple-400 line-clamp-1">
+                      {task.workflowName || 
+                       (projectData?.workflows && projectData.workflows.find(w => w.id === task.workflowId)?.name) ||
+                       t('projects.unknownWorkflow', 'Unknown workflow')}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-gray-400 block">{t('projects.assignedAgent', 'Assigned Agent')}:</span>
+                    <span className="text-blue-400 line-clamp-1">
+                      {task.assignedAgent ? 
+                        (projectData?.agents.find(a => a.id === task.assignedAgent)?.name || task.assignedAgent) : 
+                        t('projects.autoAssign', 'Auto-assign')}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -16,6 +16,12 @@ export interface ToolConfig {
   isJudge: boolean;
 }
 
+export interface Workflow {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -24,6 +30,7 @@ export interface Task {
   assignedAgent: string | null; // ID of the assigned agent or null for auto-assign
   executeWorkflow: boolean;
   workflowId: string | null; // ID of the workflow to execute if executeWorkflow is true
+  workflowName?: string; // Name of the workflow for display purposes
 }
 
 export interface LLMOption {
@@ -51,4 +58,7 @@ export interface ProjectData {
   
   // Step 4: Agents
   agents: Agent[];
+  
+  // Workflows
+  workflows: Workflow[];
 }

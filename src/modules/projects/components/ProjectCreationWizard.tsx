@@ -91,7 +91,6 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     name: "",
     description: "",
     
-    
     // Step 2: LLM Selection
     mainLLM: "",
     apiKey: "",
@@ -103,7 +102,8 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     // Step 4: Agents
     agents: [],
     
-    
+    // Workflows
+    workflows: []
   });
   
   // State for selected provider
@@ -118,6 +118,9 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     executeWorkflow: false,
     workflowId: null
   });
+  
+  // Task type selection (workflow or agent)
+  const [taskType, setTaskType] = useState<'agent' | 'workflow'>('agent');
   const [newAgent, setNewAgent] = useState<Omit<Agent, "id">>({
     name: "",
     role: "",
@@ -161,7 +164,8 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
         apiKey: "",
         useSavedCredentials: false,
         tasks: [],
-        agents: []
+        agents: [],
+        workflows: []
       });
       setSelectedProvider("Groq");
       setCurrentStep(1);
@@ -223,12 +227,13 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
         tasks: [...prev.tasks, task]
       }));
       
+      // Reset form and keep the same task type selected
       setNewTask({
         name: "",
         description: "",
         expectedOutput: "",
-        assignedAgent: null,
-        executeWorkflow: false,
+        assignedAgent: taskType === 'agent' ? null : null,
+        executeWorkflow: taskType === 'workflow',
         workflowId: null
       });
     }
@@ -827,9 +832,9 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
               </div>
               
               {/* Side-by-side layout for task creation and list */}
-              <div className="flex flex-col lg:flex-row gap-6">
+              <div className="flex flex-col lg:flex-row gap-6 h-full">
                 {/* Add Task Form */}
-                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-3/5">
+                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-3/5 flex flex-col h-full">
                   <h3 className="text-lg font-medium text-white mb-4 font-mono">
                     {t('projects.addTask', `Add Task (${projectData.tasks.length + 1})`)}
                   </h3>
@@ -874,79 +879,144 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                         placeholder={t('projects.enterTaskExpectedOutput', 'Enter task expected output')}
                       />
                     </div>
-                    <div>
-                      <label htmlFor="taskAssignedAgent" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('projects.taskAssignedAgent', 'Assigned Agent')}
+                    <div className="mb-4 border-t border-gray-700 pt-4">
+                      <label className="block text-sm font-medium text-gray-300 mb-3 font-mono">
+                        {t('projects.taskExecutionType', 'Task Execution Type')}
                       </label>
-                      <div className="flex flex-col gap-2">
-                        <select
-                          id="taskAssignedAgent"
-                          value={newTask.assignedAgent || ""}
-                          onChange={(e) => setNewTask(prev => ({ 
-                            ...prev, 
-                            assignedAgent: e.target.value ? e.target.value : null 
-                          }))}
-                          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                        >
-                          <option value="">{t('projects.autoAssignAgent', 'Auto-assign best fit')}</option>
-                          {projectData.agents.map(agent => (
-                            <option key={agent.id} value={agent.id}>
-                              {agent.name}
-                            </option>
-                          ))}
-                        </select>
-                        <p className="text-xs text-gray-400">
-                          {t('projects.agentAssignmentInfo', 'Leave empty to auto-assign the best agent for this task')}
+                      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                        <p className="text-xs text-gray-400 mb-3">
+                          {t('projects.taskTypeDescription', 'Choose how this task will be executed. A task can either be assigned to an agent or execute a workflow, but not both.')}
                         </p>
+                        <div className="flex flex-col gap-4">
+                          {/* Radio button for Agent option */}
+                          <div 
+                            className={`flex items-start p-3 rounded-md cursor-pointer ${taskType === 'agent' ? 'bg-gray-700 border border-yellow-400/50' : 'bg-gray-800/80 border border-gray-700 hover:bg-gray-700/50'}`}
+                            onClick={() => {
+                              setTaskType('agent');
+                              setNewTask(prev => ({
+                                ...prev,
+                                executeWorkflow: false,
+                                workflowId: null
+                              }));
+                            }}
+                          >
+                            <div className="flex items-center h-5">
+                              <input
+                                type="radio"
+                                id="taskTypeAgent"
+                                name="taskType"
+                                checked={taskType === 'agent'}
+                                onChange={() => {
+                                  setTaskType('agent');
+                                  setNewTask(prev => ({
+                                    ...prev,
+                                    executeWorkflow: false,
+                                    workflowId: null
+                                  }));
+                                }}
+                                className="h-4 w-4 text-yellow-400 focus:ring-yellow-500 border-gray-700 bg-gray-800"
+                              />
+                            </div>
+                            <div className="ml-3 flex-1">
+                              <label htmlFor="taskTypeAgent" className="font-medium text-white cursor-pointer">
+                                {t('projects.assignToAgent', 'Assign to Agent')}
+                              </label>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {t('projects.assignToAgentDescription', 'The task will be handled by a single agent with specific capabilities')}
+                              </p>
+                              
+                              {taskType === 'agent' && (
+                                <div className="mt-3 pl-1">
+                                  <select
+                                    id="taskAssignedAgent"
+                                    value={newTask.assignedAgent || ""}
+                                    onChange={(e) => setNewTask(prev => ({ 
+                                      ...prev, 
+                                      assignedAgent: e.target.value ? e.target.value : null 
+                                    }))}
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                  >
+                                    <option value="">{t('projects.autoAssignAgent', 'Auto-assign best fit')}</option>
+                                    {projectData.agents.map(agent => (
+                                      <option key={agent.id} value={agent.id}>
+                                        {agent.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    {t('projects.agentAssignmentInfo', 'Leave empty to auto-assign the best agent for this task')}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Radio button for Workflow option */}
+                          <div 
+                            className={`flex items-start p-3 rounded-md cursor-pointer ${taskType === 'workflow' ? 'bg-gray-700 border border-yellow-400/50' : 'bg-gray-800/80 border border-gray-700 hover:bg-gray-700/50'}`}
+                            onClick={() => {
+                              setTaskType('workflow');
+                              setNewTask(prev => ({
+                                ...prev,
+                                assignedAgent: null,
+                                executeWorkflow: true
+                              }));
+                            }}
+                          >
+                            <div className="flex items-center h-5">
+                              <input
+                                type="radio"
+                                id="taskTypeWorkflow"
+                                name="taskType"
+                                checked={taskType === 'workflow'}
+                                onChange={() => {
+                                  setTaskType('workflow');
+                                  setNewTask(prev => ({
+                                    ...prev,
+                                    assignedAgent: null,
+                                    executeWorkflow: true
+                                  }));
+                                }}
+                                className="h-4 w-4 text-yellow-400 focus:ring-yellow-500 border-gray-700 bg-gray-800"
+                              />
+                            </div>
+                            <div className="ml-3 flex-1">
+                              <label htmlFor="taskTypeWorkflow" className="font-medium text-white cursor-pointer">
+                                {t('projects.executeWorkflow', 'Execute a Workflow')}
+                              </label>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {t('projects.executeWorkflowDescription', 'The task will execute a predefined workflow with multiple steps')}
+                              </p>
+                              
+                              {taskType === 'workflow' && (
+                                <div className="mt-3 pl-1">
+                                  <select
+                                    id="taskWorkflowId"
+                                    value={newTask.workflowId || ""}
+                                    onChange={(e) => setNewTask(prev => ({ 
+                                      ...prev, 
+                                      workflowId: e.target.value ? e.target.value : null 
+                                    }))}
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                  >
+                                    <option value="" disabled>{t('projects.selectWorkflow', 'Select a workflow...')}</option>
+                                    {/* Example workflows - replace with actual workflows data */}
+                                    <option value="workflow1">Data Processing Workflow</option>
+                                    <option value="workflow2">Content Generation Workflow</option>
+                                    <option value="workflow3">Analysis Workflow</option>
+                                  </select>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="taskExecuteWorkflow"
-                          checked={newTask.executeWorkflow}
-                          onChange={(e) => setNewTask(prev => ({ 
-                            ...prev, 
-                            executeWorkflow: e.target.checked,
-                            // Reset workflowId if executeWorkflow is false
-                            workflowId: e.target.checked ? prev.workflowId : null
-                          }))}
-                          className="mr-2 h-4 w-4 rounded border-gray-700 bg-gray-800 text-yellow-400 focus:ring-yellow-500"
-                        />
-                        <label htmlFor="taskExecuteWorkflow" className="text-sm font-medium text-gray-300 font-mono">
-                          {t('projects.taskExecuteWorkflow', 'Execute a Workflow')}
-                        </label>
-                      </div>
-                    </div>
-                    
-                    {newTask.executeWorkflow && (
-                      <div>
-                        <label htmlFor="taskWorkflowId" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                          {t('projects.taskWorkflowId', 'Select Workflow')}
-                        </label>
-                        <select
-                          id="taskWorkflowId"
-                          value={newTask.workflowId || ""}
-                          onChange={(e) => setNewTask(prev => ({ 
-                            ...prev, 
-                            workflowId: e.target.value ? e.target.value : null 
-                          }))}
-                          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                        >
-                          <option value="" disabled>{t('projects.selectWorkflow', 'Select a workflow...')}</option>
-                          {/* Example workflows - replace with actual workflows data */}
-                          <option value="workflow1">Data Processing Workflow</option>
-                          <option value="workflow2">Content Generation Workflow</option>
-                          <option value="workflow3">Analysis Workflow</option>
-                        </select>
-                      </div>
-                    )}
                   </div>
                   
                   <Button
                     onClick={handleAddTask}
-                    className="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium border-0 flex items-center justify-center"
+                    className="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium border-0 flex items-center justify-center mt-auto"
                     disabled={!newTask.name.trim()}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -955,31 +1025,42 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                 </div>
                 
                 {/* Task List */}
-                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-2/5">
+                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-2/5 flex flex-col h-full">
                   <h3 className="text-lg font-medium text-white mb-4 font-mono">
                     {t('projects.taskList', 'Task List')}
                   </h3>
                   
                   {projectData.tasks.length > 0 ? (
-                    <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                    <div className="space-y-3 flex-grow overflow-y-auto">
                       {projectData.tasks.map((task) => (
-                        <div key={task.id} className="bg-gray-800 rounded-lg p-4 flex justify-between items-start">
+                        <div key={task.id} className="bg-gray-800 rounded-lg p-4 flex justify-between items-start w-full">
                           <div className="w-full">
                             <div className="flex items-center justify-between">
                               <h4 className="font-medium text-white">{task.name}</h4>
                               <div className="flex items-center gap-2">
-                                {task.executeWorkflow && (
-                                  <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
-                                    Workflow
-                                  </span>
-                                )}
-                                {task.assignedAgent ? (
-                                  <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">
-                                    {projectData.agents.find(a => a.id === task.assignedAgent)?.name || 'Assigned'}
+                                {task.executeWorkflow ? (
+                                  <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full flex items-center gap-1">
+                                    <span className="font-medium">Workflow</span>
+                                    {task.workflowId && (
+                                      <span className="text-[10px] bg-blue-600/60 px-1.5 py-0.5 rounded">
+                                        {task.workflowId === 'workflow1' ? 'Data Processing' : 
+                                         task.workflowId === 'workflow2' ? 'Content Generation' : 
+                                         task.workflowId === 'workflow3' ? 'Analysis' : 'Selected'}
+                                      </span>
+                                    )}
                                   </span>
                                 ) : (
-                                  <span className="text-xs bg-yellow-400 text-black px-2 py-1 rounded-full">
-                                    Auto-assign
+                                  <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full flex items-center gap-1">
+                                    <span className="font-medium">Agent</span>
+                                    {task.assignedAgent ? (
+                                      <span className="text-[10px] bg-green-600/60 px-1.5 py-0.5 rounded">
+                                        {projectData.agents.find(a => a.id === task.assignedAgent)?.name || 'Assigned'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] bg-green-600/60 px-1.5 py-0.5 rounded">
+                                        Auto-assign
+                                      </span>
+                                    )}
                                   </span>
                                 )}
                               </div>
@@ -1006,6 +1087,16 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                                 </p>
                               </div>
                             )}
+                            {!task.executeWorkflow && (
+                              <div className="mt-2">
+                                <span className="text-xs font-medium text-gray-400">Execution:</span>
+                                <p className="text-sm text-gray-300">
+                                  {task.assignedAgent 
+                                    ? `Assigned to ${projectData.agents.find(a => a.id === task.assignedAgent)?.name || 'agent'}` 
+                                    : 'Will be automatically assigned to the best agent'}
+                                </p>
+                              </div>
+                            )}
                           </div>
                           <button
                             onClick={() => handleRemoveTask(task.id)}
@@ -1017,7 +1108,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center text-gray-400 py-8 bg-gray-800/30 rounded-lg border border-gray-700">
+                    <div className="text-center text-gray-400 py-8 bg-gray-800/30 rounded-lg border border-gray-700 flex-grow flex items-center justify-center">
                       {t('projects.noTasks', 'No tasks added yet')}
                     </div>
                   )}

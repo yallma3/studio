@@ -14,24 +14,66 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
   const [viewMode, setViewMode] = useState<'list' | 'canvas'>('canvas');
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [tasks, setTasks] = useState<Task[]>(projectData.tasks || []);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
-  const [newTask, setNewTask] = useState({
+  // Add sample workflows if none exist in the project data
+  const [sampleWorkflows] = useState([
+    { id: 'workflow-1', name: 'Data Analysis Pipeline', description: 'Analyze and process data with multiple steps' },
+    { id: 'workflow-2', name: 'Content Generation', description: 'Generate and review content automatically' },
+    { id: 'workflow-3', name: 'Research Assistant', description: 'Search, summarize, and organize research findings' }
+  ]);
+
+  // Combine project workflows with sample workflows if needed
+  const availableWorkflows = projectData.workflows && projectData.workflows.length > 0 
+    ? projectData.workflows 
+    : sampleWorkflows;
+
+  const [newTask, setNewTask] = useState<{
+    name: string;
+    description: string;
+    expectedOutput: string;
+    assignedAgent: string | null;
+    executeWorkflow: boolean;
+    workflowId: string | null;
+    workflowName: string;
+  }>({
     name: '',
     description: '',
     expectedOutput: '',
-    assignedAgent: '',
+    assignedAgent: null,
     executeWorkflow: false,
-    workflowId: null
+    workflowId: null,
+    workflowName: ''
   });
   
   const handleTaskEdit = (taskId: string) => {
-    // Implement task editing functionality
-    console.log('Edit task:', taskId);
+    // Find the task to edit
+    const taskToEdit = tasks.find(task => task.id === taskId);
+    if (!taskToEdit) return;
+    
+    // Set the form values for editing
+    setNewTask({
+      name: taskToEdit.name,
+      description: taskToEdit.description,
+      expectedOutput: taskToEdit.expectedOutput,
+      assignedAgent: taskToEdit.assignedAgent,
+      executeWorkflow: taskToEdit.executeWorkflow,
+      workflowId: taskToEdit.workflowId,
+      workflowName: taskToEdit.workflowName || ''
+    });
+    
+    // Set editing mode and show dialog
+    setEditingTaskId(taskId);
+    setShowTaskDialog(true);
   };
   
   const handleTaskDelete = (taskId: string) => {
-    // Implement task deletion functionality
-    console.log('Delete task:', taskId);
+    // Remove the task from the tasks array
+    const updatedTasks = tasks.filter(task => task.id !== taskId);
+    setTasks(updatedTasks);
+    
+    // Update the project data
+    projectData.tasks = updatedTasks;
   };
 
   const handleShowTaskDialog = () => {
@@ -40,12 +82,14 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
       name: '',
       description: '',
       expectedOutput: '',
-      assignedAgent: '',
+      assignedAgent: null,
       executeWorkflow: false,
-      workflowId: null
+      workflowId: null,
+      workflowName: ''
     });
+    // Clear editing state
+    setEditingTaskId(null);
     setShowTaskDialog(true);
-    console.log('Show task dialog');
   };
 
   // Generate a simple ID based on timestamp and random number
@@ -53,34 +97,55 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
     return `task-${Date.now()}-${Math.floor(Math.random() * 10000)}`;  
   };
 
-  const handleAddTask = () => {
+  const handleSaveTask = () => {
     if (!newTask.name.trim()) {
-      // Don't add a task without a name
+      // Don't save a task without a name
       return;
     }
 
-    // Create a new task with a unique ID
-    const task: Task = {
-      id: generateId(),
-      name: newTask.name,
-      description: newTask.description,
-      expectedOutput: newTask.expectedOutput,
-      assignedAgent: newTask.assignedAgent || null,
-      executeWorkflow: newTask.executeWorkflow,
-      workflowId: newTask.workflowId
-    };
+    let updatedTasks: Task[];
 
-    // Add the new task to the tasks array
-    const updatedTasks = [...tasks, task];
+    if (editingTaskId) {
+      // Update existing task
+      updatedTasks = tasks.map(task => {
+        if (task.id === editingTaskId) {
+          return {
+            ...task,
+            name: newTask.name,
+            description: newTask.description,
+            expectedOutput: newTask.expectedOutput,
+            assignedAgent: newTask.assignedAgent,
+            executeWorkflow: newTask.executeWorkflow,
+            workflowId: newTask.workflowId,
+            workflowName: newTask.workflowName
+          };
+        }
+        return task;
+      });
+    } else {
+      // Create a new task with a unique ID
+      const task: Task = {
+        id: generateId(),
+        name: newTask.name,
+        description: newTask.description,
+        expectedOutput: newTask.expectedOutput,
+        assignedAgent: newTask.assignedAgent,
+        executeWorkflow: newTask.executeWorkflow,
+        workflowId: newTask.workflowId,
+        workflowName: newTask.workflowName
+      };
+
+      // Add the new task to the tasks array
+      updatedTasks = [...tasks, task];
+    }
+
+    // Update state and project data
     setTasks(updatedTasks);
-    
-    // Update the project data (in a real app, this would likely involve an API call)
     projectData.tasks = updatedTasks;
 
-    // Close the dialog
+    // Reset editing state and close the dialog
+    setEditingTaskId(null);
     setShowTaskDialog(false);
-    
-    console.log('Task added:', task);
   };
   
   return (
@@ -116,13 +181,25 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
               onTaskEdit={handleTaskEdit}
               onTaskDelete={handleTaskDelete}
               onshowTaskDialog={handleShowTaskDialog}
+              projectData={projectData}
             />
           ) : (
             <div className="space-y-4">
               {tasks.map((task: Task) => (
                 <div key={task.id} className="bg-[#1d1d1d] rounded border border-gray-800 p-4">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-medium text-white text-lg">{task.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-white text-lg">{task.name}</h3>
+                      {task.executeWorkflow ? (
+                        <span className="bg-purple-600/20 text-purple-400 text-xs px-2 py-0.5 rounded-full border border-purple-600/30">
+                          {t('projects.workflow', 'Workflow')}
+                        </span>
+                      ) : (
+                        <span className="bg-blue-600/20 text-blue-400 text-xs px-2 py-0.5 rounded-full border border-blue-600/30">
+                          {t('projects.agent', 'Agent')}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex gap-2">
                       <button 
                         className="text-blue-400 hover:text-blue-300 p-1"
@@ -151,10 +228,23 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
                       <span className="text-gray-300">{task.expectedOutput || t('projects.none', 'None')}</span>
                     </div>
                     <div>
-                      <span className="text-gray-400 block">{t('projects.assignedAgent', 'Assigned Agent')}:</span>
-                      <span className="text-gray-300">
-                        {task.assignedAgent || t('projects.autoAssign', 'Auto-assign')}
-                      </span>
+                      {task.executeWorkflow ? (
+                        <>
+                          <span className="text-gray-400 block">{t('projects.workflow', 'Workflow')}:</span>
+                          <span className="text-purple-400">
+                            {task.workflowName || availableWorkflows.find(w => w.id === task.workflowId)?.name || t('projects.unknownWorkflow', 'Unknown workflow')}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-gray-400 block">{t('projects.assignedAgent', 'Assigned Agent')}:</span>
+                          <span className="text-blue-400">
+                            {task.assignedAgent ? 
+                              (projectData.agents.find(a => a.id === task.assignedAgent)?.name || task.assignedAgent) : 
+                              t('projects.autoAssign', 'Auto-assign')}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -171,13 +261,18 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
       {showTaskDialog && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowTaskDialog(false)}></div>
-          <div className="bg-[#1d1d1d] rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#1d1d1d] rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-2xl relative z-10 max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-[#1d1d1d] pb-2 mb-2 border-b border-gray-800">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-white">{t('projects.addTask', 'Add New Task')}</h2>
+                <h2 className="text-xl font-semibold text-white">
+                  {editingTaskId ? t('projects.editTask', 'Edit Task') : t('projects.addTask', 'Add New Task')}
+                </h2>
                 <button 
                   className="text-gray-400 hover:text-white" 
-                  onClick={() => setShowTaskDialog(false)}
+                  onClick={() => {
+                    setShowTaskDialog(false);
+                    setEditingTaskId(null);
+                  }}
                   aria-label="Close"
                 >
                   <X size={18} />
@@ -212,49 +307,104 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
                 />
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    {t('projects.expectedOutput', 'Expected Output')}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={newTask.expectedOutput}
-                    onChange={(e) => setNewTask({...newTask, expectedOutput: e.target.value})}
-                    placeholder={t('projects.enterExpectedOutput', 'Enter expected output')}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    {t('projects.assignedAgent', 'Assigned Agent')}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={newTask.assignedAgent}
-                    onChange={(e) => setNewTask({...newTask, assignedAgent: e.target.value})}
-                    placeholder={t('projects.enterAgent', 'Agent name or blank')}
-                  />
-                </div>
-              </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t('projects.executeWorkflow', 'Execute Workflow')}
+                  {t('projects.expectedOutput', 'Expected Output')}
                 </label>
-                <div className="flex items-center mt-1">
-                  <input
-                    type="checkbox"
-                    id="executeWorkflow"
-                    className="mr-2 h-4 w-4 rounded border-gray-700 bg-[#111] text-blue-600 focus:ring-blue-500"
-                    checked={newTask.executeWorkflow}
-                    onChange={(e) => setNewTask({...newTask, executeWorkflow: e.target.checked})}
-                  />
-                  <label htmlFor="executeWorkflow" className="text-sm text-gray-300">
-                    {t('projects.executeWorkflowDescription', 'Execute a workflow for this task')}
-                  </label>
+                <input
+                  type="text"
+                  className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={newTask.expectedOutput}
+                  onChange={(e) => setNewTask({...newTask, expectedOutput: e.target.value})}
+                  placeholder={t('projects.enterExpectedOutput', 'Enter expected output')}
+                />
+              </div>
+              
+              <div className="border-t border-gray-700 pt-4 mt-4">
+                <div className="text-sm font-medium text-gray-300 mb-3">
+                  {t('projects.taskExecution', 'Task Execution')} *
+                  <p className="text-xs text-gray-400 mt-1">
+                    {t('projects.taskExecutionHelp', 'Choose one of the following execution methods')}
+                  </p>
+                </div>
+                
+                <div className="space-y-4">
+                  {/* Agent Assignment Option */}
+                  <div className={`p-3 rounded-md border ${!newTask.executeWorkflow ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700 bg-[#111]'}`}>
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        id="assignAgent"
+                        name="executionMethod"
+                        className="mr-2 h-4 w-4 border-gray-700 bg-[#111] text-blue-600 focus:ring-blue-500"
+                        checked={!newTask.executeWorkflow}
+                        onChange={() => setNewTask({...newTask, executeWorkflow: false, assignedAgent: newTask.assignedAgent || ''})}
+                      />
+                      <label htmlFor="assignAgent" className="text-sm font-medium text-white">
+                        {t('projects.assignedAgent', 'Assign Agent')}
+                      </label>
+                    </div>
+                    
+                    <div className="mt-2 ml-6">
+                      <select
+                        className={`w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${newTask.executeWorkflow ? 'opacity-50' : ''}`}
+                        value={newTask.assignedAgent || ''}
+                        onChange={(e) => setNewTask({...newTask, assignedAgent: e.target.value, executeWorkflow: false})}
+                        disabled={newTask.executeWorkflow}
+                      >
+                        <option value="">{t('projects.autoAssign', 'Auto-assign')}</option>
+                        {projectData.agents && projectData.agents.map(agent => (
+                          <option key={agent.id} value={agent.id}>{agent.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {t('projects.agentAssignmentHelp', 'Select an agent to handle this task or choose auto-assignment')}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Workflow Execution Option */}
+                  <div className={`p-3 rounded-md border ${newTask.executeWorkflow ? 'border-purple-500 bg-purple-500/10' : 'border-gray-700 bg-[#111]'}`}>
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        id="executeWorkflow"
+                        name="executionMethod"
+                        className="mr-2 h-4 w-4 border-gray-700 bg-[#111] text-purple-600 focus:ring-purple-500"
+                        checked={newTask.executeWorkflow}
+                        onChange={() => setNewTask({...newTask, executeWorkflow: true, assignedAgent: null})}
+                      />
+                      <label htmlFor="executeWorkflow" className="text-sm font-medium text-white">
+                        {t('projects.executeWorkflow', 'Execute Workflow')}
+                      </label>
+                    </div>
+                    
+                    <div className="mt-2 ml-6">
+                      <select
+                        className={`w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${!newTask.executeWorkflow ? 'opacity-50' : ''}`}
+                        value={newTask.workflowId || ''}
+                        onChange={(e) => {
+                          const selectedWorkflow = availableWorkflows.find(w => w.id === e.target.value);
+                          setNewTask({
+                            ...newTask, 
+                            executeWorkflow: true, 
+                            assignedAgent: null,
+                            workflowId: e.target.value || null,
+                            workflowName: selectedWorkflow ? selectedWorkflow.name : ''
+                          });
+                        }}
+                        disabled={!newTask.executeWorkflow}
+                      >
+                        <option value="">{t('projects.selectWorkflow', 'Select a workflow')}</option>
+                        {availableWorkflows.map(workflow => (
+                          <option key={workflow.id} value={workflow.id}>{workflow.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {t('projects.workflowSelectionHelp', 'Select a workflow to execute for this task')}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -268,11 +418,10 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
               </button>
               <button
                 className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-               
-                onClick={handleAddTask}
+                onClick={handleSaveTask}
                 disabled={!newTask.name.trim()}
               >
-                {t('common.add', 'Add')}
+                {editingTaskId ? t('common.save', 'Save') : t('common.add', 'Add')}
               </button>
             </div>
           </div>
