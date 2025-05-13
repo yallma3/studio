@@ -7,6 +7,7 @@ export interface Agent {
   background: string;
   capabilities: string;
   tools: ToolConfig[];
+  llmId: string; // ID of the LLM to use for this agent
 }
 
 export interface ToolConfig {

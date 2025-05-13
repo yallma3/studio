@@ -127,7 +127,8 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     objective: "",
     background: "",
     capabilities: "",
-    tools: []
+    tools: [],
+    llmId: projectData.mainLLM // Default to project's main LLM
   });
  
   
@@ -265,7 +266,8 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
         objective: "",
         background: "",
         capabilities: "",
-        tools: []
+        tools: [],
+        llmId: projectData.mainLLM // Keep using project's main LLM as default
       });
     }
   };
@@ -624,6 +626,30 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                     </div>
                     
                     <div className="flex flex-col gap-1">
+                      <label htmlFor="agentLLM" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
+                        {t('projects.agentLLM', 'Language Model')}
+                      </label>
+                      <select
+                        id="agentLLM"
+                        value={newAgent.llmId}
+                        onChange={(e) => setNewAgent(prev => ({ ...prev, llmId: e.target.value }))}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                      >
+                        <option value="">{t('projects.useProjectLLM', 'Use project default')}</option>
+                        {availableLLMs.map(llm => (
+                          <option key={llm.id} value={llm.id}>
+                            {llm.name} ({llm.provider})
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {newAgent.llmId 
+                          ? t('projects.customLLMSelected', 'Custom LLM selected for this agent') 
+                          : t('projects.usingProjectLLM', `Using project's main LLM: ${availableLLMs.find(llm => llm.id === projectData.mainLLM)?.name || 'None selected'}`)}
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-col gap-1">
                       <label htmlFor="agentObjective" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
                         {t('projects.agentDescription', 'Objective')}
                       </label>
@@ -765,6 +791,13 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                             )}
                             {agent.capabilities && (
                               <p className="text-sm text-gray-400 mt-1">{agent.capabilities}</p>
+                            )}
+                            {agent.llmId && agent.llmId !== projectData.mainLLM && (
+                              <div className="mt-1 flex items-center">
+                                <span className="text-xs text-yellow-400">
+                                  LLM: {availableLLMs.find(llm => llm.id === agent.llmId)?.name || agent.llmId}
+                                </span>
+                              </div>
                             )}
                             {agent.tools.length > 0 && (
                               <div className="mt-2 flex flex-wrap gap-1">

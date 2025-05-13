@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ProjectData, Agent } from "../../types/Types";
+import { ProjectData, Agent, LLMOption } from "../../types/Types";
 import { X, Plus, Trash2, Edit } from "lucide-react";
 
 interface AgentsTabProps {
@@ -14,6 +14,66 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
   const [showAgentDialog, setShowAgentDialog] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
+  
+  // Available LLM options
+  const availableLLMs: LLMOption[] = [
+    {
+      id: "gpt-4",
+      name: "GPT-4",
+      provider: "OpenAI",
+      tokenLimit: 8192,
+      capabilities: ["Advanced reasoning", "Code generation", "Complex instructions"]
+    },
+    {
+      id: "gpt-3.5-turbo",
+      name: "GPT-3.5 Turbo",
+      provider: "OpenAI",
+      tokenLimit: 4096,
+      capabilities: ["Fast responses", "General knowledge", "Basic reasoning"]
+    },
+    {
+      id: "claude-3-opus",
+      name: "Claude 3 Opus",
+      provider: "Anthropic",
+      tokenLimit: 200000,
+      capabilities: ["Advanced reasoning", "Long context", "Detailed analysis"]
+    },
+    {
+      id: "claude-3-sonnet",
+      name: "Claude 3 Sonnet",
+      provider: "Anthropic",
+      tokenLimit: 100000,
+      capabilities: ["Balanced performance", "Long context", "Creative writing"]
+    },
+    {
+      id: "gemini-pro",
+      name: "Gemini Pro",
+      provider: "Google",
+      tokenLimit: 32768,
+      capabilities: ["Multimodal understanding", "Research", "Reasoning"]
+    },
+    {
+      id: "llama-3-70b",
+      name: "Llama 3 (70B)",
+      provider: "Meta",
+      tokenLimit: 8192,
+      capabilities: ["Open source", "Customizable", "General purpose"]
+    },
+    {
+      id: "mixtral-8x7b",
+      name: "Mixtral 8x7B",
+      provider: "Groq",
+      tokenLimit: 32768,
+      capabilities: ["Fast inference", "High throughput", "Balanced performance"]
+    },
+    {
+      id: "llama-2-70b",
+      name: "Llama 2 (70B)",
+      provider: "Groq",
+      tokenLimit: 4096,
+      capabilities: ["Open source", "Fast inference", "General purpose"]
+    }
+  ];
 
   const [agentForm, setAgentForm] = useState<Omit<Agent, 'id'>>({
     name: '',
@@ -21,7 +81,8 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
     objective: '',
     background: '',
     capabilities: '',
-    tools: []
+    tools: [],
+    llmId: projectData.mainLLM || '' // Default to project's main LLM
   });
 
   // Generate a simple ID based on timestamp and random number
@@ -43,7 +104,8 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
           objective: agentToEdit.objective,
           background: agentToEdit.background,
           capabilities: agentToEdit.capabilities,
-          tools: [...agentToEdit.tools]
+          tools: [...agentToEdit.tools],
+          llmId: agentToEdit.llmId
         });
       }
     } else {
@@ -54,7 +116,8 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
         objective: '',
         background: '',
         capabilities: '',
-        tools: []
+        tools: [],
+        llmId: projectData.mainLLM || ''
       });
     }
 
@@ -88,7 +151,8 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
             objective: agentForm.objective,
             background: agentForm.background,
             capabilities: agentForm.capabilities,
-            tools: agentForm.tools
+            tools: agentForm.tools,
+            llmId: agentForm.llmId
           };
         }
         return agent;
@@ -102,7 +166,8 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
         objective: agentForm.objective,
         background: agentForm.background,
         capabilities: agentForm.capabilities,
-        tools: agentForm.tools
+        tools: agentForm.tools,
+        llmId: agentForm.llmId
       };
 
       updatedAgents = [...agents, newAgent];
@@ -154,8 +219,14 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
                     </button>
                   </div>
                 </div>
-                <div className="mb-2">
+                <div className="mb-2 flex items-center justify-between">
                   <span className="text-yellow-400 text-sm font-medium">{agent.role}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${agent.llmId ? 'bg-blue-900/50 text-blue-300' : 'bg-gray-800 text-gray-400'}`}>
+                    {agent.llmId 
+                      ? `LLM: ${availableLLMs.find(llm => llm.id === agent.llmId)?.name || agent.llmId}` 
+                      : `Using project default LLM`
+                    }
+                  </span>
                 </div>
                 <p className="text-gray-300 mb-3">{agent.objective}</p>
                 <div className="text-sm">
@@ -163,7 +234,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
                     <span className="text-gray-400 block">{t('projects.background', 'Background')}:</span>
                     <span className="text-gray-300">{agent.background}</span>
                   </div>
-                  <div>
+                  <div className="mb-2">
                     <span className="text-gray-400 block">{t('projects.capabilities', 'Capabilities')}:</span>
                     <span className="text-gray-300">{agent.capabilities}</span>
                   </div>
@@ -260,6 +331,29 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
                   onChange={(e) => setAgentForm({...agentForm, capabilities: e.target.value})}
                   placeholder={t('projects.enterCapabilities', 'Enter agent capabilities')}
                 />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  {t('projects.agentLLM', 'Language Model')}
+                </label>
+                <select
+                  className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={agentForm.llmId}
+                  onChange={(e) => setAgentForm({...agentForm, llmId: e.target.value})}
+                >
+                  <option value="">{t('projects.useProjectLLM', 'Use project default')}</option>
+                  {availableLLMs.map(llm => (
+                    <option key={llm.id} value={llm.id}>
+                      {llm.name} ({llm.provider})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-1">
+                  {agentForm.llmId 
+                    ? t('projects.customLLMSelected', 'Custom LLM selected for this agent') 
+                    : t('projects.usingProjectLLM', `Using project's main LLM: ${availableLLMs.find(llm => llm.id === projectData.mainLLM)?.name || 'None selected'}`)}
+                </p>
               </div>
             </div>
             
