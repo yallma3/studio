@@ -13,7 +13,7 @@ interface ToastProps {
   onClose: () => void;
   isClosing?: boolean;
 }
-
+// Toast notification component
 const Toast: React.FC<ToastProps> = ({ message, type, onClose, isClosing = false }) => {
   React.useEffect(() => {
     if (!isClosing) {
@@ -45,7 +45,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, isClosing = false
   );
 };
 
-type TabType = 'project' | 'tasks' | 'agents';
+type ProjectTab = 'project' | 'tasks' | 'agents';
 
 interface ProjectCanvasProps {
   projectData: ProjectData;
@@ -54,7 +54,7 @@ interface ProjectCanvasProps {
 
 const ProjectCanvas: React.FC<ProjectCanvasProps> = ({ projectData: initialProjectData, onReturnToHome }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<TabType>('project');
+  const [activeTab, setActiveTab] = useState<ProjectTab>('project');
   
   // Maintain project data in state
   const [projectData, setProjectData] = useState<ProjectData>(initialProjectData);
@@ -147,7 +147,7 @@ const ProjectCanvas: React.FC<ProjectCanvasProps> = ({ projectData: initialProje
   };
 
   // Tab button component
-  const TabButton: React.FC<{ tab: TabType; label: string; icon: React.ReactNode }> = ({ tab, label, icon }) => (
+  const TabButton: React.FC<{ tab: ProjectTab; label: string; icon: React.ReactNode }> = ({ tab, label, icon }) => (
     <button
       className={`flex items-center gap-2 px-4 py-2 rounded-t-md font-medium transition-colors
         ${activeTab === tab 

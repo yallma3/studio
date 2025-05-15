@@ -21,57 +21,49 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
       id: "gpt-4",
       name: "GPT-4",
       provider: "OpenAI",
-      tokenLimit: 8192,
-      capabilities: ["Advanced reasoning", "Code generation", "Complex instructions"]
+      tokenLimit: 8192
     },
     {
       id: "gpt-3.5-turbo",
       name: "GPT-3.5 Turbo",
       provider: "OpenAI",
-      tokenLimit: 4096,
-      capabilities: ["Fast responses", "General knowledge", "Basic reasoning"]
+      tokenLimit: 4096
     },
     {
       id: "claude-3-opus",
       name: "Claude 3 Opus",
       provider: "Anthropic",
-      tokenLimit: 200000,
-      capabilities: ["Advanced reasoning", "Long context", "Detailed analysis"]
+      tokenLimit: 200000
     },
     {
       id: "claude-3-sonnet",
       name: "Claude 3 Sonnet",
       provider: "Anthropic",
-      tokenLimit: 100000,
-      capabilities: ["Balanced performance", "Long context", "Creative writing"]
+      tokenLimit: 100000
     },
     {
       id: "gemini-pro",
       name: "Gemini Pro",
       provider: "Google",
-      tokenLimit: 32768,
-      capabilities: ["Multimodal understanding", "Research", "Reasoning"]
+      tokenLimit: 32768
     },
     {
       id: "llama-3-70b",
       name: "Llama 3 (70B)",
       provider: "Meta",
-      tokenLimit: 8192,
-      capabilities: ["Open source", "Customizable", "General purpose"]
+      tokenLimit: 8192
     },
     {
       id: "mixtral-8x7b",
       name: "Mixtral 8x7B",
       provider: "Groq",
-      tokenLimit: 32768,
-      capabilities: ["Fast inference", "High throughput", "Balanced performance"]
+      tokenLimit: 32768
     },
     {
       id: "llama-2-70b",
       name: "Llama 2 (70B)",
       provider: "Groq",
-      tokenLimit: 4096,
-      capabilities: ["Open source", "Fast inference", "General purpose"]
+      tokenLimit: 4096
     }
   ];
 
@@ -253,7 +245,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
       {showAgentDialog && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowAgentDialog(false)}></div>
-          <div className="bg-[#1d1d1d] rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#1d1d1d] rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-2xl relative z-10 max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-[#1d1d1d] pb-2 mb-2 border-b border-gray-800">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-white">

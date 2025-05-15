@@ -18,64 +18,58 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
 }) => {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
+  // Placeholder tools
   const availableTools = [{name: "Web Search", isInputChannel: false, isOutputProducer: false, isJudge: false}, {name: "Compile Code", isInputChannel: false, isOutputProducer: false, isJudge: false}, {name: "Api Call", isInputChannel: false, isOutputProducer: false, isJudge: false}]
-  // Available LLM options
+  
+  // Placeholder LLM options
   const availableLLMs: LLMOption[] = [
     {
       id: "gpt-4",
       name: "GPT-4",
       provider: "OpenAI",
       tokenLimit: 8192,
-      capabilities: ["Advanced reasoning", "Code generation", "Complex instructions"]
     },
     {
       id: "gpt-3.5-turbo",
       name: "GPT-3.5 Turbo",
       provider: "OpenAI",
-      tokenLimit: 4096,
-      capabilities: ["Fast responses", "General knowledge", "Basic reasoning"]
+      tokenLimit: 4096
     },
     {
       id: "claude-3-opus",
       name: "Claude 3 Opus",
       provider: "Anthropic",
-      tokenLimit: 200000,
-      capabilities: ["Advanced reasoning", "Long context", "Detailed analysis"]
+      tokenLimit: 200000
     },
     {
       id: "claude-3-sonnet",
       name: "Claude 3 Sonnet",
       provider: "Anthropic",
-      tokenLimit: 100000,
-      capabilities: ["Balanced performance", "Long context", "Creative writing"]
+      tokenLimit: 100000
     },
     {
       id: "gemini-pro",
       name: "Gemini Pro",
       provider: "Google",
-      tokenLimit: 32768,
-      capabilities: ["Multimodal understanding", "Research", "Reasoning"]
+      tokenLimit: 32768
     },
     {
       id: "llama-3-70b",
       name: "Llama 3 (70B)",
       provider: "Meta",
-      tokenLimit: 8192,
-      capabilities: ["Open source", "Customizable", "General purpose"]
+      tokenLimit: 8192
     },
     {
       id: "mixtral-8x7b",
       name: "Mixtral 8x7B",
       provider: "Groq",
-      tokenLimit: 32768,
-      capabilities: ["Fast inference", "High throughput", "Balanced performance"]
+      tokenLimit: 32768
     },
     {
       id: "llama-2-70b",
       name: "Llama 2 (70B)",
       provider: "Groq",
-      tokenLimit: 4096,
-      capabilities: ["Open source", "Fast inference", "General purpose"]
+      tokenLimit: 4096
     }
   ];
   
@@ -121,6 +115,8 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
   
   // Task type selection (workflow or agent)
   const [taskType, setTaskType] = useState<'agent' | 'workflow'>('agent');
+
+   // Temporary state for new agents
   const [newAgent, setNewAgent] = useState<Omit<Agent, "id">>({
     name: "",
     role: "",
@@ -215,7 +211,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
  
  
 
-  // Task management
+  // On press of add task to add task to project's task list and empty form state
   const handleAddTask = () => {
     if (newTask.name.trim()) {
       const task: Task = {
@@ -247,7 +243,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     }));
   };
   
-  // Agent management
+  // On press of add agent to add agent to project's agent list and empty form state
   const handleAddAgent = () => {
     if (newAgent.name.trim()) {
       const agent: Agent = {
@@ -279,6 +275,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     }));
   };
   
+  // Add tool to agent's tools list
   const handleAddTool = (tool: string) => {
     // Check if the tool is already added
     if (newAgent.tools.some(t => t.name === tool)) {
@@ -327,7 +324,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
   
 
 
-  // Step indicator component
+  //Top Step indicator component
   const renderStepIndicator = () => {
     const steps = [
       { number: 1, title: t('projects.projectBasics', 'Project Setup') },
@@ -500,17 +497,6 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                               
                               <div className="mt-3 flex items-center text-sm text-gray-500">
                                 <span className="mr-3">Token limit: {llm.tokenLimit.toLocaleString()}</span>
-                              </div>
-                              
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {llm.capabilities.map((capability, index) => (
-                                  <span 
-                                    key={index} 
-                                    className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded"
-                                  >
-                                    {capability}
-                                  </span>
-                                ))}
                               </div>
                             </div>
                           ))}
@@ -1306,7 +1292,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
           )}
         </form>
       </div>
-      
+      {/* Navigation and submit buttons */}
       <div className="flex justify-between items-center p-6 border-t border-gray-800">
         {currentStep > 1 ? (
           <Button

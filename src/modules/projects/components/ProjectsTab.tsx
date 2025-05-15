@@ -14,22 +14,23 @@ interface ProjectsTabProps {
 }
 
 
-
+// Main screen to create or import Projects
 const ProjectsTab: React.FC<ProjectsTabProps> = ({ onOpenFromFile, onOpenFromPath, onOpenProject }) => {
   const { t } = useTranslation();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false);
 
-  const handleOpenCreateDialog = () => {
-    setIsCreateDialogOpen(true);
+  const handleOpenCreateWizard = () => {
+    setIsCreateWizardOpen(true);
   };
 
-  const handleCloseCreateDialog = () => {
-    setIsCreateDialogOpen(false);
+  const handleCloseCreateWizard = () => {
+    setIsCreateWizardOpen(false);
   };
 
+  // Saving and Opening project after wizard completion
   const handleCreateProject = async (projectData: ProjectData) => {
-    console.log(`Creating new project: ${projectData.name}`);
-    console.log('Project data:', projectData);
+    // console.log(`Creating new project: ${projectData.name}`);
+    // console.log('Project data:', projectData);
     
     try {
       // Save the project to the default location
@@ -57,7 +58,7 @@ const ProjectsTab: React.FC<ProjectsTabProps> = ({ onOpenFromFile, onOpenFromPat
         <div className="flex flex-col md:flex-row gap-4 max-w-xl mx-auto justify-center">
           <Button
             size="lg"
-            onClick={handleOpenCreateDialog}
+            onClick={handleOpenCreateWizard}
             className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium border-0 flex items-center justify-center gap-2 h-14 px-8 text-lg font-mono"
           >
             <Plus className="h-5 w-5" />
@@ -82,10 +83,10 @@ const ProjectsTab: React.FC<ProjectsTabProps> = ({ onOpenFromFile, onOpenFromPat
         </div>
       </div>
 
-      {/* Project Creation Wizard Dialog */}
+      {/* Project Creation Wizard Wizard */}
       <ProjectCreationWizard
-        open={isCreateDialogOpen}
-        onClose={handleCloseCreateDialog}
+        open={isCreateWizardOpen}
+        onClose={handleCloseCreateWizard}
         onCreateProject={handleCreateProject}
       />
     </div>

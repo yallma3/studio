@@ -38,7 +38,8 @@ const App: React.FC = () => {
         apiKey: "",
         useSavedCredentials: false,
         tasks: [],
-        agents: []
+        agents: [],
+        workflows: [],
       };
       
       setCurrentProjectData(projectData);
@@ -81,7 +82,7 @@ const App: React.FC = () => {
   
   // Handle opening a project with ProjectData
   const handleOpenProject = (projectData: ProjectData) => {
-    console.log('Opening project with ProjectData:', projectData);
+    // console.log('Opening project with ProjectData:', projectData);
     setCurrentProjectData(projectData);
     setCurrentView("canvas");
   };

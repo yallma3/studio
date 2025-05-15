@@ -39,7 +39,6 @@ export interface LLMOption {
   name: string;
   provider: string;
   tokenLimit: number;
-  capabilities: string[];
 }
 
 export interface ProjectData {

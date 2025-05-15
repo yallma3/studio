@@ -18,57 +18,49 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
       id: "gpt-4",
       name: "GPT-4",
       provider: "OpenAI",
-      tokenLimit: 8192,
-      capabilities: ["Advanced reasoning", "Code generation", "Complex instructions"]
+      tokenLimit: 8192
     },
     {
       id: "gpt-3.5-turbo",
       name: "GPT-3.5 Turbo",
       provider: "OpenAI",
-      tokenLimit: 4096,
-      capabilities: ["Fast responses", "General knowledge", "Basic reasoning"]
+      tokenLimit: 4096
     },
     {
       id: "claude-3-opus",
       name: "Claude 3 Opus",
       provider: "Anthropic",
-      tokenLimit: 200000,
-      capabilities: ["Advanced reasoning", "Long context", "Detailed analysis"]
+      tokenLimit: 200000
     },
     {
       id: "claude-3-sonnet",
       name: "Claude 3 Sonnet",
       provider: "Anthropic",
-      tokenLimit: 100000,
-      capabilities: ["Balanced performance", "Long context", "Creative writing"]
+      tokenLimit: 100000  
     },
     {
       id: "gemini-pro",
       name: "Gemini Pro",
       provider: "Google",
-      tokenLimit: 32768,
-      capabilities: ["Multimodal understanding", "Research", "Reasoning"]
+      tokenLimit: 32768
     },
     {
       id: "llama-3-70b",
       name: "Llama 3 (70B)",
       provider: "Meta",
-      tokenLimit: 8192,
-      capabilities: ["Open source", "Customizable", "General purpose"]
+      tokenLimit: 8192
     },
     {
       id: "mixtral-8x7b",
       name: "Mixtral 8x7B",
       provider: "Groq",
-      tokenLimit: 32768,
-      capabilities: ["Fast inference", "High throughput", "Balanced performance"]
+      tokenLimit: 32768
     },
     {
       id: "llama-2-70b",
       name: "Llama 2 (70B)",
       provider: "Groq",
-      tokenLimit: 4096,
-      capabilities: ["Open source", "Fast inference", "General purpose"]
+      tokenLimit: 4096
     }
   ];
   
@@ -274,17 +266,6 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
                           
                           <div className="mt-2 text-xs text-gray-400">
                             <span>Token limit: {llm.tokenLimit.toLocaleString()}</span>
-                          </div>
-                          
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {llm.capabilities.map((capability, index) => (
-                              <span 
-                                key={index} 
-                                className="text-xs bg-[#252525] text-gray-300 px-2 py-0.5 rounded"
-                              >
-                                {capability}
-                              </span>
-                            ))}
                           </div>
                         </div>
                       ))}

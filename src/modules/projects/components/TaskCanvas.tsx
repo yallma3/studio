@@ -69,7 +69,7 @@ const screenToCanvas = (
   };
 };
 
-const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete, onshowTaskDialog, projectData }) => {
+const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete, projectData }) => {
   const { t } = useTranslation();
   const [taskNodes, setTaskNodes] = useState<TaskNode[]>([]);
   const [connections, setConnections] = useState<TaskConnection[]>([]);
@@ -739,15 +739,6 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
       
       {/* Zoom Controls UI */}
       <div className="absolute bottom-5 right-5 flex flex-col gap-2 bg-[#111] p-2 rounded-md backdrop-blur-sm border border-gray-800">
-        <button 
-          className="bg-green-600/30 hover:bg-green-600/50 transition-colors duration-200 text-white p-2 rounded-md flex items-center justify-center w-10 h-10"
-          onClick={() => onshowTaskDialog && onshowTaskDialog()}
-          title="Add Task"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
         <button 
           className="bg-blue-600/30 hover:bg-blue-600/50 transition-colors duration-200 text-white p-2 rounded-md flex items-center justify-center w-10 h-10"
           onClick={zoomIn}
