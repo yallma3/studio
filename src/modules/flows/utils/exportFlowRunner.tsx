@@ -9,30 +9,33 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
  * @param connections The current connections between nodes
  * @returns Promise<void> - Saves a file using Tauri's file system API
  */
-export const exportFlowRunner = async (nodes: NodeType[], connections: Connection[]) => {
+export const exportFlowRunner = async (
+  nodes: NodeType[],
+  connections: Connection[]
+) => {
   // Create a simplified version of the flow to avoid circular references
   const flowExport = {
-    nodes: nodes.map(node => ({
+    nodes: nodes.map((node) => ({
       id: node.id,
       x: node.x,
       y: node.y,
       nodeType: node.nodeType,
       title: node.title,
-      value: node.value,
-      sockets: node.sockets.map(socket => ({
+      value: node.nodeValue,
+      sockets: node.sockets.map((socket) => ({
         id: socket.id,
         title: socket.title,
         position: socket.type,
         nodeId: socket.nodeId,
-        dataType: socket.dataType
-      }))
+        dataType: socket.dataType,
+      })),
     })),
-    connections: connections.map(conn => ({
+    connections: connections.map((conn) => ({
       fromSocket: conn.fromSocket,
-      toSocket: conn.toSocket
-    }))
+      toSocket: conn.toSocket,
+    })),
   };
-  
+
   // Generate the JavaScript code with self-executing functionality
   const jsCode = `
 // Flow Runner - Generated from NodeCanvas
@@ -309,17 +312,19 @@ if (require.main === module) {
     });
 }
   `;
-  
+
   try {
     // Use Tauri dialog to let the user choose where to save the file
     const filePath = await save({
-      defaultPath: 'flow-runner.js',
-      filters: [{
-        name: 'JavaScript',
-        extensions: ['js']
-      }]
+      defaultPath: "flow-runner.js",
+      filters: [
+        {
+          name: "JavaScript",
+          extensions: ["js"],
+        },
+      ],
     });
-    
+
     if (filePath) {
       // Use Tauri file system API to save the file
       await writeTextFile(filePath, jsCode);
@@ -333,4 +338,4 @@ if (require.main === module) {
     console.error("Failed to export flow:", error);
     throw error;
   }
-}; 
+};
