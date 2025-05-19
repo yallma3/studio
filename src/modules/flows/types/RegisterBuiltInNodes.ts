@@ -1,18 +1,16 @@
-import { nodeRegistry } from './NodeRegistry';
-import { 
-  createTextNode, 
-  createNumberNode, 
-  createChatNode, 
+import { nodeRegistry } from "./NodeRegistry";
+import {
+  createNumberNode,
+  createGroqChatNode,
   createBooleanNode,
   createImageNode,
   createAddNode,
-  createJoinNode
-} from './NodeTypes';
+  createJoinNode,
+} from "./NodeTypes";
 
 export function registerBuiltInNodes(): void {
-  nodeRegistry.registerNodeType("Text", createTextNode);
   nodeRegistry.registerNodeType("Number", createNumberNode);
-  nodeRegistry.registerNodeType("Chat", createChatNode);
+  nodeRegistry.registerNodeType("Chat", createGroqChatNode);
   nodeRegistry.registerNodeType("Boolean", createBooleanNode);
   nodeRegistry.registerNodeType("Image", createImageNode);
   nodeRegistry.registerNodeType("Add", createAddNode);

@@ -1,51 +1,22 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Settings } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
-import Tabs from "./ui/tabs";
 import ProjectsTab from "../modules/projects/components/ProjectsTab";
-import AgentsTab from "../modules/agents/components/AgentsTab";
-import FlowsTab from "../modules/flows/components/FlowsTab";
+import { ProjectData } from "../modules/projects/types/Types";
+import SettingsView from "./settings/SettingsView";
 
 interface HomeScreenProps {
-  onCreateNew: (type: "flows" | "agents" | "projects") => void;
-  onOpenFromFile: (type: "flows" | "agents" | "projects") => void;
-  onOpenFromPath: (path: string, id: string, type: "flows" | "agents" | "projects") => void;
+  onCreateNew: (type: "projects") => void;
+  onOpenFromFile: (type: "projects") => void;
+  onOpenFromPath: (path: string, id: string, type: "projects") => void;
+  onOpenProject?: (projectData: ProjectData) => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenFromFile, onOpenFromPath }) => {
-  const [activeTab, setActiveTab] = useState<string>("flows");
+const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenFromFile, onOpenFromPath, onOpenProject }) => {
   const { t } = useTranslation();
-  
-  const tabs = [
-    { id: "projects", label: t('tabs.projects', 'Projects') },
-    { id: "agents", label: t('tabs.agents', 'Agents') },
-    { id: "flows", label: t('tabs.flows', 'Flows') }
-  ];
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "projects":
-        return <ProjectsTab 
-          onCreateNew={() => onCreateNew("projects")} 
-          onOpenFromFile={() => onOpenFromFile("projects")} 
-          onOpenFromPath={(path, id) => onOpenFromPath(path, id, "projects")}
-        />;
-      case "agents":
-        return <AgentsTab 
-          onCreateNew={() => onCreateNew("agents")} 
-          onOpenFromFile={() => onOpenFromFile("agents")} 
-          onOpenFromPath={(path, id) => onOpenFromPath(path, id, "agents")} 
-        />;
-      case "flows":
-      default:
-        return <FlowsTab 
-          onCreateNew={() => onCreateNew("flows")} 
-          onOpenFromFile={() => onOpenFromFile("flows")} 
-          onOpenFromPath={(path, id) => onOpenFromPath(path, id, "flows")} 
-        />;
-    }
-  };
-
+  const [showSettings, setShowSettings] = useState(false);
+   
   return (
     <div className="min-h-screen bg-black relative overflow-hidden" dir="auto">
       {/* Header */}
@@ -54,25 +25,35 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenFromFile, on
           <div className="text-2xl md:text-3xl font-bold text-white flex items-center font-mono">
             <img src="/yaLLMa3.svg" alt={t('app.title')} className="w-32" />
           </div>
-          <LanguageSelector />
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-2 text-gray-400 hover:text-white transition-colors"
+              title={t('settings.title', 'Settings')}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            <LanguageSelector />
+          </div>
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="container mx-auto relative z-10 px-4 mt-4">
-        <Tabs 
-          activeTab={activeTab} 
-          onTabChange={setActiveTab} 
-          tabs={tabs} 
-        />
-      </div>
-
       {/* Main Content */}
       <main className="relative z-10">
-        {renderTabContent()}
+        <ProjectsTab 
+          onCreateNew={() => onCreateNew("projects")} 
+          onOpenFromFile={() => onOpenFromFile("projects")} 
+          onOpenFromPath={(path, id) => onOpenFromPath(path, id, "projects")}
+          onOpenProject={onOpenProject}
+        />
       </main>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsView onClose={() => setShowSettings(false)} />
+      )}
     </div>
   );
 };
 
-export default HomeScreen; 
+export default HomeScreen;
