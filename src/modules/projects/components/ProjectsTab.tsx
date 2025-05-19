@@ -1,16 +1,49 @@
-import React from "react";
+import React, { useState } from "react";
 import { Plus, FolderUp } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { useTranslation } from "react-i18next";
+import ProjectCreationWizard from "./ProjectCreationWizard";
+import { ProjectData } from "../types/Types";
+import { saveProjectToDefaultLocation } from "../utils/storageUtils";
 
 interface ProjectsTabProps {
   onCreateNew: () => void;
   onOpenFromFile: () => void;
   onOpenFromPath: (path: string, id: string) => void;
+  onOpenProject?: (projectData: ProjectData) => void;
 }
 
-const ProjectsTab: React.FC<ProjectsTabProps> = ({ onCreateNew, onOpenFromFile, onOpenFromPath }) => {
+
+// Main screen to create or import Projects
+const ProjectsTab: React.FC<ProjectsTabProps> = ({ onOpenFromFile, onOpenFromPath, onOpenProject }) => {
   const { t } = useTranslation();
+  const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false);
+
+  const handleOpenCreateWizard = () => {
+    setIsCreateWizardOpen(true);
+  };
+
+  const handleCloseCreateWizard = () => {
+    setIsCreateWizardOpen(false);
+  };
+
+  // Saving and Opening project after wizard completion
+  const handleCreateProject = async (projectData: ProjectData) => {
+    // console.log(`Creating new project: ${projectData.name}`);
+    // console.log('Project data:', projectData);
+    
+    try {
+      // Save the project to the default location
+      await saveProjectToDefaultLocation(projectData);
+      
+      // Open the project in ProjectCanvas if onOpenProject is provided
+      if (onOpenProject) {
+        onOpenProject(projectData);
+      }
+    } catch (error) {
+      console.error("Error saving project:", error);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 flex flex-col items-center justify-center py-8 md:py-12 relative z-10">
@@ -25,7 +58,7 @@ const ProjectsTab: React.FC<ProjectsTabProps> = ({ onCreateNew, onOpenFromFile, 
         <div className="flex flex-col md:flex-row gap-4 max-w-xl mx-auto justify-center">
           <Button
             size="lg"
-            onClick={onCreateNew}
+            onClick={handleOpenCreateWizard}
             className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium border-0 flex items-center justify-center gap-2 h-14 px-8 text-lg font-mono"
           >
             <Plus className="h-5 w-5" />
@@ -49,8 +82,15 @@ const ProjectsTab: React.FC<ProjectsTabProps> = ({ onCreateNew, onOpenFromFile, 
           {t('projects.noProjects', 'No projects yet. Create a new project to get started.')}
         </div>
       </div>
+
+      {/* Project Creation Wizard Wizard */}
+      <ProjectCreationWizard
+        open={isCreateWizardOpen}
+        onClose={handleCloseCreateWizard}
+        onCreateProject={handleCreateProject}
+      />
     </div>
   );
 };
 
-export default ProjectsTab; 
+export default ProjectsTab;
