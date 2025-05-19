@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from "react";
-import { ArrowLeft, Save, AlertCircle, CheckCircle, Users, ListTodo, Folder } from "lucide-react";
+import { ArrowLeft, Save, AlertCircle, CheckCircle, Users, ListTodo, Folder, GitBranch } from "lucide-react";
 import { saveProjectToDefaultLocation } from "../utils/storageUtils";
 import { useTranslation } from "react-i18next";
 import ProjectNameDialog from "./ProjectNameDialog.tsx";
 import { ProjectData } from "../types/Types";
-import { ProjectTab, TasksTab, AgentsTab } from "./tabs";
+import { ProjectTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
 // Toast notification component
 interface ToastProps {
@@ -45,7 +45,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, isClosing = false
   );
 };
 
-type ProjectTab = 'project' | 'tasks' | 'agents';
+type ProjectTab = 'project' | 'tasks' | 'agents' | 'aiflows';
 
 interface ProjectCanvasProps {
   projectData: ProjectData;
@@ -215,6 +215,11 @@ const ProjectCanvas: React.FC<ProjectCanvasProps> = ({ projectData: initialProje
             label={t('projects.agents', 'Agents')} 
             icon={<Users size={16} />} 
           />
+          <TabButton 
+            tab="aiflows" 
+            label={t('projects.aiFlows', 'AI Workflows')} 
+            icon={<GitBranch size={16} />} 
+          />
         </div>
         
         <div className="w-full h-full overflow-auto p-6">
@@ -222,6 +227,7 @@ const ProjectCanvas: React.FC<ProjectCanvasProps> = ({ projectData: initialProje
           {activeTab === 'project' && <ProjectTab projectData={projectData} onUpdateProject={handleUpdateProject} />}
           {activeTab === 'tasks' && <TasksTab projectData={projectData} />}
           {activeTab === 'agents' && <AgentsTab projectData={projectData} />}
+          {activeTab === 'aiflows' && <AiFlowsTab projectData={projectData} />}
         </div>
       </div>
       
