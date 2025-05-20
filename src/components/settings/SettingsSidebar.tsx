@@ -23,10 +23,8 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   ];
 
   return (
-    <div className="w-64 border-r border-gray-700 bg-gray-900 text-white h-full">
-      <div className="p-4 border-b border-gray-700">
-        <h2 className="text-xl font-semibold">{t('settings.title', 'Settings')}</h2>
-      </div>
+    <div className="w-64 border-r border-zinc-800 bg-zinc-900 text-white h-full">
+      
       <nav className="p-2">
         <ul>
           {menuItems.map((item) => {
@@ -38,8 +36,8 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                   onClick={() => onSectionChange(item.id)}
                   className={`flex items-center w-full p-3 rounded-lg transition-colors ${
                     isActive
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      ? 'bg-[#FFC72C] text-black'
+                      : 'text-gray-300 hover:bg-zinc-800 hover:text-white'
                   }`}
                 >
                   <Icon className="w-5 h-5 mr-3" />

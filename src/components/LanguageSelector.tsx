@@ -15,17 +15,17 @@ const LanguageSelector: React.FC = () => {
   };
 
   return (
-    <div className="language-selector">
-      <div className="flex items-center space-x-2 rtl:space-x-reverse">
+    <div className="language-selector ">
+      <div className="flex items-center justify-center  rtl:space-x-reverse border border-zinc-800 rounded-md">
         <button 
           onClick={() => changeLanguage('en')} 
-          className={`text-sm px-2 py-1 rounded ${i18n.language != 'ar' ? 'bg-yellow-400 text-black' : 'text-gray-300'}`}
+          className={`text-sm px-4 py-1   ${i18n.language != 'ar' ? 'bg-zinc-800 text-white rounded-l-md' : 'text-gray-300 cursor-pointer hover:bg-zinc-700 rounded-r-md'}`}
         >
           {t('common.english')}
         </button>
         <button 
           onClick={() => changeLanguage('ar')} 
-          className={`text-sm px-2 py-1 rounded ${i18n.language === 'ar' ? 'bg-yellow-400 text-black' : 'text-gray-300'}`}
+          className={`text-sm px-4 py-1  ${i18n.language === 'ar' ? 'bg-zinc-800 text-white rounded-l-md' : 'text-gray-300 cursor-pointer hover:bg-zinc-700 rounded-r-md'}`}
         >
           {t('common.arabic')}
         </button>

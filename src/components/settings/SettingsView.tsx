@@ -60,7 +60,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div className="absolute inset-0 flex">
         <div className="relative w-full">
-          <div className="flex h-full flex-col bg-gray-900 shadow-xl">
+          <div className="flex h-full flex-col bg-zinc-950 shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-800 p-4">
               <h2 className="text-xl font-semibold text-white">
                 {t('settings.title', 'Settings')}

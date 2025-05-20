@@ -118,7 +118,7 @@ const ApiKeysSection: React.FC = () => {
         </h2>
         <button
           onClick={() => setShowNewKeyForm(true)}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center px-4 py-2 bg-[#FFC72C] text-black rounded-lg hover:bg-[#E6B328] transition-colors"
         >
           <Plus className="w-4 h-4 mr-2" />
           {t('settings.addApiKey', 'Add API Key')}
@@ -126,7 +126,7 @@ const ApiKeysSection: React.FC = () => {
       </div>
 
       {showNewKeyForm && (
-        <div className="bg-gray-800 p-4 rounded-lg mb-6">
+        <div className="bg-zinc-800 p-4 rounded-lg mb-6">
           <h3 className="text-lg font-medium text-white mb-4">
             {t('settings.addApiKey', 'Add External API Key')}
           </h3>
@@ -140,7 +140,7 @@ const ApiKeysSection: React.FC = () => {
                 id="provider"
                 value={newProvider}
                 onChange={(e) => setNewProvider(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-zinc-700 text-white rounded border border-gray-600 focus:ring-2 focus:ring-yellow-500 "
                 placeholder={t('settings.enterProvider', 'e.g., OpenAI, Anthropic, Cohere')}
               />
             </div>
@@ -153,7 +153,7 @@ const ApiKeysSection: React.FC = () => {
                 id="apiKey"
                 value={newApiKey}
                 onChange={(e) => setNewApiKey(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-zinc-700 text-white rounded border border-gray-600 focus:ring-2 focus:ring-yellow-500 "
                 placeholder={t('settings.enterApiKey', 'Enter the API key')}
               />
             </div>
@@ -167,7 +167,7 @@ const ApiKeysSection: React.FC = () => {
               <button
                 onClick={addNewApiKey}
                 disabled={!newProvider.trim() || !newApiKey.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-[#FFC72C] text-black rounded-lg hover:bg-[#E6B328] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {t('settings.addKey', 'Add Key')}
               </button>
@@ -224,7 +224,7 @@ const ApiKeysSection: React.FC = () => {
                             type="text"
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
-                            className="px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="px-2 py-1 bg-zinc-700 text-white rounded border border-gray-600 focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
                           />
                           <button onClick={saveEdit} className="text-green-400 hover:text-green-300" title={t('common.save', 'Save')}>
                             <Check className="w-4 h-4" />
@@ -265,7 +265,7 @@ const ApiKeysSection: React.FC = () => {
                         {editingKeyId !== apiKey.id && (
                           <button
                             onClick={() => startEditing(apiKey)}
-                            className="text-blue-400 hover:text-blue-300"
+                            className="text-yellow-400 hover:text-yellow-300"
                             title={t('common.edit', 'Edit')}
                           >
                             <Edit2 className="w-4 h-4" />
