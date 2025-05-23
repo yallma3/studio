@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ProjectData, Agent, LLMOption } from "../../types/Types";
+import { WorkspaceData, Agent, LLMOption } from "../../types/Types";
 import { X, Plus, Trash2, Edit } from "lucide-react";
 
 interface AgentsTabProps {
-  projectData: ProjectData;
+  workspaceData: WorkspaceData;
 }
 
-const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
+const AgentsTab: React.FC<AgentsTabProps> = ({ workspaceData: workspaceData }) => {
   const { t } = useTranslation();
 
-  const [agents, setAgents] = useState<Agent[]>(projectData.agents || []);
+  const [agents, setAgents] = useState<Agent[]>(workspaceData.agents || []);
   const [showAgentDialog, setShowAgentDialog] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
@@ -74,7 +74,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
     background: '',
     capabilities: '',
     tools: [],
-    llmId: projectData.mainLLM || '' // Default to project's main LLM
+    llmId: workspaceData.mainLLM || '' // Default to workspace's main LLM
   });
 
   // Generate a simple ID based on timestamp and random number
@@ -109,7 +109,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
         background: '',
         capabilities: '',
         tools: [],
-        llmId: projectData.mainLLM || ''
+        llmId: workspaceData.mainLLM || ''
       });
     }
 
@@ -120,8 +120,8 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
     const updatedAgents = agents.filter(agent => agent.id !== agentId);
     setAgents(updatedAgents);
 
-    // Update the project data
-    projectData.agents = updatedAgents;
+    // Update the workspace data
+    workspaceData.agents = updatedAgents;
   };
 
   const handleSaveAgent = () => {
@@ -167,8 +167,8 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
 
     setAgents(updatedAgents);
 
-    // Update the project data
-    projectData.agents = updatedAgents;
+    // Update the workspace data
+    workspaceData.agents = updatedAgents;
 
     // Close the dialog
     setShowAgentDialog(false);
@@ -178,13 +178,13 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
     <div className="space-y-6">
       <div className="bg-[#121212] rounded-md p-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white">{t('projects.agents', 'Agents')}</h2>
+          <h2 className="text-xl font-bold text-white">{t('workspaces.agents', 'Agents')}</h2>
           <button 
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
             onClick={() => handleShowAgentDialog()}
           >
             <Plus size={16} />
-            {t('projects.addAgent', 'Add Agent')}
+            {t('workspaces.addAgent', 'Add Agent')}
           </button>
         </div>
         
@@ -216,18 +216,18 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
                   <span className={`text-xs px-2 py-1 rounded-full ${agent.llmId ? 'bg-blue-900/50 text-blue-300' : 'bg-gray-800 text-gray-400'}`}>
                     {agent.llmId 
                       ? `LLM: ${availableLLMs.find(llm => llm.id === agent.llmId)?.name || agent.llmId}` 
-                      : `Using project default LLM`
+                      : `Using workspace default LLM`
                     }
                   </span>
                 </div>
                 <p className="text-gray-300 mb-3">{agent.objective}</p>
                 <div className="text-sm">
                   <div className="mb-2">
-                    <span className="text-gray-400 block">{t('projects.background', 'Background')}:</span>
+                    <span className="text-gray-400 block">{t('workspaces.background', 'Background')}:</span>
                     <span className="text-gray-300">{agent.background}</span>
                   </div>
                   <div className="mb-2">
-                    <span className="text-gray-400 block">{t('projects.capabilities', 'Capabilities')}:</span>
+                    <span className="text-gray-400 block">{t('workspaces.capabilities', 'Capabilities')}:</span>
                     <span className="text-gray-300">{agent.capabilities}</span>
                   </div>
                 </div>
@@ -236,7 +236,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
           </div>
         ) : (
           <div className="text-gray-400 py-8 text-center">
-            {t('projects.noAgents', 'No agents have been created for this project')}
+            {t('workspaces.noAgents', 'No agents have been created for this workspace')}
           </div>
         )}
       </div>
@@ -249,7 +249,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
             <div className="sticky top-0 bg-[#1d1d1d] pb-2 mb-2 border-b border-gray-800">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-white">
-                  {isEditing ? t('projects.editAgent', 'Edit Agent') : t('projects.addAgent', 'Add New Agent')}
+                  {isEditing ? t('workspaces.editAgent', 'Edit Agent') : t('workspaces.addAgent', 'Add New Agent')}
                 </h2>
                 <button 
                   className="text-gray-400 hover:text-white" 
@@ -264,77 +264,77 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t('projects.agentName', 'Agent Name')} *
+                  {t('workspaces.agentName', 'Agent Name')} *
                 </label>
                 <input
                   type="text"
                   className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={agentForm.name}
                   onChange={(e) => setAgentForm({...agentForm, name: e.target.value})}
-                  placeholder={t('projects.enterAgentName', 'Enter agent name')}
+                  placeholder={t('workspaces.enterAgentName', 'Enter agent name')}
                   autoFocus
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t('projects.role', 'Role')}
+                  {t('workspaces.role', 'Role')}
                 </label>
                 <input
                   type="text"
                   className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={agentForm.role}
                   onChange={(e) => setAgentForm({...agentForm, role: e.target.value})}
-                  placeholder={t('projects.enterRole', 'Enter agent role')}
+                  placeholder={t('workspaces.enterRole', 'Enter agent role')}
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t('projects.objective', 'Objective')}
+                  {t('workspaces.objective', 'Objective')}
                 </label>
                 <textarea
                   className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] sm:min-h-[100px]"
                   value={agentForm.objective}
                   onChange={(e) => setAgentForm({...agentForm, objective: e.target.value})}
-                  placeholder={t('projects.enterObjective', 'Enter agent objective')}
+                  placeholder={t('workspaces.enterObjective', 'Enter agent objective')}
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t('projects.background', 'Background')}
+                  {t('workspaces.background', 'Background')}
                 </label>
                 <textarea
                   className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px]"
                   value={agentForm.background}
                   onChange={(e) => setAgentForm({...agentForm, background: e.target.value})}
-                  placeholder={t('projects.enterBackground', 'Enter agent background')}
+                  placeholder={t('workspaces.enterBackground', 'Enter agent background')}
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t('projects.capabilities', 'Capabilities')}
+                  {t('workspaces.capabilities', 'Capabilities')}
                 </label>
                 <textarea
                   className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px]"
                   value={agentForm.capabilities}
                   onChange={(e) => setAgentForm({...agentForm, capabilities: e.target.value})}
-                  placeholder={t('projects.enterCapabilities', 'Enter agent capabilities')}
+                  placeholder={t('workspaces.enterCapabilities', 'Enter agent capabilities')}
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t('projects.agentLLM', 'Language Model')}
+                  {t('workspaces.agentLLM', 'Language Model')}
                 </label>
                 <select
                   className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={agentForm.llmId}
                   onChange={(e) => setAgentForm({...agentForm, llmId: e.target.value})}
                 >
-                  <option value="">{t('projects.useProjectLLM', 'Use project default')}</option>
+                  <option value="">{t('workspaces.useWorkspaceLLM', 'Use workspace default')}</option>
                   {availableLLMs.map(llm => (
                     <option key={llm.id} value={llm.id}>
                       {llm.name} ({llm.provider})
@@ -343,8 +343,8 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ projectData }) => {
                 </select>
                 <p className="text-xs text-gray-400 mt-1">
                   {agentForm.llmId 
-                    ? t('projects.customLLMSelected', 'Custom LLM selected for this agent') 
-                    : t('projects.usingProjectLLM', `Using project's main LLM: ${availableLLMs.find(llm => llm.id === projectData.mainLLM)?.name || 'None selected'}`)}
+                    ? t('workspaces.customLLMSelected', 'Custom LLM selected for this agent') 
+                    : t('workspaces.usingWorkspaceLLM', `Using workspace's main LLM: ${availableLLMs.find(llm => llm.id === workspaceData.mainLLM)?.name || 'None selected'}`)}
                 </p>
               </div>
             </div>

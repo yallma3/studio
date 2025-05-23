@@ -2,19 +2,19 @@ import React, { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { useTranslation } from "react-i18next";
 import { Plus, Trash2, ChevronRight, ChevronLeft, Check, X, Key } from "lucide-react";
-import { ProjectData, LLMOption, Agent, Task } from "../types/Types";
+import { WorkspaceData, LLMOption, Agent, Task } from "../types/Types";
 import { openUrl } from '@tauri-apps/plugin-opener'
 
-interface ProjectCreationWizardProps {
+interface WorkspaceCreationWizardProps {
   open: boolean;
   onClose: () => void;
-  onCreateProject: (projectData: ProjectData) => void;
+  onCreateWorkspace: (workspaceData: WorkspaceData) => void;
 }
 
-const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
+const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   open,
   onClose,
-  onCreateProject,
+  onCreateWorkspace,
 }) => {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
@@ -76,12 +76,12 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
   // Get unique providers from available LLMs
   const llmProviders = [...new Set(availableLLMs.map(llm => llm.provider))];
   
-  // Project data state
-  const [projectData, setProjectData] = useState<ProjectData>({
-    id: `project-${Date.now()}`,
+  // workspace data state
+  const [workspaceData, setWorkspaceData] = useState<WorkspaceData>({
+    id: `workspace-${Date.now()}`,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    // Step 1: Project Basics
+    // Step 1: workspace Basics
     name: "",
     description: "",
     
@@ -124,7 +124,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     background: "",
     capabilities: "",
     tools: [],
-    llmId: projectData.mainLLM // Default to project's main LLM
+    llmId: workspaceData.mainLLM // Default to workspace's main LLM
   });
  
   
@@ -147,12 +147,12 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     
     try {
       
-      // Call the onCreateProject callback
-      onCreateProject(projectData);
+      // Call the onCreateWorkspace callback
+      onCreateWorkspace(workspaceData);
       
       // Reset form
-      setProjectData({
-        id: `project-${Date.now()}`,
+      setWorkspaceData({
+        id: `workspace-${Date.now()}`,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         name: "",
@@ -168,13 +168,13 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
       setCurrentStep(1);
       onClose();
     } catch (error) {
-      console.error("Error saving project:", error);
+      console.error("Error saving workspace:", error);
       // You could add error handling UI here if needed
     }
   };
   
   // Step validation
-  const isStep1Valid = projectData.name.trim() !== "";
+  const isStep1Valid = workspaceData.name.trim() !== "";
   const isStep2Valid = true; // Can proceed even without tasks
   const isStep3Valid = true; // Can proceed even without agents
   const isStep4Valid = true; 
@@ -191,10 +191,10 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     }
   };
 
-  // Handlers for project data changes
-  const handleProjectDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  // Handlers for workspace data changes
+  const handleWorkspaceDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setProjectData(prev => ({
+    setWorkspaceData(prev => ({
       ...prev,
       [name]: value
     }));
@@ -202,7 +202,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
   
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
-    setProjectData(prev => ({
+    setWorkspaceData(prev => ({
       ...prev,
       [name]: checked
     }));
@@ -211,7 +211,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
  
  
 
-  // On press of add task to add task to project's task list and empty form state
+  // On press of add task to add task to workspace's task list and empty form state
   const handleAddTask = () => {
     if (newTask.name.trim()) {
       const task: Task = {
@@ -219,7 +219,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
         ...newTask
       };
       
-      setProjectData(prev => ({
+      setWorkspaceData(prev => ({
         ...prev,
         tasks: [...prev.tasks, task]
       }));
@@ -237,13 +237,13 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
   };
 
   const handleRemoveTask = (id: string) => {
-    setProjectData(prev => ({
+    setWorkspaceData(prev => ({
       ...prev,
       tasks: prev.tasks.filter(task => task.id !== id)
     }));
   };
   
-  // On press of add agent to add agent to project's agent list and empty form state
+  // On press of add agent to add agent to workspace's agent list and empty form state
   const handleAddAgent = () => {
     if (newAgent.name.trim()) {
       const agent: Agent = {
@@ -251,7 +251,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
         ...newAgent
       };
       
-      setProjectData(prev => ({
+      setWorkspaceData(prev => ({
         ...prev,
         agents: [...prev.agents, agent]
       }));
@@ -263,13 +263,13 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
         background: "",
         capabilities: "",
         tools: [],
-        llmId: projectData.mainLLM // Keep using project's main LLM as default
+        llmId: workspaceData.mainLLM // Keep using workspace's main LLM as default
       });
     }
   };
 
   const handleRemoveAgent = (id: string) => {
-    setProjectData(prev => ({
+    setWorkspaceData(prev => ({
       ...prev,
       agents: prev.agents.filter(agent => agent.id !== id)
     }));
@@ -327,10 +327,10 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
   //Top Step indicator component
   const renderStepIndicator = () => {
     const steps = [
-      { number: 1, title: t('projects.projectBasics', 'Project Setup') },
-      { number: 2, title: t('projects.createAgents', 'Agents') },
-      { number: 3, title: t('projects.defineTasks', 'Tasks') },
-      { number: 4, title: t('projects.review', 'Review & Confirm') }
+      { number: 1, title: t('workspaces.workspaceBasics', 'Workspace Setup') },
+      { number: 2, title: t('workspaces.createAgents', 'Agents') },
+      { number: 3, title: t('workspaces.defineTasks', 'Tasks') },
+      { number: 4, title: t('workspaces.review', 'Review & Confirm') }
     ];
 
     return (
@@ -371,7 +371,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     <div className={`fixed inset-0 z-50 flex flex-col bg-gray-900 ${open ? 'block' : 'hidden'}`}>
       <div className="flex justify-between items-center p-6 border-b border-gray-800">
         <h1 className="text-2xl font-bold text-white font-mono">
-          {t('projects.createNewProject', 'Create New Project')}
+          {t('workspaces.createNewWorkspace', 'Create New Workspace')}
         </h1>
         <button 
           onClick={onClose}
@@ -385,21 +385,21 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
         {renderStepIndicator()}
         
         <form onSubmit={(e) => e.preventDefault()} className="w-full mx-auto px-2 max-w-7xl">
-          {/* Step 1: Project Basics and LLM Selection */}
+          {/* Step 1: Workspace Basics and LLM Selection */}
           {currentStep === 1 && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-bold text-white mb-4 font-mono">
-                  {t('projects.projectBasics', 'Project Setup')}
+                  {t('workspaces.workspaceBasics', 'Workspace Setup')}
                 </h2>
               </div>
               
               {/* Side-by-side layout */}
               <div className="flex flex-col md:flex-row gap-6 w-full">
-                {/* Project Info Section */}
+                {/* Workspace Info Section */}
                 <div className="bg-gray-800/50 rounded-lg p-5 border border-gray-700 flex-1">
                   <h3 className="text-lg font-medium text-white mb-4 font-mono">
-                    {t('projects.projectInfo', 'Project Information')}
+                    {t('workspaces.workspaceInfo', 'Workspace Information')}
                   </h3>
                   
                   <div className="space-y-4">
@@ -407,29 +407,29 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                     
                     <div className="flex flex-col gap-2">
                       <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('projects.projectDescription', 'Project Description')}
+                        {t('workspaces.workspaceDescription', 'Workspace Description')}
                       </label>
                       <textarea
                         id="description"
                         name="description"
-                        value={projectData.description}
-                        onChange={handleProjectDataChange}
+                        value={workspaceData.description}
+                        onChange={handleWorkspaceDataChange}
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-32"
-                        placeholder={t('projects.enterProjectDescription', 'Describe the purpose of this project...')}
+                        placeholder={t('workspaces.enterWorkspaceDescription', 'Describe the purpose of this workspace...')}
                       />
                     </div>
                     <div className="flex flex-col gap-2">
                       <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('projects.projectName', 'Project Name')} *
+                        {t('workspaces.workspaceName', 'Workspace Name')} *
                       </label>
                       <input
                         type="text"
                         id="name"
                         name="name"
-                        value={projectData.name}
-                        onChange={handleProjectDataChange}
+                        value={workspaceData.name}
+                        onChange={handleWorkspaceDataChange}
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                        placeholder={t('projects.enterProjectName', 'Enter project name')}
+                        placeholder={t('workspaces.enterWorkspaceName', 'Enter workspace name')}
                         required
                       />
                     </div>
@@ -439,16 +439,16 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                 {/* LLM Selection Section */}
                 <div className="bg-gray-800/50 rounded-lg p-5 border border-gray-700 flex-1">
                   <h3 className="text-lg font-medium text-white mb-4 font-mono">
-                    {t('projects.selectLLM', 'Select Main LLM')}
+                    {t('workspaces.selectLLM', 'Select Main LLM')}
                   </h3>
                   <p className="text-gray-400 mb-6">
-                    {t('projects.selectLLMDescription', 'Choose the primary language model for your project')}
+                    {t('workspaces.selectLLMDescription', 'Choose the primary language model for your workspace')}
                   </p>
                   
                   {/* Provider Selection */}
                   <div className="mb-6">
                     <label htmlFor="provider" className="block text-sm font-medium text-gray-300 mb-2 font-mono">
-                      {t('projects.selectProvider', 'Select Provider')}
+                      {t('workspaces.selectProvider', 'Select Provider')}
                     </label>
                     <select
                       id="provider"
@@ -456,7 +456,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                       onChange={(e) => setSelectedProvider(e.target.value)}
                       className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                     >
-                      <option disabled value="">{t('projects.selectProviderPlaceholder', 'Select a provider...')}</option>
+                      <option disabled value="">{t('workspaces.selectProviderPlaceholder', 'Select a provider...')}</option>
                       {llmProviders.map(provider => (
                         <option key={provider} value={provider}>
                           {provider}
@@ -469,7 +469,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                   {selectedProvider && (
                     <div className="mb-6">
                       <label className="block text-sm font-medium text-gray-300 mb-2 font-mono">
-                        {t('projects.selectModel', 'Select Model')}
+                        {t('workspaces.selectModel', 'Select Model')}
                       </label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {availableLLMs
@@ -478,17 +478,17 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                             <div 
                               key={llm.id}
                               className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                                projectData.mainLLM === llm.id
+                                workspaceData.mainLLM === llm.id
                                   ? 'border-yellow-400 bg-gray-800'
                                   : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
                               }`}
-                              onClick={() => setProjectData(prev => ({ ...prev, mainLLM: llm.id }))}
+                              onClick={() => setWorkspaceData(prev => ({ ...prev, mainLLM: llm.id }))}
                             >
                               <div className="flex justify-between items-start">
                                 <div>
                                   <h3 className="font-medium text-white">{llm.name}</h3>
                                 </div>
-                                {projectData.mainLLM === llm.id && (
+                                {workspaceData.mainLLM === llm.id && (
                                   <div className="bg-yellow-400 rounded-full p-1">
                                     <Check className="h-4 w-4 text-black" />
                                   </div>
@@ -505,49 +505,49 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                   )}
                   
                   {/* API Key Section - Only shown when a model is selected */}
-                  {projectData.mainLLM && (
+                  {workspaceData.mainLLM && (
                     <div className="mt-8 space-y-4">
                       <div className="flex items-center">
                         <input
                           type="checkbox"
                           id="useSavedCredentials"
                           name="useSavedCredentials"
-                          checked={projectData.useSavedCredentials}
+                          checked={workspaceData.useSavedCredentials}
                           onChange={handleCheckboxChange}
                           className="mr-2 h-4 w-4 rounded border-gray-700 bg-gray-800 text-yellow-400 focus:ring-yellow-500"
                         />
                         <label htmlFor="useSavedCredentials" className="text-sm text-gray-300">
-                          {t('projects.useSavedCredentials', 'Use saved credentials')}
+                          {t('workspaces.useSavedCredentials', 'Use saved credentials')}
                         </label>
                       </div>
                       
-                      {!projectData.useSavedCredentials && (
+                      {!workspaceData.useSavedCredentials && (
                         <div>
                           <label htmlFor="apiKey" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                            {t('projects.apiKey', 'API Key')} 
+                            {t('workspaces.apiKey', 'API Key')} 
                           </label>
                           <div className="relative">
                             <input
                               type="password"
                               id="apiKey"
                               name="apiKey"
-                              value={projectData.apiKey}
-                              onChange={handleProjectDataChange}
+                              value={workspaceData.apiKey}
+                              onChange={handleWorkspaceDataChange}
                               className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                              placeholder={t('projects.enterApiKey', 'Enter API key')}
+                              placeholder={t('workspaces.enterApiKey', 'Enter API key')}
                             />
                             <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                           </div>
                           <div className="flex items-center mt-1">
                             <p className="text-xs text-gray-400">
-                              {t('projects.apiKeyInfo', 'Your API key is stored locally and never shared')}
+                              {t('workspaces.apiKeyInfo', 'Your API key is stored locally and never shared')}
                             </p>
                             {selectedProvider === "Groq" && (
                               <button
                                 onClick={() => openUrl("https://console.groq.com/keys")}
                                 className="text-xs text-yellow-400 hover:text-yellow-300 ml-2 underline"
                               >
-                                {t('projects.getGroqApiKey', 'Get Groq API Key')}
+                                {t('workspaces.getGroqApiKey', 'Get Groq API Key')}
                               </button>
                             )}
                           </div>
@@ -565,10 +565,10 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
             <div className="space-y-6 ">
               <div>
                 <h2 className="text-xl font-bold text-white font-mono">
-                  {t('projects.createAgents', 'Create Agents')}
+                  {t('workspaces.createAgents', 'Create Agents')}
                 </h2>
                 <p className="text-gray-400 mb-6">
-                  {t('projects.createAgentsDescription', 'An agent has a role and can perform tasks based on its capabilities.')}
+                  {t('workspaces.createAgentsDescription', 'An agent has a role and can perform tasks based on its capabilities.')}
                 </p>
               </div>
               
@@ -577,14 +577,14 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                 {/* Add Agent Form */}
                 <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-3/5">
                   <h3 className="text-lg font-medium text-white mb-4 font-mono">
-                    {t('projects.addAgent', `Add Agent (${projectData.agents.length + 1})`)}
+                    {t('workspaces.addAgent', `Add Agent (${workspaceData.agents.length + 1})`)}
                   </h3>
                   
                   <div className="space-y-4 mb-4">
                   <div className="flex gap-2">
                     <div className="w-1/2 flex flex-col gap-1">
                       <label htmlFor="agentName" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('projects.agentName', 'Name')}
+                        {t('workspaces.agentName', 'Name')}
                       </label>
                       <input
                         type="text"
@@ -592,13 +592,13 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                         value={newAgent.name}
                         onChange={(e) => setNewAgent(prev => ({ ...prev, name: e.target.value }))}
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                        placeholder={t('projects.enterAgentName', 'Enter agent name')}
+                        placeholder={t('workspaces.enterAgentName', 'Enter agent name')}
                       />
                     </div>
                     
                     <div className="w-1/2 flex flex-col gap-1">
                       <label htmlFor="agentRole" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('projects.agentRole', 'Role')}
+                        {t('workspaces.agentRole', 'Role')}
                       </label>
                       <input
                         type="text"
@@ -606,14 +606,14 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                         value={newAgent.role}
                         onChange={(e) => setNewAgent(prev => ({ ...prev, role: e.target.value }))}
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                        placeholder={t('projects.enterAgentRole', 'Enter agent role')}
+                        placeholder={t('workspaces.enterAgentRole', 'Enter agent role')}
                       />
                     </div>
                     </div>
                     
                     <div className="flex flex-col gap-1">
                       <label htmlFor="agentLLM" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('projects.agentLLM', 'Language Model')}
+                        {t('workspaces.agentLLM', 'Language Model')}
                       </label>
                       <select
                         id="agentLLM"
@@ -621,7 +621,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                         onChange={(e) => setNewAgent(prev => ({ ...prev, llmId: e.target.value }))}
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                       >
-                        <option value="">{t('projects.useProjectLLM', 'Use project default')}</option>
+                        <option value="">{t('workspaces.useWorkspaceLLM', 'Use workspace default')}</option>
                         {availableLLMs.map(llm => (
                           <option key={llm.id} value={llm.id}>
                             {llm.name} ({llm.provider})
@@ -630,33 +630,33 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                       </select>
                       <p className="text-xs text-gray-400 mt-1">
                         {newAgent.llmId 
-                          ? t('projects.customLLMSelected', 'Custom LLM selected for this agent') 
-                          : t('projects.usingProjectLLM', `Using project's main LLM: ${availableLLMs.find(llm => llm.id === projectData.mainLLM)?.name || 'None selected'}`)}
+                          ? t('workspaces.customLLMSelected', 'Custom LLM selected for this agent') 
+                          : t('workspaces.usingWorkspaceLLM', `Using workspace's main LLM: ${availableLLMs.find(llm => llm.id === workspaceData.mainLLM)?.name || 'None selected'}`)}
                       </p>
                     </div>
                     
                     <div className="flex flex-col gap-1">
                       <label htmlFor="agentObjective" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('projects.agentDescription', 'Objective')}
+                        {t('workspaces.agentDescription', 'Objective')}
                       </label>
                       <textarea
                         id="agentObjective"
                         value={newAgent.objective}
                         onChange={(e) => setNewAgent(prev => ({ ...prev, objective: e.target.value }))}
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
-                        placeholder={t('projects.enterAgentObjective', 'Enter agent objective')}
+                        placeholder={t('workspaces.enterAgentObjective', 'Enter agent objective')}
                       />
                     </div>
                     <div className="flex flex-col gap-1">
                       <label htmlFor="agentBackground" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('projects.agentDescription', 'Background')}
+                        {t('workspaces.agentDescription', 'Background')}
                       </label>
                       <textarea
                         id="agentBackground"
                         value={newAgent.background}
                         onChange={(e) => setNewAgent(prev => ({ ...prev, background: e.target.value }))}
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
-                        placeholder={t('projects.enterAgentBackground', 'Enter agent background')}
+                        placeholder={t('workspaces.enterAgentBackground', 'Enter agent background')}
                       />
                     </div>
                     
@@ -664,7 +664,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2 font-mono">
-                        {t('projects.agentTools', 'Agent Tools')}
+                        {t('workspaces.agentTools', 'Agent Tools')}
                       </label>
                       
                       <div className="flex space-x-2 mb-4">
@@ -751,19 +751,19 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                     disabled={!newAgent.name.trim()}
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    {t('projects.addAgent', 'Add Agent')}
+                    {t('workspaces.addAgent', 'Add Agent')}
                   </Button>
                 </div>
                 
                 {/* Agent List */}
                 <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-2/5">
                   <h3 className="text-lg font-medium text-white mb-4 font-mono">
-                    {t('projects.agentList', 'Agent List')}
+                    {t('workspaces.agentList', 'Agent List')}
                   </h3>
                   
-                  {projectData.agents.length > 0 ? (
+                  {workspaceData.agents.length > 0 ? (
                     <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                      {projectData.agents.map((agent) => (
+                      {workspaceData.agents.map((agent) => (
                         <div key={agent.id} className="bg-gray-800 rounded-lg p-4 flex justify-between items-start">
                           <div>
                             <div className="flex items-center">
@@ -778,7 +778,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                             {agent.capabilities && (
                               <p className="text-sm text-gray-400 mt-1">{agent.capabilities}</p>
                             )}
-                            {agent.llmId && agent.llmId !== projectData.mainLLM && (
+                            {agent.llmId && agent.llmId !== workspaceData.mainLLM && (
                               <div className="mt-1 flex items-center">
                                 <span className="text-xs text-yellow-400">
                                   LLM: {availableLLMs.find(llm => llm.id === agent.llmId)?.name || agent.llmId}
@@ -830,7 +830,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                     </div>
                   ) : (
                     <div className="text-center text-gray-400 py-8 bg-gray-800/30 rounded-lg border border-gray-700">
-                      {t('projects.noAgents', 'No agents added yet')}
+                      {t('workspaces.noAgents', 'No agents added yet')}
                     </div>
                   )}
                 </div>
@@ -843,10 +843,10 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
             <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-bold text-white mb-4 font-mono">
-                  {t('projects.defineTasks', 'Define Tasks')}
+                  {t('workspaces.defineTasks', 'Define Tasks')}
                 </h2>
                 <p className="text-gray-400 mb-6">
-                  {t('projects.defineTasksDescription', 'Add high-level tasks for your project')}
+                  {t('workspaces.defineTasksDescription', 'Add high-level tasks for your workspace')}
                 </p>
               </div>
               
@@ -855,13 +855,13 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                 {/* Add Task Form */}
                 <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-3/5 flex flex-col h-full">
                   <h3 className="text-lg font-medium text-white mb-4 font-mono">
-                    {t('projects.addTask', `Add Task (${projectData.tasks.length + 1})`)}
+                    {t('workspaces.addTask', `Add Task (${workspaceData.tasks.length + 1})`)}
                   </h3>
                   
                   <div className="space-y-4 mb-4">
                     <div>
                       <label htmlFor="taskName" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('projects.taskName', 'Task Name')}
+                        {t('workspaces.taskName', 'Task Name')}
                       </label>
                       <input
                         type="text"
@@ -869,25 +869,25 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                         value={newTask.name}
                         onChange={(e) => setNewTask(prev => ({ ...prev, name: e.target.value }))}
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                        placeholder={t('projects.enterTaskName', 'Enter task name')}
+                        placeholder={t('workspaces.enterTaskName', 'Enter task name')}
                       />
                     </div>
                     
                     <div>
                       <label htmlFor="taskDescription" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('projects.taskDescription', 'Task Description')}
+                        {t('workspaces.taskDescription', 'Task Description')}
                       </label>
                       <textarea
                         id="taskDescription"
                         value={newTask.description}
                         onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
-                        placeholder={t('projects.enterTaskDescription', 'Enter task description')}
+                        placeholder={t('workspaces.enterTaskDescription', 'Enter task description')}
                       />
                     </div>
                     <div>
                       <label htmlFor="taskExpectedOutput" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('projects.taskExpectedOutput', 'Task Expected Output')}
+                        {t('workspaces.taskExpectedOutput', 'Task Expected Output')}
                       </label>
                       <input
                         type="text"
@@ -895,16 +895,16 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                         value={newTask.expectedOutput}
                         onChange={(e) => setNewTask(prev => ({ ...prev, expectedOutput: e.target.value }))}
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                        placeholder={t('projects.enterTaskExpectedOutput', 'Enter task expected output')}
+                        placeholder={t('workspaces.enterTaskExpectedOutput', 'Enter task expected output')}
                       />
                     </div>
                     <div className="mb-4 border-t border-gray-700 pt-4">
                       <label className="block text-sm font-medium text-gray-300 mb-3 font-mono">
-                        {t('projects.taskExecutionType', 'Task Execution Type')}
+                        {t('workspaces.taskExecutionType', 'Task Execution Type')}
                       </label>
                       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
                         <p className="text-xs text-gray-400 mb-3">
-                          {t('projects.taskTypeDescription', 'Choose how this task will be executed. A task can either be assigned to an agent or execute a workflow, but not both.')}
+                          {t('workspaces.taskTypeDescription', 'Choose how this task will be executed. A task can either be assigned to an agent or execute a workflow, but not both.')}
                         </p>
                         <div className="flex flex-col gap-4">
                           {/* Radio button for Agent option */}
@@ -938,10 +938,10 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                             </div>
                             <div className="ml-3 flex-1">
                               <label htmlFor="taskTypeAgent" className="font-medium text-white cursor-pointer">
-                                {t('projects.assignToAgent', 'Assign to Agent')}
+                                {t('workspaces.assignToAgent', 'Assign to Agent')}
                               </label>
                               <p className="text-xs text-gray-400 mt-1">
-                                {t('projects.assignToAgentDescription', 'The task will be handled by a single agent with specific capabilities')}
+                                {t('workspaces.assignToAgentDescription', 'The task will be handled by a single agent with specific capabilities')}
                               </p>
                               
                               {taskType === 'agent' && (
@@ -955,15 +955,15 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                                     }))}
                                     className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                   >
-                                    <option value="">{t('projects.autoAssignAgent', 'Auto-assign best fit')}</option>
-                                    {projectData.agents.map(agent => (
+                                    <option value="">{t('workspaces.autoAssignAgent', 'Auto-assign best fit')}</option>
+                                    {workspaceData.agents.map(agent => (
                                       <option key={agent.id} value={agent.id}>
                                         {agent.name}
                                       </option>
                                     ))}
                                   </select>
                                   <p className="text-xs text-gray-400 mt-1">
-                                    {t('projects.agentAssignmentInfo', 'Leave empty to auto-assign the best agent for this task')}
+                                    {t('workspaces.agentAssignmentInfo', 'Leave empty to auto-assign the best agent for this task')}
                                   </p>
                                 </div>
                               )}
@@ -1001,10 +1001,10 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                             </div>
                             <div className="ml-3 flex-1">
                               <label htmlFor="taskTypeWorkflow" className="font-medium text-white cursor-pointer">
-                                {t('projects.executeWorkflow', 'Execute a Workflow')}
+                                {t('workspaces.executeWorkflow', 'Execute a Workflow')}
                               </label>
                               <p className="text-xs text-gray-400 mt-1">
-                                {t('projects.executeWorkflowDescription', 'The task will execute a predefined workflow with multiple steps')}
+                                {t('workspaces.executeWorkflowDescription', 'The task will execute a predefined workflow with multiple steps')}
                               </p>
                               
                               {taskType === 'workflow' && (
@@ -1018,7 +1018,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                                     }))}
                                     className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                   >
-                                    <option value="" disabled>{t('projects.selectWorkflow', 'Select a workflow...')}</option>
+                                    <option value="" disabled>{t('workspaces.selectWorkflow', 'Select a workflow...')}</option>
                                     {/* Example workflows - replace with actual workflows data */}
                                     <option value="workflow1">Data Processing Workflow</option>
                                     <option value="workflow2">Content Generation Workflow</option>
@@ -1039,19 +1039,19 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                     disabled={!newTask.name.trim()}
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    {t('projects.addTask', 'Add Task')}
+                    {t('workspaces.addTask', 'Add Task')}
                   </Button>
                 </div>
                 
                 {/* Task List */}
                 <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-2/5 flex flex-col h-full">
                   <h3 className="text-lg font-medium text-white mb-4 font-mono">
-                    {t('projects.taskList', 'Task List')}
+                    {t('workspaces.taskList', 'Task List')}
                   </h3>
                   
-                  {projectData.tasks.length > 0 ? (
+                  {workspaceData.tasks.length > 0 ? (
                     <div className="space-y-3 flex-grow overflow-y-auto">
-                      {projectData.tasks.map((task) => (
+                      {workspaceData.tasks.map((task) => (
                         <div key={task.id} className="bg-gray-800 rounded-lg p-4 flex justify-between items-start w-full">
                           <div className="w-full">
                             <div className="flex items-center justify-between">
@@ -1073,7 +1073,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                                     <span className="font-medium">Agent</span>
                                     {task.assignedAgent ? (
                                       <span className="text-[10px] bg-green-600/60 px-1.5 py-0.5 rounded">
-                                        {projectData.agents.find(a => a.id === task.assignedAgent)?.name || 'Assigned'}
+                                        {workspaceData.agents.find(a => a.id === task.assignedAgent)?.name || 'Assigned'}
                                       </span>
                                     ) : (
                                       <span className="text-[10px] bg-green-600/60 px-1.5 py-0.5 rounded">
@@ -1111,7 +1111,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                                 <span className="text-xs font-medium text-gray-400">Execution:</span>
                                 <p className="text-sm text-gray-300">
                                   {task.assignedAgent 
-                                    ? `Assigned to ${projectData.agents.find(a => a.id === task.assignedAgent)?.name || 'agent'}` 
+                                    ? `Assigned to ${workspaceData.agents.find(a => a.id === task.assignedAgent)?.name || 'agent'}` 
                                     : 'Will be automatically assigned to the best agent'}
                                 </p>
                               </div>
@@ -1128,7 +1128,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                     </div>
                   ) : (
                     <div className="text-center text-gray-400 py-8 bg-gray-800/30 rounded-lg border border-gray-700 flex-grow flex items-center justify-center">
-                      {t('projects.noTasks', 'No tasks added yet')}
+                      {t('workspaces.noTasks', 'No tasks added yet')}
                     </div>
                   )}
                 </div>
@@ -1143,19 +1143,19 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
             <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-bold text-white mb-4 font-mono">
-                  {t('projects.reviewAndConfirm', 'Review & Confirm')}
+                  {t('workspaces.reviewAndConfirm', 'Review & Confirm')}
                 </h2>
                 <p className="text-gray-400 mb-6">
-                  {t('projects.reviewDescription', 'Review your project configuration before creating')}
+                  {t('workspaces.reviewDescription', 'Review your workspace configuration before creating')}
                 </p>
               </div>
               
               <div className="space-y-6">
-                {/* Project Basics */}
+                {/* Workspace Basics */}
                 <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-lg font-medium text-white font-mono">
-                      {t('projects.projectBasics', 'Project Setup')}
+                      {t('workspaces.workspaceBasics', 'Workspace Setup')}
                     </h3>
                     <button
                       onClick={() => handleGoToStep(1)}
@@ -1167,27 +1167,27 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                   
                   <div className="space-y-2">
                     <div className="flex">
-                      <span className="text-gray-400 w-32">{t('projects.projectName', 'Project Name')}:</span>
-                      <span className="text-white font-medium">{projectData.name}</span>
+                      <span className="text-gray-400 w-32">{t('workspaces.workspaceName', 'Workspace Name')}:</span>
+                      <span className="text-white font-medium">{workspaceData.name}</span>
                     </div>
-                    {projectData.description && (
+                    {workspaceData.description && (
                       <div className="flex">
-                        <span className="text-gray-400 w-32">{t('projects.description', 'Description')}:</span>
-                        <span className="text-white">{projectData.description}</span>
+                        <span className="text-gray-400 w-32">{t('workspaces.description', 'Description')}:</span>
+                        <span className="text-white">{workspaceData.description}</span>
                       </div>
                     )}
                     <div className="flex">
-                      <span className="text-gray-400 w-32">{t('projects.mainLLM', 'Main LLM')}:</span>
+                      <span className="text-gray-400 w-32">{t('workspaces.mainLLM', 'Main LLM')}:</span>
                       <span className="text-white font-medium">
-                        {availableLLMs.find(llm => llm.id === projectData.mainLLM)?.name || projectData.mainLLM}
+                        {availableLLMs.find(llm => llm.id === workspaceData.mainLLM)?.name || workspaceData.mainLLM}
                       </span>
                     </div>
                     <div className="flex">
-                      <span className="text-gray-400 w-32">{t('projects.credentials', 'Credentials')}:</span>
+                      <span className="text-gray-400 w-32">{t('workspaces.credentials', 'Credentials')}:</span>
                       <span className="text-white">
-                        {projectData.useSavedCredentials 
-                          ? t('projects.usingSavedCredentials', 'Using saved credentials')
-                          : t('projects.usingCustomApiKey', 'Using custom API key')
+                        {workspaceData.useSavedCredentials 
+                          ? t('workspaces.usingSavedCredentials', 'Using saved credentials')
+                          : t('workspaces.usingCustomApiKey', 'Using custom API key')
                         }
                       </span>
                     </div>
@@ -1198,7 +1198,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                 <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-lg font-medium text-white font-mono">
-                      {t('projects.agents', 'Agents')}
+                      {t('workspaces.agents', 'Agents')}
                     </h3>
                     <button
                       onClick={() => handleGoToStep(2)}
@@ -1208,9 +1208,9 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                     </button>
                   </div>
                   
-                  {projectData.agents.length > 0 ? (
+                  {workspaceData.agents.length > 0 ? (
                     <div className="space-y-2">
-                      {projectData.agents.map((agent) => (
+                      {workspaceData.agents.map((agent) => (
                         <div key={agent.id} className="bg-gray-800 rounded-md p-2">
                           <div className="font-medium text-white">{agent.name}</div>
                           <div className="text-sm text-yellow-400">{agent.role}</div>
@@ -1219,7 +1219,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                     </div>
                   ) : (
                     <div className="text-gray-400">
-                      {t('projects.noAgents', 'No agents added yet')}
+                      {t('workspaces.noAgents', 'No agents added yet')}
                     </div>
                   )}
                 </div>
@@ -1228,7 +1228,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                 <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-lg font-medium text-white font-mono">
-                      {t('projects.tasks', 'Tasks')}
+                      {t('workspaces.tasks', 'Tasks')}
                     </h3>
                     <button
                       onClick={() => handleGoToStep(3)}
@@ -1238,9 +1238,9 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                     </button>
                   </div>
                   
-                  {projectData.tasks.length > 0 ? (
+                  {workspaceData.tasks.length > 0 ? (
                     <div className="space-y-2">
-                      {projectData.tasks.map((task) => (
+                      {workspaceData.tasks.map((task) => (
                         <div key={task.id} className="bg-gray-800 rounded-md p-3">
                           <div className="flex justify-between items-start">
                             <div className="font-medium text-white">{task.name}</div>
@@ -1252,7 +1252,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                               )}
                               {task.assignedAgent ? (
                                 <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
-                                  {projectData.agents.find(a => a.id === task.assignedAgent)?.name || 'Assigned'}
+                                  {workspaceData.agents.find(a => a.id === task.assignedAgent)?.name || 'Assigned'}
                                 </span>
                               ) : (
                                 <span className="text-xs bg-yellow-400 text-black px-2 py-0.5 rounded-full">
@@ -1275,7 +1275,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                     </div>
                   ) : (
                     <div className="text-gray-400">
-                      {t('projects.noTasks', 'No tasks added yet')}
+                      {t('workspaces.noTasks', 'No tasks added yet')}
                     </div>
                   )}
                 </div>
@@ -1284,7 +1284,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                 
                 <div className="bg-green-900/20 rounded-lg p-4 border border-green-800">
                   <p className="text-green-400 text-center">
-                    {t('projects.readyToCreate', 'Your project is ready to be created. Click "Create Project" to continue.')}
+                    {t('workspaces.readyToCreate', 'Your workspace is ready to be created. Click "Create Workspace" to continue.')}
                   </p>
                 </div>
               </div>
@@ -1346,4 +1346,4 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
   );
 };
 
-export default ProjectCreationWizard;
+export default WorkspaceCreationWizard;

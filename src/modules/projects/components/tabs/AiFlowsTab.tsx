@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ProjectData } from "../../types/Types";
+import { WorkspaceData } from "../../types/Types";
 import NodeCanvas from "../../../flows/components/NodeCanvas";
 import { CanvasState } from "../../../flows/utils/storageUtils";
 import { Plus, ArrowRight, Trash2 } from "lucide-react";
 
 interface AiFlowsTabProps {
-  projectData: ProjectData;
+  workspaceData: WorkspaceData;
 }
 
 interface Workflow {
@@ -18,13 +18,13 @@ interface Workflow {
   graph?: CanvasState; // Canvas state for the workflow
 }
 
-const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ projectData }) => {
+const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ workspaceData: workspaceData }) => {
   const { t } = useTranslation();
   // const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
   const [showCanvas, setShowCanvas] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-  // Add sample workflows if none exist in the project data
+  // Add sample workflows if none exist in the workspace data
   const [sampleWorkflows] = useState<Workflow[]>([
     { 
       id: 'workflow-1', 
@@ -49,10 +49,10 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ projectData }) => {
     }
   ]);
 
-  // Combine project workflows with sample workflows if needed
+  // Combine workspace workflows with sample workflows if needed
   const [workflows, setWorkflows] = useState(
-    projectData.workflows && projectData.workflows.length > 0 
-      ? projectData.workflows 
+    workspaceData.workflows && workspaceData.workflows.length > 0 
+      ? workspaceData.workflows 
       : sampleWorkflows
   );
 
@@ -83,9 +83,9 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ projectData }) => {
     // Update state
     setWorkflows(updatedWorkflows);
     
-    // Update project data
-    if (projectData.workflows) {
-      projectData.workflows = updatedWorkflows;
+    // Update workspace data
+    if (workspaceData.workflows) {
+      workspaceData.workflows = updatedWorkflows;
     }
     
     // Close confirmation dialog
@@ -122,14 +122,14 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ projectData }) => {
       <div className="bg-[#121212] rounded-md p-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-white">
-            {t('projects.aiFlows', 'AI Workflows')}
+            {t('workspaces.aiFlows', 'AI Workflows')}
           </h2>
           <button 
             onClick={handleCreateNewFlow} 
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
           >
             <Plus size={16} />
-            {t('projects.createFlow', 'Create New Flow')}
+            {t('workspaces.createFlow', 'Create New Flow')}
           </button>
         </div>
         
@@ -143,7 +143,7 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ projectData }) => {
                     <p className="text-gray-400 text-sm mt-1">{workflow.description}</p>
                     {workflow.updatedAt && (
                       <p className="text-gray-500 text-xs mt-2">
-                        {t('projects.lastUpdated', 'Last updated')}: {formatDate(workflow.updatedAt)}
+                        {t('workspaces.lastUpdated', 'Last updated')}: {formatDate(workflow.updatedAt)}
                       </p>
                     )}
                   </div>
@@ -151,7 +151,7 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ projectData }) => {
                     <button 
                       onClick={() => handleDeleteFlow(workflow.id)} 
                       className="text-red-400 hover:text-red-300 flex items-center gap-1 text-sm"
-                      title={t('projects.deleteFlow', 'Delete Flow')}
+                      title={t('workspaces.deleteFlow', 'Delete Flow')}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -159,7 +159,7 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ projectData }) => {
                       onClick={() => handleEditFlow(workflow.id)} 
                       className="text-blue-400 hover:text-blue-300 flex items-center gap-1 text-sm"
                     >
-                      {t('projects.editFlow', 'Edit Flow')}
+                      {t('workspaces.editFlow', 'Edit Flow')}
                       <ArrowRight size={14} />
                     </button>
                   </div>
@@ -170,14 +170,14 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ projectData }) => {
         ) : (
           <div className="bg-[#1d1d1d] rounded border border-gray-800 p-6 text-center">
             <p className="text-gray-400 mb-4">
-              {t('projects.noFlows', 'No AI workflows have been created yet')}
+              {t('workspaces.noFlows', 'No AI workflows have been created yet')}
             </p>
             <button 
               onClick={handleCreateNewFlow} 
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm inline-flex items-center gap-2"
             >
               <Plus size={16} />
-              {t('projects.createFirstFlow', 'Create Your First Workflow')}
+              {t('workspaces.createFirstFlow', 'Create Your First Workflow')}
             </button>
           </div>
         )}
@@ -188,10 +188,10 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ projectData }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-[#1d1d1d] rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border border-gray-800">
             <h3 className="text-xl font-medium text-white mb-4">
-              {t('projects.confirmDelete', 'Confirm Delete')}
+              {t('workspaces.confirmDelete', 'Confirm Delete')}
             </h3>
             <p className="text-gray-300 mb-6">
-              {t('projects.deleteFlowConfirmation', 'Are you sure you want to delete this workflow? This action cannot be undone.')}
+              {t('workspaces.deleteFlowConfirmation', 'Are you sure you want to delete this workflow? This action cannot be undone.')}
             </p>
             <div className="flex justify-end gap-3">
               <button

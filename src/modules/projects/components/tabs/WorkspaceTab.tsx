@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ProjectData, LLMOption } from "../../types/Types";
+import { WorkspaceData, LLMOption } from "../../types/Types";
 import { Edit2, Save, X, Check, Key } from "lucide-react";
 import { openUrl } from '@tauri-apps/plugin-opener';
 
-interface ProjectTabProps {
-  projectData: ProjectData;
-  onUpdateProject?: (updatedData: Partial<ProjectData>) => Promise<void>;
+interface WorkspaceTabProps {
+  workspaceData: WorkspaceData;
+  onUpdateWorkspace?: (updatedData: Partial<WorkspaceData>) => Promise<void>;
 }
 
-const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject }) => {
+const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData: workspaceData, onUpdateWorkspace: onUpdateWorkspace }) => {
   const { t } = useTranslation();
   
   // Available LLM options
@@ -79,17 +79,17 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
   
   // State for form values
   const [formValues, setFormValues] = useState({
-    name: projectData.name || '',
-    description: projectData.description || '',
-    mainLLM: projectData.mainLLM || '',
-    apiKey: projectData.apiKey || '',
-    useSavedCredentials: projectData.useSavedCredentials || false
+    name: workspaceData.name || '',
+    description: workspaceData.description || '',
+    mainLLM: workspaceData.mainLLM || '',
+    apiKey: workspaceData.apiKey || '',
+    useSavedCredentials: workspaceData.useSavedCredentials || false
   });
   
   // State for selected provider
   const [selectedProvider, setSelectedProvider] = useState<string>(
     // Try to determine the provider from the mainLLM
-    getProviderFromLLM(projectData.mainLLM) || "Groq"
+    getProviderFromLLM(workspaceData.mainLLM) || "Groq"
   );
   
   // Handle input changes
@@ -112,8 +112,8 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
   
   // Handle save
   const handleSave = async () => {
-    if (onUpdateProject) {
-      await onUpdateProject({
+    if (onUpdateWorkspace) {
+      await onUpdateWorkspace({
         name: formValues.name,
         description: formValues.description,
         mainLLM: formValues.mainLLM,
@@ -128,23 +128,23 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
   const handleCancel = () => {
     // Reset form values to original data
     setFormValues({
-      name: projectData.name || '',
-      description: projectData.description || '',
-      mainLLM: projectData.mainLLM || '',
-      apiKey: projectData.apiKey || '',
-      useSavedCredentials: projectData.useSavedCredentials || false
+      name: workspaceData.name || '',
+      description: workspaceData.description || '',
+      mainLLM: workspaceData.mainLLM || '',
+      apiKey: workspaceData.apiKey || '',
+      useSavedCredentials: workspaceData.useSavedCredentials || false
     });
     // Reset provider selection
-    setSelectedProvider(getProviderFromLLM(projectData.mainLLM) || "Groq");
+    setSelectedProvider(getProviderFromLLM(workspaceData.mainLLM) || "Groq");
     setIsEditing(false);
   };  
 
   return (
     <div className="space-y-6 overflow-y-auto pb-20 h-full">
-      {/* Project details section */}
+      {/* workspace details section */}
       <div className="bg-[#121212] rounded-md p-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white">{t('projects.details', 'Project Details')}</h2>
+          <h2 className="text-xl font-bold text-white">{t('workspaces.details', 'Workspace Details')}</h2>
           
           {isEditing ? (
             <div className="flex gap-2">
@@ -175,7 +175,7 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
         </div>
         
         <div className="mb-4">
-          <label className="block text-gray-400 mb-1">{t('projects.name', 'Name')}</label>
+          <label className="block text-gray-400 mb-1">{t('workspaces.name', 'Name')}</label>
           {isEditing ? (
             <input
               type="text"
@@ -183,43 +183,43 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
               value={formValues.name}
               onChange={handleInputChange}
               className="w-full bg-[#1d1d1d] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
-              placeholder={t('projects.enterName', 'Enter project name')}
+              placeholder={t('workspaces.enterName', 'Enter workspace name')}
             />
           ) : (
-            <div className="text-white font-medium">{projectData.name || t('projects.untitled', 'Untitled Project')}</div>
+            <div className="text-white font-medium">{workspaceData.name || t('workspaces.untitled', 'Untitled workspace')}</div>
           )}
         </div>
         
         <div className="mb-4">
-          <label className="block text-gray-400 mb-1">{t('projects.description', 'Description')}</label>
+          <label className="block text-gray-400 mb-1">{t('workspaces.description', 'Description')}</label>
           {isEditing ? (
             <textarea
               name="description"
               value={formValues.description}
               onChange={handleInputChange}
               className="w-full bg-[#1d1d1d] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-yellow-500 min-h-[80px]"
-              placeholder={t('projects.enterDescription', 'Enter project description')}
+              placeholder={t('workspaces.enterDescription', 'Enter workspace description')}
             />
           ) : (
             <div className="text-white">
-              {projectData.description || t('projects.noDescription', 'No description provided')}
+              {workspaceData.description || t('workspaces.noDescription', 'No description provided')}
             </div>
           )}
         </div>
         
         <div className="mb-4">
-          <label className="block text-gray-400 mb-1">{t('projects.id', 'Project ID')}</label>
-          <div className="text-gray-300 font-mono text-sm">{projectData.id}</div>
+          <label className="block text-gray-400 mb-1">{t('workspaces.id', 'workspace ID')}</label>
+          <div className="text-gray-300 font-mono text-sm">{workspaceData.id}</div>
         </div>
         
         <div className="mb-4">
-          <label className="block text-gray-400 mb-1">{t('projects.mainLLM', 'Main LLM')}</label>
+          <label className="block text-gray-400 mb-1">{t('workspaces.mainLLM', 'Main LLM')}</label>
           {isEditing ? (
             <div className="space-y-4 bg-[#1d1d1d] border border-gray-700 rounded p-4">
               {/* Provider Selection */}
               <div className="mb-4">
                 <label htmlFor="provider" className="block text-sm font-medium text-gray-400 mb-2">
-                  {t('projects.selectProvider', 'Select Provider')}
+                  {t('workspaces.selectProvider', 'Select Provider')}
                 </label>
                 <select
                   id="provider"
@@ -227,7 +227,7 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
                   onChange={(e) => setSelectedProvider(e.target.value)}
                   className="w-full px-3 py-2 bg-[#252525] border border-gray-700 rounded text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
                 >
-                  <option disabled value="">{t('projects.selectProviderPlaceholder', 'Select a provider...')}</option>
+                  <option disabled value="">{t('workspaces.selectProviderPlaceholder', 'Select a provider...')}</option>
                   {llmProviders.map(provider => (
                     <option key={provider} value={provider}>
                       {provider}
@@ -240,7 +240,7 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
               {selectedProvider && (
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-400 mb-2">
-                    {t('projects.selectModel', 'Select Model')}
+                    {t('workspaces.selectModel', 'Select Model')}
                   </label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {availableLLMs
@@ -286,14 +286,14 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
                       className="mr-2 h-4 w-4 rounded border-gray-700 bg-[#252525] text-yellow-400 focus:ring-yellow-500"
                     />
                     <label htmlFor="useSavedCredentials" className="text-sm text-gray-300">
-                      {t('projects.useSavedCredentials', 'Use saved credentials')}
+                      {t('workspaces.useSavedCredentials', 'Use saved credentials')}
                     </label>
                   </div>
                   
                   {!formValues.useSavedCredentials && (
                     <div>
                       <label htmlFor="apiKey" className="block text-sm font-medium text-gray-400 mb-1">
-                        {t('projects.apiKey', 'API Key')} 
+                        {t('workspaces.apiKey', 'API Key')} 
                       </label>
                       <div className="relative">
                         <input
@@ -303,13 +303,13 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
                           value={formValues.apiKey}
                           onChange={handleInputChange}
                           className="w-full pl-9 pr-3 py-2 bg-[#252525] border border-gray-700 rounded text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                          placeholder={t('projects.enterApiKey', 'Enter API key')}
+                          placeholder={t('workspaces.enterApiKey', 'Enter API key')}
                         />
                         <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                       </div>
                       <div className="flex items-center mt-1">
                         <p className="text-xs text-gray-400">
-                          {t('projects.apiKeyInfo', 'Your API key is stored locally and never shared')}
+                          {t('workspaces.apiKeyInfo', 'Your API key is stored locally and never shared')}
                         </p>
                         {selectedProvider === "Groq" && (
                           <button
@@ -317,7 +317,7 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
                             onClick={() => openUrl("https://console.groq.com/keys")}
                             className="text-xs text-yellow-400 hover:text-yellow-300 ml-2 underline"
                           >
-                            {t('projects.getGroqApiKey', 'Get Groq API Key')}
+                            {t('workspaces.getGroqApiKey', 'Get Groq API Key')}
                           </button>
                         )}
                       </div>
@@ -327,25 +327,25 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
               )}
             </div>
           ) : (
-            <div className="text-white">{projectData.mainLLM || t('projects.noLLM', 'No LLM selected')}</div>
+            <div className="text-white">{workspaceData.mainLLM || t('workspaces.noLLM', 'No LLM selected')}</div>
           )}
         </div>
         
         <div className="flex gap-4 mt-4">
           <div>
-            <label className="block text-gray-400 mb-1">{t('projects.created', 'Created')}</label>
+            <label className="block text-gray-400 mb-1">{t('workspaces.created', 'Created')}</label>
             <div className="text-gray-300 text-sm">
-              {projectData.createdAt 
-                ? new Date(projectData.createdAt).toLocaleString() 
-                : t('projects.unknown', 'Unknown')}
+              {workspaceData.createdAt 
+                ? new Date(workspaceData.createdAt).toLocaleString() 
+                : t('workspaces.unknown', 'Unknown')}
             </div>
           </div>
           <div>
-            <label className="block text-gray-400 mb-1">{t('projects.updated', 'Last Updated')}</label>
+            <label className="block text-gray-400 mb-1">{t('workspaces.updated', 'Last Updated')}</label>
             <div className="text-gray-300 text-sm">
-              {projectData.updatedAt 
-                ? new Date(projectData.updatedAt).toLocaleString() 
-                : t('projects.unknown', 'Unknown')}
+              {workspaceData.updatedAt 
+                ? new Date(workspaceData.updatedAt).toLocaleString() 
+                : t('workspaces.unknown', 'Unknown')}
             </div>
           </div>
         </div>
@@ -354,4 +354,4 @@ const ProjectTab: React.FC<ProjectTabProps> = ({ projectData, onUpdateProject })
   );
 };
 
-export default ProjectTab;
+export default WorkspaceTab;

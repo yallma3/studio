@@ -2,19 +2,19 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Settings, Bell } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
-import ProjectsTab from "../modules/projects/components/ProjectsTab";
-import { ProjectData } from "../modules/projects/types/Types";
+import WorkspacesTab from "../modules/projects/components/ProjectsTab";
+import { WorkspaceData } from "../modules/projects/types/Types";
 import SettingsView from "./settings/SettingsView";
 
 
 interface HomeScreenProps {
-  onCreateNew: (type: "projects") => void;
-  onOpenFromFile: (type: "projects") => void;
-  onOpenFromPath: (path: string, id: string, type: "projects") => void;
-  onOpenProject?: (projectData: ProjectData) => void;
+  onCreateNew: () => void;
+  onOpenFromFile: () => void;
+  onOpenFromPath: (path: string, id: string) => void;
+  onOpenWorkspace?: (workspaceData: WorkspaceData) => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenFromFile, onOpenFromPath, onOpenProject }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenFromFile, onOpenFromPath, onOpenWorkspace: onOpenWorkspace }) => {
   const { t } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
    
@@ -45,11 +45,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenFromFile, on
 
       {/* Main Content */}
       <main className="relative z-10">
-        <ProjectsTab 
-          onCreateNew={() => onCreateNew("projects")} 
-          onOpenFromFile={() => onOpenFromFile("projects")} 
-          onOpenFromPath={(path, id) => onOpenFromPath(path, id, "projects")}
-          onOpenProject={onOpenProject}
+        <WorkspacesTab 
+          onCreateNew={() => onCreateNew()} 
+          onOpenFromFile={() => onOpenFromFile()} 
+          onOpenFromPath={(path, id) => onOpenFromPath(path, id)}
+          onOpenWorkspace={onOpenWorkspace}
         />
       </main>
 

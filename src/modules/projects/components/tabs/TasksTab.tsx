@@ -1,31 +1,31 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ProjectData, Task } from "../../types/Types";
+import { WorkspaceData, Task } from "../../types/Types";
 import TaskCanvas from "../TaskCanvas";
 import { X } from "lucide-react";
 
 interface TasksTabProps {
-  projectData: ProjectData;
+  workspaceData: WorkspaceData;
 }
 
-const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
+const TasksTab: React.FC<TasksTabProps> = ({ workspaceData: workspaceData }) => {
   const { t } = useTranslation();
 
   const [viewMode, setViewMode] = useState<'list' | 'canvas'>('canvas');
   const [showTaskDialog, setShowTaskDialog] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>(projectData.tasks || []);
+  const [tasks, setTasks] = useState<Task[]>(workspaceData.tasks || []);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
-  // Add sample workflows if none exist in the project data
+  // Add sample workflows if none exist in the workspace data
   const [sampleWorkflows] = useState([
     { id: 'workflow-1', name: 'Data Analysis Pipeline', description: 'Analyze and process data with multiple steps' },
     { id: 'workflow-2', name: 'Content Generation', description: 'Generate and review content automatically' },
     { id: 'workflow-3', name: 'Research Assistant', description: 'Search, summarize, and organize research findings' }
   ]);
 
-  // Combine project workflows with sample workflows if needed
-  const availableWorkflows = projectData.workflows && projectData.workflows.length > 0 
-    ? projectData.workflows 
+  // Combine workspace workflows with sample workflows if needed
+  const availableWorkflows = workspaceData.workflows && workspaceData.workflows.length > 0 
+    ? workspaceData.workflows 
     : sampleWorkflows;
 
   const [newTask, setNewTask] = useState<{
@@ -72,8 +72,8 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
     const updatedTasks = tasks.filter(task => task.id !== taskId);
     setTasks(updatedTasks);
     
-    // Update the project data
-    projectData.tasks = updatedTasks;
+    // Update the workspace data
+    workspaceData.tasks = updatedTasks;
   };
 
   const handleShowTaskDialog = () => {
@@ -139,9 +139,9 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
       updatedTasks = [...tasks, task];
     }
 
-    // Update state and project data
+    // Update state and workspace data
     setTasks(updatedTasks);
-    projectData.tasks = updatedTasks;
+    workspaceData.tasks = updatedTasks;
 
     // Reset editing state and close the dialog
     setEditingTaskId(null);
@@ -153,24 +153,24 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
       <div className="bg-[#121212] rounded-md p-4">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center">
-            <h2 className="text-xl font-bold text-white mr-4">{t('projects.tasks', 'Tasks')}</h2>
+            <h2 className="text-xl font-bold text-white mr-4">{t('workspaces.tasks', 'Tasks')}</h2>
             <div className="flex bg-[#1d1d1d] rounded-md overflow-hidden">
               <button 
                 className={`px-3 py-1 text-sm ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-[#2a2a2a]'}`}
                 onClick={() => setViewMode('list')}
               >
-                {t('projects.listView', 'List View')}
+                {t('workspaces.listView', 'List View')}
               </button>
               <button 
                 className={`px-3 py-1 text-sm ${viewMode === 'canvas' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-[#2a2a2a]'}`}
                 onClick={() => setViewMode('canvas')}
               >
-                {t('projects.canvasView', 'Canvas View')}
+                {t('workspaces.canvasView', 'Canvas View')}
               </button>
             </div>
           </div>
           <button onClick={handleShowTaskDialog} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
-            {t('projects.addTask', 'Add Task')}
+            {t('workspaces.addTask', 'Add Task')}
           </button>
         </div>
         
@@ -181,7 +181,7 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
               onTaskEdit={handleTaskEdit}
               onTaskDelete={handleTaskDelete}
               onshowTaskDialog={handleShowTaskDialog}
-              projectData={projectData}
+              projectData={workspaceData}
             />
           ) : (
             <div className="space-y-4">
@@ -192,11 +192,11 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
                       <h3 className="font-medium text-white text-lg">{task.name}</h3>
                       {task.executeWorkflow ? (
                         <span className="bg-purple-600/20 text-purple-400 text-xs px-2 py-0.5 rounded-full border border-purple-600/30">
-                          {t('projects.workflow', 'Workflow')}
+                          {t('workspaces.workflow', 'Workflow')}
                         </span>
                       ) : (
                         <span className="bg-blue-600/20 text-blue-400 text-xs px-2 py-0.5 rounded-full border border-blue-600/30">
-                          {t('projects.agent', 'Agent')}
+                          {t('workspaces.agent', 'Agent')}
                         </span>
                       )}
                     </div>
@@ -224,24 +224,24 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
                   <p className="text-gray-300 mb-3">{task.description}</p>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-400 block">{t('projects.expectedOutput', 'Expected Output')}:</span>
-                      <span className="text-gray-300">{task.expectedOutput || t('projects.none', 'None')}</span>
+                      <span className="text-gray-400 block">{t('workspaces.expectedOutput', 'Expected Output')}:</span>
+                      <span className="text-gray-300">{task.expectedOutput || t('workspaces.none', 'None')}</span>
                     </div>
                     <div>
                       {task.executeWorkflow ? (
                         <>
-                          <span className="text-gray-400 block">{t('projects.workflow', 'Workflow')}:</span>
+                          <span className="text-gray-400 block">{t('workspaces.workflow', 'Workflow')}:</span>
                           <span className="text-purple-400">
-                            {task.workflowName || availableWorkflows.find(w => w.id === task.workflowId)?.name || t('projects.unknownWorkflow', 'Unknown workflow')}
+                            {task.workflowName || availableWorkflows.find(w => w.id === task.workflowId)?.name || t('workspaces.unknownWorkflow', 'Unknown workflow')}
                           </span>
                         </>
                       ) : (
                         <>
-                          <span className="text-gray-400 block">{t('projects.assignedAgent', 'Assigned Agent')}:</span>
+                          <span className="text-gray-400 block">{t('workspaces.assignedAgent', 'Assigned Agent')}:</span>
                           <span className="text-blue-400">
                             {task.assignedAgent ? 
-                              (projectData.agents.find(a => a.id === task.assignedAgent)?.name || task.assignedAgent) : 
-                              t('projects.autoAssign', 'Auto-assign')}
+                              (workspaceData.agents.find(a => a.id === task.assignedAgent)?.name || task.assignedAgent) : 
+                              t('workspaces.autoAssign', 'Auto-assign')}
                           </span>
                         </>
                       )}
@@ -253,7 +253,7 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
           )
         ) : (
           <div className="text-gray-400 py-8 text-center">
-            {t('projects.noTasks', 'No tasks have been created for this project')}
+            {t('workspaces.noTasks', 'No tasks have been created for this workspace')}
           </div>
         )}
       </div>
@@ -265,7 +265,7 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
             <div className="sticky top-0 bg-[#1d1d1d] pb-2 mb-2 border-b border-gray-800">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-white">
-                  {editingTaskId ? t('projects.editTask', 'Edit Task') : t('projects.addTask', 'Add New Task')}
+                  {editingTaskId ? t('workspaces.editTask', 'Edit Task') : t('workspaces.addTask', 'Add New Task')}
                 </h2>
                 <button 
                   className="text-gray-400 hover:text-white" 
@@ -283,48 +283,48 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t('projects.taskName', 'Task Name')} *
+                  {t('workspaces.taskName', 'Task Name')} *
                 </label>
                 <input
                   type="text"
                   className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={newTask.name}
                   onChange={(e) => setNewTask({...newTask, name: e.target.value})}
-                  placeholder={t('projects.enterTaskName', 'Enter task name')}
+                  placeholder={t('workspaces.enterTaskName', 'Enter task name')}
                   autoFocus
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t('projects.description', 'Description')}
+                  {t('workspaces.description', 'Description')}
                 </label>
                 <textarea
                   className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] sm:min-h-[100px]"
                   value={newTask.description}
                   onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                  placeholder={t('projects.enterDescription', 'Enter task description')}
+                  placeholder={t('workspaces.enterDescription', 'Enter task description')}
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t('projects.expectedOutput', 'Expected Output')}
+                  {t('workspaces.expectedOutput', 'Expected Output')}
                 </label>
                 <input
                   type="text"
                   className="w-full bg-[#111] border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={newTask.expectedOutput}
                   onChange={(e) => setNewTask({...newTask, expectedOutput: e.target.value})}
-                  placeholder={t('projects.enterExpectedOutput', 'Enter expected output')}
+                  placeholder={t('workspaces.enterExpectedOutput', 'Enter expected output')}
                 />
               </div>
               
               <div className="border-t border-gray-700 pt-4 mt-4">
                 <div className="text-sm font-medium text-gray-300 mb-3">
-                  {t('projects.taskExecution', 'Task Execution')} *
+                  {t('workspaces.taskExecution', 'Task Execution')} *
                   <p className="text-xs text-gray-400 mt-1">
-                    {t('projects.taskExecutionHelp', 'Choose one of the following execution methods')}
+                    {t('workspaces.taskExecutionHelp', 'Choose one of the following execution methods')}
                   </p>
                 </div>
                 
@@ -341,7 +341,7 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
                         onChange={() => setNewTask({...newTask, executeWorkflow: false, assignedAgent: newTask.assignedAgent || ''})}
                       />
                       <label htmlFor="assignAgent" className="text-sm font-medium text-white">
-                        {t('projects.assignedAgent', 'Assign Agent')}
+                        {t('workspaces.assignedAgent', 'Assign Agent')}
                       </label>
                     </div>
                     
@@ -352,13 +352,13 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
                         onChange={(e) => setNewTask({...newTask, assignedAgent: e.target.value, executeWorkflow: false})}
                         disabled={newTask.executeWorkflow}
                       >
-                        <option value="">{t('projects.autoAssign', 'Auto-assign')}</option>
-                        {projectData.agents && projectData.agents.map(agent => (
+                        <option value="">{t('workspaces.autoAssign', 'Auto-assign')}</option>
+                        {workspaceData.agents && workspaceData.agents.map(agent => (
                           <option key={agent.id} value={agent.id}>{agent.name}</option>
                         ))}
                       </select>
                       <p className="text-xs text-gray-400 mt-1">
-                        {t('projects.agentAssignmentHelp', 'Select an agent to handle this task or choose auto-assignment')}
+                        {t('workspaces.agentAssignmentHelp', 'Select an agent to handle this task or choose auto-assignment')}
                       </p>
                     </div>
                   </div>
@@ -375,7 +375,7 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
                         onChange={() => setNewTask({...newTask, executeWorkflow: true, assignedAgent: null})}
                       />
                       <label htmlFor="executeWorkflow" className="text-sm font-medium text-white">
-                        {t('projects.executeWorkflow', 'Execute Workflow')}
+                        {t('workspaces.executeWorkflow', 'Execute Workflow')}
                       </label>
                     </div>
                     
@@ -395,13 +395,13 @@ const TasksTab: React.FC<TasksTabProps> = ({ projectData }) => {
                         }}
                         disabled={!newTask.executeWorkflow}
                       >
-                        <option value="">{t('projects.selectWorkflow', 'Select a workflow')}</option>
+                        <option value="">{t('workspaces.selectWorkflow', 'Select a workflow')}</option>
                         {availableWorkflows.map(workflow => (
                           <option key={workflow.id} value={workflow.id}>{workflow.name}</option>
                         ))}
                       </select>
                       <p className="text-xs text-gray-400 mt-1">
-                        {t('projects.workflowSelectionHelp', 'Select a workflow to execute for this task')}
+                        {t('workspaces.workflowSelectionHelp', 'Select a workflow to execute for this task')}
                       </p>
                     </div>
                   </div>

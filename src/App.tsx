@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import ProjectCanvas from "./modules/projects/components/ProjectCanvas.tsx";
+import WorkspaceCanvas from "./modules/projects/components/ProjectCanvas.tsx";
 import HomeScreen from "./components/HomeScreen.tsx";
-import { loadProjectState, loadProjectStateFromPath } from "./modules/projects/utils/storageUtils.ts";
-import { ProjectData } from "./modules/projects/types/Types.ts";
+import { loadWorkspaceState, loadWorkspaceStateFromPath } from "./modules/projects/utils/storageUtils.ts";
+import { WorkspaceData } from "./modules/projects/types/Types.ts";
 
 import { initFlowSystem } from "./modules/flows/initFlowSystem.ts";
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<"home" | "canvas">("home");
-  const [currentProjectData, setCurrentProjectData] = useState<ProjectData | null>(null);
+  const [currentWorkspaceData, setCurrentWorkspaceData] = useState<WorkspaceData | null>(null);
   const { i18n } = useTranslation();
   
   
@@ -20,16 +20,16 @@ const App: React.FC = () => {
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);
   
-  // Handle creating a new graph, agent, or project
+  // Handle creating a new graph, agent, or workspace
   const handleCreateNew = () => {
     
    
-      // Generate a unique ID for the new project
-      const newProjectId = `project-${Date.now()}`;
+      // Generate a unique ID for the new workspace
+      const newWorkspaceId = `workspace-${Date.now()}`;
       
-      // Create a ProjectData object instead of ProjectState
-      const projectData: ProjectData = {
-        id: newProjectId,
+      // Create a workspaceData object instead of workspaceState
+      const workspaceData: WorkspaceData = {
+        id: newWorkspaceId,
         name: "",
         description: "",
         createdAt: Date.now(),
@@ -42,54 +42,54 @@ const App: React.FC = () => {
         workflows: [],
       };
       
-      setCurrentProjectData(projectData);
+      setCurrentWorkspaceData(workspaceData);
     
     
     setCurrentView("canvas");
   };
   
-  // Handle opening a graph/agent/project from file system
+  // Handle opening a graph/agent/workspace from file system
   const handleLoadFromFile = async () => {
     try {
       
-        const loadedState = await loadProjectState();
+        const loadedState = await loadWorkspaceState();
         if (loadedState) {
-          console.log('Loaded project state:', loadedState);
+          console.log('Loaded workspace state:', loadedState);
           
-          // The loadProjectState now returns ProjectData directly
-          setCurrentProjectData(loadedState.projectState);
+          // The loadWorkspaceState now returns workspaceData directly
+          setCurrentWorkspaceData(loadedState.workspaceState);
           setCurrentView("canvas");
         }
       
     } catch (error) {
-      console.error(`Error loading project state:`, error);
-      alert(`Failed to load project state: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`Error loading workspace state:`, error);
+      alert(`Failed to load workspace state: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
   const handleOpenFromPath = async (path: string, id: string) => {
    
-    const loadedState = await loadProjectStateFromPath(path, id);
+    const loadedState = await loadWorkspaceStateFromPath(path, id);
     if (loadedState) {
-        console.log('Loaded project state:', loadedState);
+        console.log('Loaded workspace state:', loadedState);
         
-        // The loadProjectStateFromPath now returns ProjectData directly
-        setCurrentProjectData(loadedState);
+        // The loadWorkspaceStateFromPath now returns workspaceData directly
+        setCurrentWorkspaceData(loadedState);
         setCurrentView("canvas");
       }
     
   };
   
-  // Handle opening a project with ProjectData
-  const handleOpenProject = (projectData: ProjectData) => {
-    // console.log('Opening project with ProjectData:', projectData);
-    setCurrentProjectData(projectData);
+  // Handle opening a workspace with workspaceData
+  const handleOpenWorkspace = (workspaceData: WorkspaceData) => {
+    // console.log('Opening workspace with workspaceData:', workspaceData);
+    setCurrentWorkspaceData(workspaceData);
     setCurrentView("canvas");
   };
   
   // Handle returning to home screen
   const handleReturnToHome = () => {;
-    setCurrentProjectData(null);
+    setCurrentWorkspaceData(null);
     setCurrentView("home");
   };
   
@@ -100,13 +100,13 @@ const App: React.FC = () => {
           onCreateNew={handleCreateNew}
           onOpenFromFile={handleLoadFromFile}
           onOpenFromPath={handleOpenFromPath}
-          onOpenProject={handleOpenProject}
+          onOpenWorkspace={handleOpenWorkspace}
         />  
       ) : (
         <>
-          {currentProjectData && (
-            <ProjectCanvas 
-              projectData={currentProjectData}
+          {currentWorkspaceData && (
+            <WorkspaceCanvas 
+              workspaceData={currentWorkspaceData}
               onReturnToHome={handleReturnToHome}
             />
           )}

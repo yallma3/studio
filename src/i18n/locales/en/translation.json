@@ -2,7 +2,7 @@
   "app": {
     "title": "yaLLMa3",
     "subtitle": "Create and execute AI Agent applications & workflows with yaLLMa3 Studio",
-    "description": "Start creating a new project or import an existing one."
+    "description": "Start creating a new workspace or import an existing one."
   },
   "home": {
     "createNewGraph": "Create flow",

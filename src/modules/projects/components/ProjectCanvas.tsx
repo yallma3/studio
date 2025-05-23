@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from "react";
 import { ArrowLeft, Save, AlertCircle, CheckCircle, Users, ListTodo, Folder, GitBranch } from "lucide-react";
-import { saveProjectToDefaultLocation } from "../utils/storageUtils";
+import { saveWorkspaceToDefaultLocation } from "../utils/storageUtils";
 import { useTranslation } from "react-i18next";
-import ProjectNameDialog from "./ProjectNameDialog.tsx";
-import { ProjectData } from "../types/Types";
-import { ProjectTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
+import WorkspaceNameDialog from "./WorkspaceNameDialog.tsx";
+import { WorkspaceData } from "../types/Types";
+import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
 // Toast notification component
 interface ToastProps {
@@ -45,25 +45,25 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, isClosing = false
   );
 };
 
-type ProjectTab = 'project' | 'tasks' | 'agents' | 'aiflows';
+type WorkspaceTab = 'workspace' | 'tasks' | 'agents' | 'aiflows';
 
-interface ProjectCanvasProps {
-  projectData: ProjectData;
+interface WorkspaceCanvasProps {
+  workspaceData: WorkspaceData;
   onReturnToHome: () => void;
 }
 
-const ProjectCanvas: React.FC<ProjectCanvasProps> = ({ projectData: initialProjectData, onReturnToHome }) => {
+const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initialWorkspaceData, onReturnToHome }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<ProjectTab>('project');
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('workspace');
   
-  // Maintain project data in state
-  const [projectData, setProjectData] = useState<ProjectData>(initialProjectData);
+  // Maintain workspace data in state
+  const [workspaceData, setWorkspaceData] = useState<WorkspaceData>(initialWorkspaceData);
   
   // Track if there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   
-  // Project name dialog state
-  const [projectNameDialogOpen, setProjectNameDialogOpen] = useState<boolean>(false);
+  // Workspace name dialog state
+  const [workspaceNameDialogOpen, setWorkspaceNameDialogOpen] = useState<boolean>(false);
   
   // Toast notification state
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error'; isClosing: boolean }>({
@@ -91,63 +91,63 @@ const ProjectCanvas: React.FC<ProjectCanvasProps> = ({ projectData: initialProje
     }, 200); // Match with transition duration in Toast component
   }, []);
   
-  // Handle saving project state
-  const handleSaveProject = async (projectName?: string) => {
-    if (!projectData) return;
+  // Handle saving workspace state
+  const handleSaveWorkspace = async (workspaceName?: string) => {
+    if (!workspaceData) return;
     
     try {
-      const updatedProject = { 
-        ...projectData, 
-        name: projectName || projectData.name,
+      const updatedWorkspace = { 
+        ...workspaceData, 
+        name: workspaceName || workspaceData.name,
         updatedAt: Date.now()
       };
       
       // Update state
-      setProjectData(updatedProject);
+      setWorkspaceData(updatedWorkspace);
       
       // Save to storage
-      await saveProjectToDefaultLocation(updatedProject);
+      await saveWorkspaceToDefaultLocation(updatedWorkspace);
       
       // Clear unsaved changes flag
       setHasUnsavedChanges(false);
       
-      showToast(t('projects.saved', 'Project saved successfully'), 'success');
+      showToast(t('workspaces.saved', 'Workspace saved successfully'), 'success');
     } catch (error) {
-      console.error("Error saving project:", error);
-      showToast(t('projects.saveError', 'Failed to save project'), 'error');
+      console.error("Error saving workspace:", error);
+      showToast(t('workspaces.saveError', 'Failed to save workspace'), 'error');
     }
   };
   
-  // Handle updating project data - only update state, don't save to file
-  const handleUpdateProject = async (updatedData: Partial<ProjectData>) => {
-    if (!projectData) return;
+  // Handle updating workspace data - only update state, don't save to file
+  const handleUpdateWorkspace = async (updatedData: Partial<WorkspaceData>) => {
+    if (!workspaceData) return;
     
     try {
-      const updatedProject = { 
-        ...projectData,
+      const updatedWorkspace = { 
+        ...workspaceData,
         ...updatedData,
         updatedAt: Date.now()
       };
       
       // Update state to reflect changes immediately in UI
-      setProjectData(updatedProject);
+      setWorkspaceData(updatedWorkspace);
       
       // Mark that there are unsaved changes
       setHasUnsavedChanges(true);
     } catch (error) {
-      console.error("Error updating project:", error);
-      showToast(t('projects.updateError', 'Failed to update project'), 'error');
+      console.error("Error updating workspace:", error);
+      showToast(t('workspaces.updateError', 'Failed to update workspace'), 'error');
     }
   };
   
   // Handle saving with name
   const handleSaveWithName = async (name: string) => {
-    setProjectNameDialogOpen(false);
-    await handleSaveProject(name);
+    setWorkspaceNameDialogOpen(false);
+    await handleSaveWorkspace(name);
   };
 
   // Tab button component
-  const TabButton: React.FC<{ tab: ProjectTab; label: string; icon: React.ReactNode }> = ({ tab, label, icon }) => (
+  const TabButton: React.FC<{ tab: WorkspaceTab; label: string; icon: React.ReactNode }> = ({ tab, label, icon }) => (
     <button
       className={`flex items-center gap-2 px-4 py-2 rounded-t-md font-medium transition-colors
         ${activeTab === tab 
@@ -176,18 +176,18 @@ const ProjectCanvas: React.FC<ProjectCanvasProps> = ({ projectData: initialProje
         </div>
         
         <div className="text-white font-mono">
-          {projectData.name || t('projects.untitled', 'Untitled Project')}
+          {workspaceData.name || t('workspaces.untitled', 'Untitled Workspace')}
         </div>
         
         <div className="flex items-center gap-4">
         {hasUnsavedChanges && (
             <div className="text-gray-500 text-sm font-medium ">
-              {t('projects.unsavedChanges', 'Unsaved changes')}
+              {t('workspaces.unsavedChanges', 'Unsaved changes')}
             </div>
           )}
           <button
             className="bg-yellow-500 hover:bg-yellow-600 text-black px-3 py-1 rounded text-sm font-medium flex items-center space-x-1"
-            onClick={() => setProjectNameDialogOpen(true)}
+            onClick={() => setWorkspaceNameDialogOpen(true)}
             title={t('common.save', 'Save')}
           >
             <Save size={14} />
@@ -201,42 +201,42 @@ const ProjectCanvas: React.FC<ProjectCanvasProps> = ({ projectData: initialProje
         {/* Tabs */}
         <div className="flex border-b border-gray-800 px-4 pt-2 bg-[#0a0a0a]">
           <TabButton 
-            tab="project" 
-            label={t('projects.project', 'Project')} 
+            tab="workspace" 
+            label={t('workspaces.workspace', 'Workspace')} 
             icon={<Folder size={16} />} 
           />
           <TabButton 
             tab="tasks" 
-            label={t('projects.tasks', 'Tasks')} 
+            label={t('workspaces.tasks', 'Tasks')} 
             icon={<ListTodo size={16} />} 
           />
           <TabButton 
             tab="agents" 
-            label={t('projects.agents', 'Agents')} 
+            label={t('workspaces.agents', 'Agents')} 
             icon={<Users size={16} />} 
           />
           <TabButton 
             tab="aiflows" 
-            label={t('projects.aiFlows', 'AI Workflows')} 
+            label={t('workspaces.aiFlows', 'AI Workflows')} 
             icon={<GitBranch size={16} />} 
           />
         </div>
         
         <div className="w-full h-full overflow-auto p-6">
           {/* Render the appropriate tab component based on activeTab */}
-          {activeTab === 'project' && <ProjectTab projectData={projectData} onUpdateProject={handleUpdateProject} />}
-          {activeTab === 'tasks' && <TasksTab projectData={projectData} />}
-          {activeTab === 'agents' && <AgentsTab projectData={projectData} />}
-          {activeTab === 'aiflows' && <AiFlowsTab projectData={projectData} />}
+          {activeTab === 'workspace' && <WorkspaceTab workspaceData={workspaceData} onUpdateWorkspace={handleUpdateWorkspace} />}
+          {activeTab === 'tasks' && <TasksTab workspaceData={workspaceData} />}
+          {activeTab === 'agents' && <AgentsTab workspaceData={workspaceData} />}
+          {activeTab === 'aiflows' && <AiFlowsTab workspaceData={workspaceData} />}
         </div>
       </div>
       
-      {/* Project name dialog */}
-      {projectNameDialogOpen && (
-        <ProjectNameDialog
-          isOpen={projectNameDialogOpen}
-          initialName={projectData.name}
-          onClose={() => setProjectNameDialogOpen(false)}
+      {/* Workspace name dialog */}
+      {workspaceNameDialogOpen && (
+        <WorkspaceNameDialog
+          isOpen={workspaceNameDialogOpen}
+          initialName={workspaceData.name}
+          onClose={() => setWorkspaceNameDialogOpen(false)}
           onSave={handleSaveWithName}
         />
       )}
@@ -254,4 +254,4 @@ const ProjectCanvas: React.FC<ProjectCanvasProps> = ({ projectData: initialProje
   );
 };
 
-export default ProjectCanvas;
+export default WorkspaceCanvas;

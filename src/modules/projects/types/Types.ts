@@ -1,4 +1,4 @@
-// Interfaces for project data structure
+// Interfaces for workspace data structure
 export interface Agent {
   id: string;
   name: string;
@@ -41,11 +41,11 @@ export interface LLMOption {
   tokenLimit: number;
 }
 
-export interface ProjectData {
+export interface WorkspaceData {
   id: string;
   createdAt: number;
   updatedAt: number;
-  // Step 1: Project Basics
+  // Step 1: workspace Basics
   name: string;
   description: string;
   // Step 2: LLM Selection
