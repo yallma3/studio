@@ -17,7 +17,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
 
   const menuItems = [
     { id: 'general' as const, icon: Settings, label: t('settings.general', 'General') },
-    { id: 'api-keys' as const, icon: Key, label: t('settings.apiKeys', 'API Keys') },
+    { id: 'api-keys' as const, icon: Key, label: t('settings.apiKeys', 'Keys Vault') },
     { id: 'notifications' as const, icon: Bell, label: t('settings.notifications', 'Notifications') },
     { id: 'advanced' as const, icon: Server, label: t('settings.advanced', 'Advanced') },
   ];

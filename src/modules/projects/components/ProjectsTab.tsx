@@ -1,50 +1,22 @@
-import React, { useState } from "react";
+import React from "react";
 import { Plus, FolderUp, Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import WorkspaceCreationWizard from "./WorkspaceCreationWizard";
-import { WorkspaceData } from "../types/Types";
-import { saveWorkspaceToDefaultLocation } from "../utils/storageUtils";
 
 interface WorkspacesTabProps {
   onCreateNew: () => void;
   onOpenFromFile: () => void;
   onOpenFromPath: (path: string, id: string) => void;
-  onOpenWorkspace?: (workspaceData: WorkspaceData) => void;
 }
 
 
 // Main screen to create or import Workspaces
-const WorkspacesTab: React.FC<WorkspacesTabProps> = ({ onOpenFromFile, onOpenFromPath, onOpenWorkspace }) => {
+const WorkspacesTab: React.FC<WorkspacesTabProps> = ({ onCreateNew, onOpenFromFile, onOpenFromPath }) => {
   const { t } = useTranslation();
-  const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false);
-
-  const handleOpenCreateWizard = () => {
-    setIsCreateWizardOpen(true);
-  };
-
-  const handleCloseCreateWizard = () => {
-    setIsCreateWizardOpen(false);
-  };
-
-  // Saving and Opening workspace after wizard completion
-  const handleCreateWorkspace = async (workspaceData: WorkspaceData) => {
-    // console.log(`Creating new Workspace: ${workspaceData.name}`);
-    // console.log('Workspace data:', workspaceData);
-    
-    try {
-      // Save the workspace to the default location
-      await saveWorkspaceToDefaultLocation(workspaceData);
-      
-      // Open the workspace in WorkspaceCanvas if onOpenWorkspace is provided
-      if (onOpenWorkspace) {
-        onOpenWorkspace(workspaceData);
-      }
-    } catch (error) {
-      console.error("Error saving workspace:", error);
-    }
-  };
+  
 
   return (
+    <div>
+ 
     <div className="container mx-auto px-4 flex flex-col items-center justify-center py-8 md:py-12 relative z-10">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 w-full">
           <div>
@@ -55,16 +27,17 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({ onOpenFromFile, onOpenFro
           <div className="flex gap-3">
             <button
               className="flex items-center justify-center px-4 py-2 rounded-md bg-[#FFC72C] hover:bg-[#E6B328] text-black font-medium "
-              onClick={() => handleOpenCreateWizard()}
+              onClick={() => onCreateNew()}
             >
               <Plus className="h-4 w-4 mr-2" />
               {t('workspaces.createNew', 'Create New Workspace')}
             </button>
-            <button className="flex items-center justify-center px-4 py-2 rounded-md border border-zinc-700 bg-zinc-800 hover:bg-zinc-700" onClick={() => onOpenFromFile()}>
+            <button className="flex items-center justify-center px-4 py-2 rounded-md border border-zinc-700 bg-zinc-800 hover:bg-zinc-700" onClick={() => onOpenFromFile()}
+              >
               <FolderUp className="h-4 w-4 mr-2" />
               {t('workspaces.import', 'Import Workspace')}
             </button>
-            <button className="hidden" onClick={() => onOpenFromPath("avx","123")}>abc</button>
+            <button className="hidden" onClick={() => onOpenFromPath("", "")}>abc</button>
           </div>
 
           
@@ -86,19 +59,14 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({ onOpenFromFile, onOpenFro
           <p className="text-zinc-400 mb-6">Create a new workspace to get started with your AI<br />development journey</p>
           <button
             className="flex items-center justify-center text-sm gap-1 text-[#E6B328] hover:text-[#FFC72C] cursor-pointer"
-            onClick={() => handleOpenCreateWizard()}
+            onClick={() => onCreateNew()}
           >
             <Plus className="h-4 w-4" />
             Create New Workspace
           </button>
         </div>
+    </div>
 
-      {/* Workspace Creation Wizard Wizard */}
-      <WorkspaceCreationWizard
-        open={isCreateWizardOpen}
-        onClose={handleCloseCreateWizard}
-        onCreateWorkspace={handleCreateWorkspace}
-      />
     </div>
   );
 };

@@ -70,7 +70,7 @@
   "settings": {
     "title": "Settings",
     "general": "General",
-    "apiKeys": "External API Keys",
+    "apiKeys": "Keys Vault",
     "notifications": "Notifications",
     "advanced": "Advanced",
     "addApiKey": "Add API Key",

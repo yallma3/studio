@@ -1,18 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "../../../components/ui/button";
 import { useTranslation } from "react-i18next";
-import { Plus, Trash2, ChevronRight, ChevronLeft, Check, X, Key } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronLeft, Check, X, Key, Edit2 } from "lucide-react";
 import { WorkspaceData, LLMOption, Agent, Task } from "../types/Types";
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { TooltipHelper } from "../../../components/ui/tooltip-helper";
+import Select  from "../../../components/ui/select"; 
 
 interface WorkspaceCreationWizardProps {
-  open: boolean;
   onClose: () => void;
   onCreateWorkspace: (workspaceData: WorkspaceData) => void;
 }
 
 const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
-  open,
   onClose,
   onCreateWorkspace,
 }) => {
@@ -34,6 +34,12 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
       name: "GPT-3.5 Turbo",
       provider: "OpenAI",
       tokenLimit: 4096
+    },
+    {
+      id: "gpt-4o",
+      name: "GPT-4o",
+      provider: "OpenAI",
+      tokenLimit: 8192,
     },
     {
       id: "claude-3-opus",
@@ -103,6 +109,30 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   // State for selected provider
   const [selectedProvider, setSelectedProvider] = useState<string>("Groq");
   
+  // State for tool popup
+  const [showToolPopup, setShowToolPopup] = useState(false);
+  const [selectedToolInPopup, setSelectedToolInPopup] = useState("");
+  const [selectedToolPropertyInPopup, setSelectedToolPropertyInPopup] = useState<'none' | 'isInputChannel' | 'isOutputProducer' | 'isJudge'>('none');
+  const [editingToolName, setEditingToolName] = useState<string | null>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  
+  // Close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        setShowToolPopup(false);
+      }
+    };
+    
+    if (showToolPopup) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showToolPopup]);
+  
   // Temporary state for new items
   const [newTask, setNewTask] = useState<Omit<Task, "id">>({
     name: "",
@@ -117,7 +147,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   const [taskType, setTaskType] = useState<'agent' | 'workflow'>('agent');
 
    // Temporary state for new agents
-  const [newAgent, setNewAgent] = useState<Omit<Agent, "id">>({
+  const [newAgent, setNewAgent] = useState<Omit<Agent, "id"> & { id?: string }>({
     name: "",
     role: "",
     objective: "",
@@ -126,6 +156,9 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     tools: [],
     llmId: workspaceData.mainLLM // Default to workspace's main LLM
   });
+  
+  // Track if we're in edit mode
+  const [isEditingAgent, setIsEditingAgent] = useState(false);
  
   
   // Step navigation handlers
@@ -198,15 +231,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
       ...prev,
       [name]: value
     }));
-  };
-  
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setWorkspaceData(prev => ({
-      ...prev,
-      [name]: checked
-    }));
-  };
+  }; 
 
  
  
@@ -246,16 +271,28 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   // On press of add agent to add agent to workspace's agent list and empty form state
   const handleAddAgent = () => {
     if (newAgent.name.trim()) {
-      const agent: Agent = {
-        id: Date.now().toString(),
-        ...newAgent
-      };
+      if (isEditingAgent && newAgent.id) {
+        // Update existing agent
+        setWorkspaceData(prev => ({
+          ...prev,
+          agents: prev.agents.map(agent => 
+            agent.id === newAgent.id ? { ...newAgent as Agent } : agent
+          )
+        }));
+      } else {
+        // Add new agent
+        const agent: Agent = {
+          id: Date.now().toString(),
+          ...newAgent
+        };
+        
+        setWorkspaceData(prev => ({
+          ...prev,
+          agents: [...prev.agents, agent]
+        }));
+      }
       
-      setWorkspaceData(prev => ({
-        ...prev,
-        agents: [...prev.agents, agent]
-      }));
-      
+      // Reset form and edit state
       setNewAgent({
         name: "",
         role: "",
@@ -265,27 +302,100 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         tools: [],
         llmId: workspaceData.mainLLM // Keep using workspace's main LLM as default
       });
+      setIsEditingAgent(false);
+    }
+  };
+  
+  // Handle editing an existing agent
+  const handleEditAgent = (id: string) => {
+    const agentToEdit = workspaceData.agents.find(agent => agent.id === id);
+    if (agentToEdit) {
+      setNewAgent({
+        ...agentToEdit
+      });
+      setIsEditingAgent(true);
     }
   };
 
   const handleRemoveAgent = (id: string) => {
+    // If we're currently editing this agent, reset the form
+    if (isEditingAgent && newAgent.id === id) {
+      setNewAgent({
+        name: "",
+        role: "",
+        objective: "",
+        background: "",
+        capabilities: "",
+        tools: [],
+        llmId: workspaceData.mainLLM
+      });
+      setIsEditingAgent(false);
+    }
+    
     setWorkspaceData(prev => ({
       ...prev,
       agents: prev.agents.filter(agent => agent.id !== id)
     }));
   };
   
-  // Add tool to agent's tools list
+  // Add tool to agent's tools list or update existing tool
   const handleAddTool = (tool: string) => {
-    // Check if the tool is already added
-    if (newAgent.tools.some(t => t.name === tool)) {
-      return; // Tool already exists, don't add it again
+    if (editingToolName) {
+      // Update existing tool
+      setNewAgent(prev => ({
+        ...prev,
+        tools: prev.tools.map(t => {
+          if (t.name === editingToolName) {
+            // Create updated tool with selected property
+            const updatedTool = {
+              name: tool,
+              isInputChannel: false,
+              isOutputProducer: false,
+              isJudge: false
+            };
+            
+            // Set the selected property if it's not 'none'
+            if (selectedToolPropertyInPopup !== 'none') {
+              updatedTool[selectedToolPropertyInPopup] = true;
+            }
+            
+            return updatedTool;
+          }
+          return t;
+        })
+      }));
+      
+      // Reset editing state
+      setEditingToolName(null);
+    } else {
+      // Check if the tool is already added
+      if (newAgent.tools.some(t => t.name === tool)) {
+        return; // Tool already exists, don't add it again
+      }
+      
+      // Create new tool with selected property
+      const newTool = {
+        name: tool, 
+        isInputChannel: false, 
+        isOutputProducer: false, 
+        isJudge: false
+      };
+      
+      // Set the selected property if it's not 'none'
+      if (selectedToolPropertyInPopup !== 'none') {
+        newTool[selectedToolPropertyInPopup] = true;
+      }
+      
+      setNewAgent(prev => ({ 
+        ...prev, 
+        tools: [...prev.tools, newTool] 
+      }));
     }
     
-    setNewAgent(prev => ({ 
-      ...prev, 
-      tools: [...prev.tools, {name: tool, isInputChannel: false, isOutputProducer: false, isJudge: false}] 
-    }));
+    // Reset selected tool and close popup
+    setSelectedToolInPopup("");
+    setSelectedToolPropertyInPopup('none');
+    setShowToolPopup(false);
   };
 
   const handleRemoveTool = (tool: string) => {
@@ -295,31 +405,8 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     }));
   };
   
-  const handleToolPropertyChange = (toolName: string, property: 'isInputChannel' | 'isOutputProducer' | 'isJudge', value: boolean) => {
-    setNewAgent(prev => ({
-      ...prev,
-      tools: prev.tools.map(t => {
-        if (t.name === toolName) {
-          // Reset all properties first
-          const updatedTool = {
-            ...t,
-            isInputChannel: false,
-            isOutputProducer: false,
-            isJudge: false
-          };
-          
-          // Set only the selected property if value is true
-          if (value) {
-            updatedTool[property] = true;
-          }
-          
-          return updatedTool;
-        }
-        return t;
-      })
-    }));
-  };
-  
+  // Note: We've removed the handleToolPropertyChange function as it's no longer needed
+  // Tool properties are now set directly in the popup dialog
   
   
 
@@ -334,43 +421,48 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     ];
 
     return (
-      <div className="w-full mb-8">
-        <div className="flex justify-between items-center">
-          {steps.map((step) => (
-            <div 
-              key={step.number}
-              className={`flex flex-col items-center cursor-pointer ${currentStep === step.number ? 'opacity-100' : 'opacity-60'}`}
-              onClick={() => handleGoToStep(step.number)}
-            >
+      <div className="flex justify-between mb-10 relative">
+        {/* Progress bars */}
+        <div className="absolute top-6 left-0 right-0 flex justify-between z-0 px-6 mx-3">
+          {steps.slice(0, -1).map((step) => (
+            <div key={`progress-${step.number}`} className="flex-1 mx-0">
               <div 
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm
-                  ${currentStep === step.number 
-                    ? 'bg-yellow-400 text-black' 
-                    : currentStep > step.number 
-                      ? 'bg-green-500 text-white' 
-                      : 'bg-gray-700 text-gray-300'}`}
-              >
-                {currentStep > step.number ? <Check className="h-5 w-5" /> : step.number}
-              </div>
-              <div className="text-xs text-white mt-2 text-center max-w-[80px]">{step.title}</div>
+                className={`h-1 ${currentStep > step.number ? "bg-[#FFC72C]" : "bg-zinc-700"} 
+                transition-all duration-300 ease-in-out`}
+              />
             </div>
           ))}
         </div>
-        <div className="relative mt-4">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gray-700"></div>
-          <div 
-            className="absolute top-0 left-0 h-1 bg-yellow-400 transition-all duration-300"
-            style={{ width: `${(currentStep - 1) * 25}%` }}
-          ></div>
-        </div>
+        
+        {steps.map((step) => (
+          <div key={step.number} className="flex justify-center items-center relative z-10">
+           <div className="flex flex-col items-center">
+            <div
+              className={`flex items-center justify-center w-12 h-12 rounded-full border-2 ${
+                currentStep === step.number
+                  ? "bg-[#FFC72C] border-[#FFC72C] text-zinc-900"
+                  : currentStep > step.number
+                    ? "bg-[#FFC72C] border-[#FFC72C] text-zinc-900"
+                    : "bg-zinc-800 border-zinc-700 text-zinc-400"
+              } font-bold text-lg transition-all duration-300 ease-in-out`}
+            >
+              {currentStep > step.number ? <Check className="h-6 w-6" /> : step.number}
+            </div>
+            <span className={`mt-2 text-sm ${currentStep >= step.number ? "text-white" : "text-zinc-500"}`}>
+              {step.title}
+            </span>
+            </div>
+          </div>
+        ))}
       </div>
     );
   };
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col bg-gray-900 ${open ? 'block' : 'hidden'}`}>
-      <div className="flex justify-between items-center p-6 border-b border-gray-800">
-        <h1 className="text-2xl font-bold text-white font-mono">
+    <div className="flex items-center min-h-screen justify-center inset-0 z-50 bg-zinc-900 p-4">
+    <div className="flex flex-col w-full max-w-5xl bg-zinc-900 border border-zinc-800 shadow-xl rounded-lg px-4 pb-24 relative">
+      <div className="flex justify-between items-center p-6 border-b border-zinc-800">
+        <h1 className="text-2xl font-bold text-white ">
           {t('workspaces.createNewWorkspace', 'Create New Workspace')}
         </h1>
         <button 
@@ -389,7 +481,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           {currentStep === 1 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-white mb-4 font-mono">
+                <h2 className="text-xl font-bold text-white mb-4 ">
                   {t('workspaces.workspaceBasics', 'Workspace Setup')}
                 </h2>
               </div>
@@ -397,30 +489,33 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
               {/* Side-by-side layout */}
               <div className="flex flex-col md:flex-row gap-6 w-full">
                 {/* Workspace Info Section */}
-                <div className="bg-gray-800/50 rounded-lg p-5 border border-gray-700 flex-1">
-                  <h3 className="text-lg font-medium text-white mb-4 font-mono">
+                <div className="bg-zinc-800/50 rounded-lg p-5 border border-zinc-700 flex-1">
+                  <h3 className="text-lg font-medium text-white mb-4 ">
                     {t('workspaces.workspaceInfo', 'Workspace Information')}
                   </h3>
                   
                   <div className="space-y-4">
-                    
-                    
                     <div className="flex flex-col gap-2">
-                      <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
+                      <label htmlFor="description" className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-1 ">
                         {t('workspaces.workspaceDescription', 'Workspace Description')}
+                        <TooltipHelper 
+                          text="More detailed explanation about this field." 
+                          position="bottom" 
+                           
+                        />
                       </label>
                       <textarea
                         id="description"
                         name="description"
                         value={workspaceData.description}
                         onChange={handleWorkspaceDataChange}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-32"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-32"
                         placeholder={t('workspaces.enterWorkspaceDescription', 'Describe the purpose of this workspace...')}
                       />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('workspaces.workspaceName', 'Workspace Name')} *
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1 ">
+                        {t('workspaces.workspaceName', 'Workspace Name')} <span className="text-yellow-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -428,7 +523,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         name="name"
                         value={workspaceData.name}
                         onChange={handleWorkspaceDataChange}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                         placeholder={t('workspaces.enterWorkspaceName', 'Enter workspace name')}
                         required
                       />
@@ -437,95 +532,76 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                 </div>
                 
                 {/* LLM Selection Section */}
-                <div className="bg-gray-800/50 rounded-lg p-5 border border-gray-700 flex-1">
-                  <h3 className="text-lg font-medium text-white mb-4 font-mono">
-                    {t('workspaces.selectLLM', 'Select Main LLM')}
+                <div className="bg-zinc-800/50 rounded-lg p-5 border border-zinc-700 flex-1">
+                  <h3 className="text-lg font-medium text-white mb-4 ">
+                    {t('workspaces.selectLLM', 'Select Main LLM')} <span className="text-gray-400 text-sm">({t('workspaces.optional', 'Optional')})</span>
                   </h3>
-                  <p className="text-gray-400 mb-6">
-                    {t('workspaces.selectLLMDescription', 'Choose the primary language model for your workspace')}
-                  </p>
+              
                   
                   {/* Provider Selection */}
                   <div className="mb-6">
-                    <label htmlFor="provider" className="block text-sm font-medium text-gray-300 mb-2 font-mono">
-                      {t('workspaces.selectProvider', 'Select Provider')}
-                    </label>
-                    <select
+                    <Select
                       id="provider"
                       value={selectedProvider}
-                      onChange={(e) => setSelectedProvider(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                    >
-                      <option disabled value="">{t('workspaces.selectProviderPlaceholder', 'Select a provider...')}</option>
-                      {llmProviders.map(provider => (
-                        <option key={provider} value={provider}>
-                          {provider}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => setSelectedProvider(value)}
+                      options={llmProviders.map(provider => ({ value: provider, label: provider }))}
+                      placeholder={t('workspaces.selectProviderPlaceholder', 'Select a provider...')}
+                      label={t('workspaces.selectProvider', 'Select Provider')}
+                    />
                   </div>
                   
-                  {/* Model Selection - Only shown when provider is selected */}
-                  {selectedProvider && (
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-300 mb-2 font-mono">
-                        {t('workspaces.selectModel', 'Select Model')}
-                      </label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {availableLLMs
-                          .filter(llm => llm.provider === selectedProvider)
-                          .map(llm => (
-                            <div 
-                              key={llm.id}
-                              className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                                workspaceData.mainLLM === llm.id
-                                  ? 'border-yellow-400 bg-gray-800'
-                                  : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
-                              }`}
-                              onClick={() => setWorkspaceData(prev => ({ ...prev, mainLLM: llm.id }))}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h3 className="font-medium text-white">{llm.name}</h3>
-                                </div>
-                                {workspaceData.mainLLM === llm.id && (
-                                  <div className="bg-yellow-400 rounded-full p-1">
-                                    <Check className="h-4 w-4 text-black" />
-                                  </div>
-                                )}
-                              </div>
-                              
-                              <div className="mt-3 flex items-center text-sm text-gray-500">
-                                <span className="mr-3">Token limit: {llm.tokenLimit.toLocaleString()}</span>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* Model Selection */}
+                  <div className="mb-6">
+                    <Select
+                      id="model"
+                      value={workspaceData.mainLLM || ''}
+                      onChange={(value) => setWorkspaceData(prev => ({ ...prev, mainLLM: value }))}
+                      options={[
+                        { value: '', label: t('workspaces.selectModelPlaceholder', 'Select a model...'), disabled: true },
+                        ...availableLLMs
+                          .filter(llm => !selectedProvider || llm.provider === selectedProvider)
+                          .map(llm => ({
+                            value: llm.id,
+                            label: `${llm.name} - ${llm.tokenLimit.toLocaleString()} tokens`
+                          }))
+                      ]}
+                      disabled={!selectedProvider}
+                      label={t('workspaces.selectModel', 'Select Model')}
+                    />
+                  </div>
                   
-                  {/* API Key Section - Only shown when a model is selected */}
-                  {workspaceData.mainLLM && (
-                    <div className="mt-8 space-y-4">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="useSavedCredentials"
-                          name="useSavedCredentials"
-                          checked={workspaceData.useSavedCredentials}
-                          onChange={handleCheckboxChange}
-                          className="mr-2 h-4 w-4 rounded border-gray-700 bg-gray-800 text-yellow-400 focus:ring-yellow-500"
-                        />
-                        <label htmlFor="useSavedCredentials" className="text-sm text-gray-300">
-                          {t('workspaces.useSavedCredentials', 'Use saved credentials')}
-                        </label>
-                      </div>
-                      
-                      {!workspaceData.useSavedCredentials && (
+                  {/* API Key Section */}
+                  <div className="mt-8 space-y-4">
+                    <label htmlFor="apiKeyOption" className="block text-sm font-medium text-gray-300 mb-2 ">
+                      {t('workspaces.apiKey', 'API Key')}
+                    </label>
+                    
+                    {/* API Key Options */}
+                    <div className="flex gap-2 mb-4">
+                      <button
+                        type="button"
+                        onClick={() => setWorkspaceData(prev => ({ ...prev, useSavedCredentials: false }))}
+                        className={`flex-1 py-2 px-4 rounded-md transition-all ${!workspaceData.useSavedCredentials 
+                          ? 'bg-yellow-400 text-black font-medium' 
+                          : 'bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700'}`}
+                      >
+                        {t('workspaces.newKey', 'New Key')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWorkspaceData(prev => ({ ...prev, useSavedCredentials: true }))}
+                        className={`flex-1 py-2 px-4 rounded-md transition-all ${workspaceData.useSavedCredentials 
+                          ? 'bg-yellow-400 text-black font-medium' 
+                          : 'bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700'}`}
+                      >
+                        {t('workspaces.keysVault', 'Keys Vault')}
+                      </button>
+                    </div>
+                    
+                    {/* API Key Input Container with fixed height */}
+                    <div className="h-24"> {/* Fixed height container */}
+                      {!workspaceData.useSavedCredentials ? (
                         <div>
-                          <label htmlFor="apiKey" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                            {t('workspaces.apiKey', 'API Key')} 
-                          </label>
                           <div className="relative">
                             <input
                               type="password"
@@ -533,7 +609,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               name="apiKey"
                               value={workspaceData.apiKey}
                               onChange={handleWorkspaceDataChange}
-                              className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                              className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                               placeholder={t('workspaces.enterApiKey', 'Enter API key')}
                             />
                             <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
@@ -544,6 +620,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             </p>
                             {selectedProvider === "Groq" && (
                               <button
+                                type="button"
                                 onClick={() => openUrl("https://console.groq.com/keys")}
                                 className="text-xs text-yellow-400 hover:text-yellow-300 ml-2 underline"
                               >
@@ -552,9 +629,27 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             )}
                           </div>
                         </div>
+                      ) : (
+                        /* Keys Vault Selection */
+                        <div>
+                          <Select
+                            id="savedKey"
+                            value={workspaceData.apiKey}
+                            onChange={(value) => setWorkspaceData(prev => ({ ...prev, apiKey: value }))}
+                            options={[
+                              { value: '', label: t('workspaces.selectSavedKey', 'Select a saved key...'), disabled: true },
+                              { value: 'key1', label: 'Groq API Key' },
+                              { value: 'key2', label: 'OpenAI API Key' }
+                            ]}
+                            label={t('workspaces.savedKey', 'Saved Key')}
+                          />
+                          <p className="text-xs text-gray-400 mt-1">
+                            {t('workspaces.savedKeyInfo', 'Use a previously saved API key from your vault')}
+                          </p>
+                        </div>
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -564,7 +659,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           {currentStep === 2 && (
             <div className="space-y-6 ">
               <div>
-                <h2 className="text-xl font-bold text-white font-mono">
+                <h2 className="text-xl font-bold text-white ">
                   {t('workspaces.createAgents', 'Create Agents')}
                 </h2>
                 <p className="text-gray-400 mb-6">
@@ -575,15 +670,17 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
               {/* Side-by-side layout for agent creation and list */}
               <div className="flex flex-col lg:flex-row gap-6">
                 {/* Add Agent Form */}
-                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-3/5">
-                  <h3 className="text-lg font-medium text-white mb-4 font-mono">
-                    {t('workspaces.addAgent', `Add Agent (${workspaceData.agents.length + 1})`)}
+                <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-4/7">
+                  <h3 className="text-lg font-medium text-white mb-4 ">
+                    {isEditingAgent 
+                      ? t('workspaces.updateAgent', `Update Agent: ${newAgent.name}`) 
+                      : t('workspaces.addAgent', `Add Agent`)}
                   </h3>
                   
                   <div className="space-y-4 mb-4">
-                  <div className="flex gap-2">
-                    <div className="w-1/2 flex flex-col gap-1">
-                      <label htmlFor="agentName" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
+                  
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="agentName" className="block text-sm font-medium text-gray-300 mb-1 ">
                         {t('workspaces.agentName', 'Name')}
                       </label>
                       <input
@@ -591,13 +688,13 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         id="agentName"
                         value={newAgent.name}
                         onChange={(e) => setNewAgent(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                         placeholder={t('workspaces.enterAgentName', 'Enter agent name')}
                       />
                     </div>
                     
-                    <div className="w-1/2 flex flex-col gap-1">
-                      <label htmlFor="agentRole" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="agentRole" className="block text-sm font-medium text-gray-300 mb-1 ">
                         {t('workspaces.agentRole', 'Role')}
                       </label>
                       <input
@@ -605,29 +702,26 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         id="agentRole"
                         value={newAgent.role}
                         onChange={(e) => setNewAgent(prev => ({ ...prev, role: e.target.value }))}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                         placeholder={t('workspaces.enterAgentRole', 'Enter agent role')}
                       />
                     </div>
-                    </div>
                     
                     <div className="flex flex-col gap-1">
-                      <label htmlFor="agentLLM" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
-                        {t('workspaces.agentLLM', 'Language Model')}
-                      </label>
-                      <select
+                       
+                      <Select
                         id="agentLLM"
                         value={newAgent.llmId}
-                        onChange={(e) => setNewAgent(prev => ({ ...prev, llmId: e.target.value }))}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                      >
-                        <option value="">{t('workspaces.useWorkspaceLLM', 'Use workspace default')}</option>
-                        {availableLLMs.map(llm => (
-                          <option key={llm.id} value={llm.id}>
-                            {llm.name} ({llm.provider})
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(value) => setNewAgent(prev => ({ ...prev, llmId: value }))}
+                        options={[
+                          { value: '', label: t('workspaces.useWorkspaceLLM', 'Use workspace default'), disabled: false },
+                          ...availableLLMs.map(llm => ({
+                            value: llm.id,
+                            label: `${llm.name} (${llm.provider})`
+                          }))
+                        ]}
+                        label={t('workspaces.agentLLM', 'Language Model')}
+                      />
                       <p className="text-xs text-gray-400 mt-1">
                         {newAgent.llmId 
                           ? t('workspaces.customLLMSelected', 'Custom LLM selected for this agent') 
@@ -635,136 +729,274 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       </p>
                     </div>
                     
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="agentObjective" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
+                    {/* <div className="flex flex-col gap-1">
+                      <label htmlFor="agentObjective" className="block text-sm font-medium text-gray-300 mb-1 ">
                         {t('workspaces.agentDescription', 'Objective')}
                       </label>
                       <textarea
                         id="agentObjective"
                         value={newAgent.objective}
                         onChange={(e) => setNewAgent(prev => ({ ...prev, objective: e.target.value }))}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
                         placeholder={t('workspaces.enterAgentObjective', 'Enter agent objective')}
                       />
-                    </div>
+                    </div> */}
                     <div className="flex flex-col gap-1">
-                      <label htmlFor="agentBackground" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
+                      <label htmlFor="agentBackground" className="block text-sm font-medium text-gray-300 mb-1 ">
                         {t('workspaces.agentDescription', 'Background')}
                       </label>
                       <textarea
                         id="agentBackground"
                         value={newAgent.background}
                         onChange={(e) => setNewAgent(prev => ({ ...prev, background: e.target.value }))}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
                         placeholder={t('workspaces.enterAgentBackground', 'Enter agent background')}
                       />
                     </div>
                     
                     
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2 font-mono">
-                        {t('workspaces.agentTools', 'Agent Tools')}
-                      </label>
-                      
-                      <div className="flex space-x-2 mb-4">
-                       {availableTools.map((tool) => {
-                         // Check if tool is already added to disable the button
-                         const isToolAdded = newAgent.tools.some(t => t.name === tool.name);
-                         
-                         return (
-                           <button
-                             key={tool.name}
-                             onClick={() => handleAddTool(tool.name)}
-                             className={`${
-                               isToolAdded 
-                                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
-                                 : 'bg-gray-700 hover:bg-gray-600 text-white'
-                             } px-3 py-1.5 rounded-md flex gap-1 items-center transition-colors`}
-                             disabled={isToolAdded}
-                           >
-                             {tool.name}
-                             {!isToolAdded && <Plus className="h-3 w-3" />}
-                           </button>
-                         );
-                       })}
+                    <div className="mb-4">
+                      <div className="flex items-center  gap-2 mb-2">
+                        <label className="block text-sm font-medium text-gray-300">
+                          {t('workspaces.agentTools', 'Agent Tools')}
+                        </label>
+                        <button
+                          onClick={() => setShowToolPopup(true)}
+                          className="text-yellow-400 hover:text-yellow-500 transition-colors flex items-center gap-1 text-sm cursor-pointer"
+                          title={t('workspaces.addTool', 'Add tool')}
+                        >
+                          <Plus className="h-4 w-4 " />
+                        </button>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                        {newAgent.tools.map((tool) => (
-                          <div 
-                            key={tool.name} 
-                            className="bg-gray-800 text-white px-3 py-2 rounded-md flex flex-col border border-gray-700"
-                          >
-                            <div className="flex justify-between items-center mb-3">
-                              <span className="font-medium">{tool.name}</span>
-                              <button
-                                onClick={() => handleRemoveTool(tool.name)}
-                                className="text-gray-400 hover:text-red-500 transition-colors"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              <label className="text-xs text-gray-300 font-medium mb-1">Tool Function:</label>
+                      
+                      <div className="flex flex-col gap-4 h-14">
+                        
+                        {/* Selected Tools */}
+                        {newAgent.tools.length > 0 ? (
+                          <div className="mt-2">
+                            <div className="flex overflow-x-auto pb-2">
                               <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleToolPropertyChange(tool.name, 'isInputChannel', !tool.isInputChannel)}
-                                  className={`px-2 py-1 rounded-md text-xs flex-1 transition-colors ${
-                                    tool.isInputChannel 
-                                      ? 'bg-yellow-400 text-black' 
-                                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                  }`}
-                                >
-                                  Input Channel
-                                </button>
-                                <button
-                                  onClick={() => handleToolPropertyChange(tool.name, 'isOutputProducer', !tool.isOutputProducer)}
-                                  className={`px-2 py-1 rounded-md text-xs flex-1 transition-colors ${
-                                    tool.isOutputProducer 
-                                      ? 'bg-yellow-400 text-black' 
-                                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                  }`}
-                                >
-                                  Output Producer
-                                </button>
-                                <button
-                                  onClick={() => handleToolPropertyChange(tool.name, 'isJudge', !tool.isJudge)}
-                                  className={`px-2 py-1 rounded-md text-xs flex-1 transition-colors ${
-                                    tool.isJudge 
-                                      ? 'bg-yellow-400 text-black' 
-                                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                  }`}
-                                >
-                                  Judge
-                                </button>
+                              
+                              {newAgent.tools.map((tool) => {
+                                // Determine badge color based on tool function
+                                let badgeColor = "";
+                                let functionLabel = "";
+                                
+                                if (tool.isInputChannel) {
+                                  badgeColor = "bg-yellow-400 text-black";
+                                  functionLabel = "Input";
+                                } else if (tool.isOutputProducer) {
+                                  badgeColor = "bg-yellow-400 text-black";
+                                  functionLabel = "Output";
+                                } else if (tool.isJudge) {
+                                  badgeColor = "bg-yellow-400 text-black";
+                                  functionLabel = "Judge";
+                                }
+                                
+                                return (
+                                  <div 
+                                    key={tool.name} 
+                                    className="bg-zinc-800 text-white px-2 py-1.5 rounded flex items-center gap-2 border border-zinc-700"
+                                  >
+                                    <span className="text-sm text-nowrap">{tool.name}</span>
+                                    {functionLabel && (
+                                      <span className={`${badgeColor} px-1.5 py-0.5 rounded text-xs`}>
+                                        {functionLabel}
+                                      </span>
+                                    )}
+                                    <div className="flex gap-1 ml-1">
+                                      <button
+                                        onClick={() => {
+                                          // Open the tool popup for editing
+                                          setEditingToolName(tool.name);
+                                          setSelectedToolInPopup(tool.name);
+                                          
+                                          // Set the current tool property
+                                          if (tool.isInputChannel) {
+                                            setSelectedToolPropertyInPopup('isInputChannel');
+                                          } else if (tool.isOutputProducer) {
+                                            setSelectedToolPropertyInPopup('isOutputProducer');
+                                          } else if (tool.isJudge) {
+                                            setSelectedToolPropertyInPopup('isJudge');
+                                          } else {
+                                            setSelectedToolPropertyInPopup('none');
+                                          }
+                                          
+                                          setShowToolPopup(true);
+                                        }}
+                                        className="text-gray-400 hover:text-yellow-400 transition-colors"
+                                        title={t('workspaces.editTool', 'Edit tool')}
+                                      >
+                                        <Edit2 className="h-3 w-3" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleRemoveTool(tool.name)}
+                                        className="text-gray-400 hover:text-red-500 transition-colors"
+                                        title={t('workspaces.removeTool', 'Remove tool')}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                               </div>
                             </div>
                           </div>
-                        ))}
+                        ) : (<p className="mt-2 text-sm text-gray-400">{t('workspaces.noToolsSelected', 'No tools selected - Press the plus button to add tools')}</p>)}
                       </div>
+                      
+                      {/* Tool Selection Popup */}
+                      {showToolPopup && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                          <div 
+                            ref={popupRef}
+                            className="bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full max-w-md shadow-xl animate-in fade-in duration-200"
+                          >
+                            <div className="flex justify-between items-center mb-4">
+                              <h3 className="text-lg font-medium text-white">
+                                {editingToolName ? t('workspaces.editTool', 'Edit Tool') : t('workspaces.addTool', 'Add Tool')}
+                              </h3>
+                              <button 
+                                onClick={() => {
+                                  setShowToolPopup(false);
+                                  setEditingToolName(null);
+                                  setSelectedToolPropertyInPopup('none');
+                                }}
+                                className="text-gray-400 hover:text-white"
+                              >
+                                <X className="h-5 w-5" />
+                              </button>
+                            </div>
+                            
+                            <div className="mb-4">
+                              <Select
+                                id="toolPopupSelect"
+                                value={selectedToolInPopup}
+                                onChange={(value) => setSelectedToolInPopup(value)}
+                                options={[
+                                  { value: '', label: t('workspaces.selectTool', 'Select a tool...'), disabled: true },
+                                  ...availableTools
+                                    .filter(tool => !newAgent.tools.some(t => t.name === tool.name) || tool.name === editingToolName)
+                                    .map(tool => ({
+                                      value: tool.name,
+                                      label: tool.name
+                                    }))
+                                ]}
+                                label={t('workspaces.selectTool', 'Select Tool')}
+                              />
+                            </div>
+                            
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium text-gray-300 mb-1">
+                                {t('workspaces.toolProperty', 'Tool Property')}
+                              </label>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  onClick={() => setSelectedToolPropertyInPopup('none')}
+                                  className={`py-2 px-3 rounded-md text-sm ${selectedToolPropertyInPopup === 'none' ? 'bg-yellow-500 text-white' : 'bg-zinc-700 text-gray-300 hover:bg-zinc-600'}`}
+                                >
+                                  {t('workspaces.noProperty', 'None')}
+                                </button>
+                                <button
+                                  onClick={() => setSelectedToolPropertyInPopup('isInputChannel')}
+                                  className={`py-2 px-3 rounded-md text-sm ${selectedToolPropertyInPopup === 'isInputChannel' ? 'bg-yellow-500 text-white' : 'bg-zinc-700 text-gray-300 hover:bg-zinc-600'}`}
+                                >
+                                  {t('workspaces.inputChannel', 'Input Channel')}
+                                </button>
+                                <button
+                                  onClick={() => setSelectedToolPropertyInPopup('isOutputProducer')}
+                                  className={`py-2 px-3 rounded-md text-sm ${selectedToolPropertyInPopup === 'isOutputProducer' ? 'bg-yellow-500 text-white' : 'bg-zinc-700 text-gray-300 hover:bg-zinc-600'}`}
+                                >
+                                  {t('workspaces.outputProducer', 'Output Producer')}
+                                </button>
+                                <button
+                                  onClick={() => setSelectedToolPropertyInPopup('isJudge')}
+                                  className={`py-2 px-3 rounded-md text-sm ${selectedToolPropertyInPopup === 'isJudge' ? 'bg-yellow-500 text-white' : 'bg-zinc-700 text-gray-300 hover:bg-zinc-600'}`}
+                                >
+                                  {t('workspaces.judge', 'Judge')}
+                                </button>
+                              </div>
+                            </div>
+                            
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                onClick={() => {
+                                  setShowToolPopup(false);
+                                  setEditingToolName(null);
+                                  setSelectedToolPropertyInPopup('none');
+                                }}
+                                className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium border-0"
+                              >
+                                {t('common.cancel', 'Cancel')}
+                              </Button>
+                              <Button
+                                onClick={() => handleAddTool(selectedToolInPopup)}
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white font-medium border-0"
+                                disabled={!selectedToolInPopup}
+                              >
+                                {editingToolName ? t('common.update', 'Update') : t('common.add', 'Add')}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
-                  <Button
-                    onClick={handleAddAgent}
-                    className="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium border-0 flex items-center"
-                    disabled={!newAgent.name.trim()}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t('workspaces.addAgent', 'Add Agent')}
-                  </Button>
+                  {isEditingAgent ? (
+                    <div className="flex gap-2">
+                      
+                      <Button
+                        onClick={() => {
+                          setNewAgent({
+                            name: "",
+                            role: "",
+                            objective: "",
+                            background: "",
+                            capabilities: "",
+                            tools: [],
+                            llmId: workspaceData.mainLLM
+                          });
+                          setIsEditingAgent(false);
+                        }}
+                        className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-medium border-0 flex items-center justify-center"
+                      >
+                        <X className="h-4 w-4" />
+                        {t('workspaces.cancelEdit', 'Cancel')}
+                      </Button> 
+                      <Button
+                        onClick={handleAddAgent}
+                        className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center"
+                        disabled={!newAgent.name.trim()}
+                      >
+                        <Check className="h-4 w-4" />
+                        {t('workspaces.updateAgent', 'Update Agent')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={handleAddAgent}
+                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center"
+                      disabled={!newAgent.name.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
+                      {t('workspaces.addAgent', 'Add Agent')}
+                    </Button>
+                  )}
                 </div>
                 
                 {/* Agent List */}
-                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-2/5">
-                  <h3 className="text-lg font-medium text-white mb-4 font-mono">
-                    {t('workspaces.agentList', 'Agent List')}
+                <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-3/7">
+                  <h3 className="flex justify-between items-center text-lg font-medium text-white mb-4 ">
+                    <span>{t('workspaces.agentList', 'Agent List')}</span> {workspaceData.agents.length > 0 && <span  className="text-gray-400 text-sm"> {workspaceData.agents.length} agent(s) added</span>}
                   </h3>
                   
                   {workspaceData.agents.length > 0 ? (
                     <div className="space-y-3 max-h-[500px] overflow-y-auto">
                       {workspaceData.agents.map((agent) => (
-                        <div key={agent.id} className="bg-gray-800 rounded-lg p-4 flex justify-between items-start">
+                        <div key={agent.id} className="bg-zinc-800 rounded-lg p-4 flex justify-between items-start">
                           <div>
                             <div className="flex items-center">
                               <h4 className="font-medium text-white">{agent.name}</h4>
@@ -805,7 +1037,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                   return (
                                     <span 
                                       key={index} 
-                                      className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded flex items-center gap-1.5"
+                                      className="text-xs bg-zinc-700 text-gray-300 px-2 py-1 rounded flex items-center gap-1.5"
                                     >
                                       {tool.name}
                                       {roleLabel && (
@@ -819,17 +1051,25 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               </div>
                             )}
                           </div>
-                          <button
-                            onClick={() => handleRemoveAgent(agent.id)}
-                            className="text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleEditAgent(agent.id)}
+                              className="text-gray-400 hover:text-yellow-400 transition-colors"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleRemoveAgent(agent.id)}
+                              className="text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center text-gray-400 py-8 bg-gray-800/30 rounded-lg border border-gray-700">
+                    <div className="text-center text-gray-400 py-8 bg-zinc-800/30 rounded-lg border border-zinc-700">
                       {t('workspaces.noAgents', 'No agents added yet')}
                     </div>
                   )}
@@ -842,7 +1082,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           {currentStep === 3 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-white mb-4 font-mono">
+                <h2 className="text-xl font-bold text-white mb-4 ">
                   {t('workspaces.defineTasks', 'Define Tasks')}
                 </h2>
                 <p className="text-gray-400 mb-6">
@@ -853,14 +1093,14 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
               {/* Side-by-side layout for task creation and list */}
               <div className="flex flex-col lg:flex-row gap-6 h-full">
                 {/* Add Task Form */}
-                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-3/5 flex flex-col h-full">
-                  <h3 className="text-lg font-medium text-white mb-4 font-mono">
+                <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-3/5 flex flex-col h-full">
+                  <h3 className="text-lg font-medium text-white mb-4 ">
                     {t('workspaces.addTask', `Add Task (${workspaceData.tasks.length + 1})`)}
                   </h3>
                   
                   <div className="space-y-4 mb-4">
                     <div>
-                      <label htmlFor="taskName" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
+                      <label htmlFor="taskName" className="block text-sm font-medium text-gray-300 mb-1 ">
                         {t('workspaces.taskName', 'Task Name')}
                       </label>
                       <input
@@ -868,25 +1108,25 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         id="taskName"
                         value={newTask.name}
                         onChange={(e) => setNewTask(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                         placeholder={t('workspaces.enterTaskName', 'Enter task name')}
                       />
                     </div>
                     
                     <div>
-                      <label htmlFor="taskDescription" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
+                      <label htmlFor="taskDescription" className="block text-sm font-medium text-gray-300 mb-1 ">
                         {t('workspaces.taskDescription', 'Task Description')}
                       </label>
                       <textarea
                         id="taskDescription"
                         value={newTask.description}
                         onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
                         placeholder={t('workspaces.enterTaskDescription', 'Enter task description')}
                       />
                     </div>
                     <div>
-                      <label htmlFor="taskExpectedOutput" className="block text-sm font-medium text-gray-300 mb-1 font-mono">
+                      <label htmlFor="taskExpectedOutput" className="block text-sm font-medium text-gray-300 mb-1 ">
                         {t('workspaces.taskExpectedOutput', 'Task Expected Output')}
                       </label>
                       <input
@@ -894,22 +1134,22 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         id="taskExpectedOutput"
                         value={newTask.expectedOutput}
                         onChange={(e) => setNewTask(prev => ({ ...prev, expectedOutput: e.target.value }))}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                         placeholder={t('workspaces.enterTaskExpectedOutput', 'Enter task expected output')}
                       />
                     </div>
-                    <div className="mb-4 border-t border-gray-700 pt-4">
-                      <label className="block text-sm font-medium text-gray-300 mb-3 font-mono">
+                    <div className="mb-4 border-t border-zinc-700 pt-4">
+                      <label className="block text-sm font-medium text-gray-300 mb-3 ">
                         {t('workspaces.taskExecutionType', 'Task Execution Type')}
                       </label>
-                      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                      <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
                         <p className="text-xs text-gray-400 mb-3">
                           {t('workspaces.taskTypeDescription', 'Choose how this task will be executed. A task can either be assigned to an agent or execute a workflow, but not both.')}
                         </p>
                         <div className="flex flex-col gap-4">
                           {/* Radio button for Agent option */}
                           <div 
-                            className={`flex items-start p-3 rounded-md cursor-pointer ${taskType === 'agent' ? 'bg-gray-700 border border-yellow-400/50' : 'bg-gray-800/80 border border-gray-700 hover:bg-gray-700/50'}`}
+                            className={`flex items-start p-3 rounded-md cursor-pointer ${taskType === 'agent' ? 'bg-zinc-700 border border-yellow-400/50' : 'bg-zinc-800/80 border border-zinc-700 hover:bg-zinc-700/50'}`}
                             onClick={() => {
                               setTaskType('agent');
                               setNewTask(prev => ({
@@ -933,7 +1173,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                     workflowId: null
                                   }));
                                 }}
-                                className="h-4 w-4 text-yellow-400 focus:ring-yellow-500 border-gray-700 bg-gray-800"
+                                className="h-4 w-4 text-yellow-400 focus:ring-yellow-500 border-zinc-700 bg-zinc-800"
                               />
                             </div>
                             <div className="ml-3 flex-1">
@@ -946,22 +1186,22 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               
                               {taskType === 'agent' && (
                                 <div className="mt-3 pl-1">
-                                  <select
+                                  <Select
                                     id="taskAssignedAgent"
                                     value={newTask.assignedAgent || ""}
-                                    onChange={(e) => setNewTask(prev => ({ 
+                                    onChange={(value) => setNewTask(prev => ({ 
                                       ...prev, 
-                                      assignedAgent: e.target.value ? e.target.value : null 
+                                      assignedAgent: value ? value : null 
                                     }))}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                  >
-                                    <option value="">{t('workspaces.autoAssignAgent', 'Auto-assign best fit')}</option>
-                                    {workspaceData.agents.map(agent => (
-                                      <option key={agent.id} value={agent.id}>
-                                        {agent.name}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    options={[
+                                      { value: '', label: t('workspaces.autoAssignAgent', 'Auto-assign best fit'), disabled: true },
+                                      ...workspaceData.agents.map(agent => ({
+                                        value: agent.id,
+                                        label: agent.name
+                                      }))
+                                    ]}
+                                    label={t('workspaces.agentAssignment', 'Agent Assignment')}
+                                  />
                                   <p className="text-xs text-gray-400 mt-1">
                                     {t('workspaces.agentAssignmentInfo', 'Leave empty to auto-assign the best agent for this task')}
                                   </p>
@@ -972,7 +1212,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           
                           {/* Radio button for Workflow option */}
                           <div 
-                            className={`flex items-start p-3 rounded-md cursor-pointer ${taskType === 'workflow' ? 'bg-gray-700 border border-yellow-400/50' : 'bg-gray-800/80 border border-gray-700 hover:bg-gray-700/50'}`}
+                            className={`flex items-start p-3 rounded-md cursor-pointer ${taskType === 'workflow' ? 'bg-zinc-700 border border-yellow-400/50' : 'bg-zinc-800/80 border border-zinc-700 hover:bg-zinc-700/50'}`}
                             onClick={() => {
                               setTaskType('workflow');
                               setNewTask(prev => ({
@@ -996,7 +1236,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                     executeWorkflow: true
                                   }));
                                 }}
-                                className="h-4 w-4 text-yellow-400 focus:ring-yellow-500 border-gray-700 bg-gray-800"
+                                className="h-4 w-4 text-yellow-400 focus:ring-yellow-500 border-zinc-700 bg-zinc-800"
                               />
                             </div>
                             <div className="ml-3 flex-1">
@@ -1009,21 +1249,22 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               
                               {taskType === 'workflow' && (
                                 <div className="mt-3 pl-1">
-                                  <select
+                                  <Select
                                     id="taskWorkflowId"
                                     value={newTask.workflowId || ""}
-                                    onChange={(e) => setNewTask(prev => ({ 
+                                    onChange={(value) => setNewTask(prev => ({ 
                                       ...prev, 
-                                      workflowId: e.target.value ? e.target.value : null 
+                                      workflowId: value ? value : null 
                                     }))}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                  >
-                                    <option value="" disabled>{t('workspaces.selectWorkflow', 'Select a workflow...')}</option>
-                                    {/* Example workflows - replace with actual workflows data */}
-                                    <option value="workflow1">Data Processing Workflow</option>
-                                    <option value="workflow2">Content Generation Workflow</option>
-                                    <option value="workflow3">Analysis Workflow</option>
-                                  </select>
+                                    options={[
+                                      { value: '', label: t('workspaces.selectWorkflow', 'Select a workflow...'), disabled: true },
+                                      // Example workflows - replace with actual workflows data
+                                      { value: 'workflow1', label: 'Data Processing Workflow' },
+                                      { value: 'workflow2', label: 'Content Generation Workflow' },
+                                      { value: 'workflow3', label: 'Analysis Workflow' }
+                                    ]}
+                                    label={t('workspaces.workflowSelection', 'Workflow Selection')}
+                                  />
                                 </div>
                               )}
                             </div>
@@ -1035,7 +1276,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                   
                   <Button
                     onClick={handleAddTask}
-                    className="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium border-0 flex items-center justify-center mt-auto"
+                    className="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-medium border-0 flex items-center justify-center mt-auto"
                     disabled={!newTask.name.trim()}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -1044,15 +1285,15 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                 </div>
                 
                 {/* Task List */}
-                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 lg:w-2/5 flex flex-col h-full">
-                  <h3 className="text-lg font-medium text-white mb-4 font-mono">
+                <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-2/5 flex flex-col h-full">
+                  <h3 className="text-lg font-medium text-white mb-4 ">
                     {t('workspaces.taskList', 'Task List')}
                   </h3>
                   
                   {workspaceData.tasks.length > 0 ? (
                     <div className="space-y-3 flex-grow overflow-y-auto">
                       {workspaceData.tasks.map((task) => (
-                        <div key={task.id} className="bg-gray-800 rounded-lg p-4 flex justify-between items-start w-full">
+                        <div key={task.id} className="bg-zinc-800 rounded-lg p-4 flex justify-between items-start w-full">
                           <div className="w-full">
                             <div className="flex items-center justify-between">
                               <h4 className="font-medium text-white">{task.name}</h4>
@@ -1127,7 +1368,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center text-gray-400 py-8 bg-gray-800/30 rounded-lg border border-gray-700 flex-grow flex items-center justify-center">
+                    <div className="text-center text-gray-400 py-8 bg-zinc-800/30 rounded-lg border border-zinc-700 flex-grow flex items-center justify-center">
                       {t('workspaces.noTasks', 'No tasks added yet')}
                     </div>
                   )}
@@ -1142,7 +1383,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           {currentStep === 4 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-white mb-4 font-mono">
+                <h2 className="text-xl font-bold text-white mb-4 ">
                   {t('workspaces.reviewAndConfirm', 'Review & Confirm')}
                 </h2>
                 <p className="text-gray-400 mb-6">
@@ -1152,9 +1393,9 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
               
               <div className="space-y-6">
                 {/* Workspace Basics */}
-                <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
                   <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-lg font-medium text-white font-mono">
+                    <h3 className="text-lg font-medium text-white ">
                       {t('workspaces.workspaceBasics', 'Workspace Setup')}
                     </h3>
                     <button
@@ -1195,9 +1436,9 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                 </div>
                 
                 {/* Agents */}
-                <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
                   <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-lg font-medium text-white font-mono">
+                    <h3 className="text-lg font-medium text-white ">
                       {t('workspaces.agents', 'Agents')}
                     </h3>
                     <button
@@ -1211,7 +1452,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                   {workspaceData.agents.length > 0 ? (
                     <div className="space-y-2">
                       {workspaceData.agents.map((agent) => (
-                        <div key={agent.id} className="bg-gray-800 rounded-md p-2">
+                        <div key={agent.id} className="bg-zinc-800 rounded-md p-2">
                           <div className="font-medium text-white">{agent.name}</div>
                           <div className="text-sm text-yellow-400">{agent.role}</div>
                         </div>
@@ -1225,9 +1466,9 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                 </div>
                 
                 {/* Tasks */}
-                <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
                   <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-lg font-medium text-white font-mono">
+                    <h3 className="text-lg font-medium text-white ">
                       {t('workspaces.tasks', 'Tasks')}
                     </h3>
                     <button
@@ -1241,7 +1482,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                   {workspaceData.tasks.length > 0 ? (
                     <div className="space-y-2">
                       {workspaceData.tasks.map((task) => (
-                        <div key={task.id} className="bg-gray-800 rounded-md p-3">
+                        <div key={task.id} className="bg-zinc-800 rounded-md p-3">
                           <div className="flex justify-between items-start">
                             <div className="font-medium text-white">{task.name}</div>
                             <div className="flex items-center gap-1">
@@ -1292,56 +1533,59 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           )}
         </form>
       </div>
-      {/* Navigation and submit buttons */}
-      <div className="flex justify-between items-center p-6 border-t border-gray-800">
-        {currentStep > 1 ? (
-          <Button
-            onClick={handlePrevStep}
-            className="bg-transparent hover:bg-gray-800 text-black border border-gray-700 font-medium flex items-center"
-          >
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            {t('common.back', 'Back')}
-          </Button>
-        ) : (
-          <Button
-            onClick={onClose}
-            className="bg-transparent hover:bg-gray-800 text-black border border-gray-700"
-          >
-            {t('common.cancel', 'Cancel')}
-          </Button>
-        )}
-        
-        {currentStep < 4 ? (
-          <div className="flex gap-2">
-            {currentStep != 1 && (
-              <Button
-                onClick={() => handleSubmit(new Event('submit') as unknown as React.FormEvent)}
-                className="bg-red-400 hover:bg-red-500 text-black font-medium border-0 flex items-center"
-              >
-                
-                {t('common.finish', 'Finish')}
-              </Button>
-            )}
+      {/* Navigation and submit buttons - sticky to the bottom */}
+      <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
+        <div className="flex justify-between items-center p-6 border-t border-zinc-800 bg-zinc-900 w-full max-w-5xl shadow-lg">
+          {currentStep > 1 ? (
             <Button
-              onClick={handleNextStep}
-              className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium border-0 flex items-center"
-              disabled={!getCurrentStepValidation()}
+              onClick={handlePrevStep}
+             className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium border-0 flex items-center"
             >
-              {t('common.next', 'Next')}
-              <ChevronRight className="h-4 w-4 ml-2" />
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              {t('common.back', 'Back')}
             </Button>
-          </div>
-        ) : (
-          <Button
-            onClick={() => handleSubmit(new Event('submit') as unknown as React.FormEvent)}
-            className="bg-green-500 hover:bg-green-600 text-black font-medium border-0 flex items-center"
-            disabled={!isStep4Valid}
-          >
-            <Check className="h-4 w-4 mr-2" />
-            {t('common.finish', 'Finish')}
-          </Button>
-        )}
+          ) : (
+            <Button
+              onClick={onClose}
+              className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium border-0 flex items-center"
+            >
+              {t('common.cancel', 'Cancel')}
+            </Button>
+          )}
+          
+          {currentStep < 4 ? (
+            <div className="flex gap-2">
+              {currentStep != 1 && (
+                <Button
+                  onClick={() => handleSubmit(new Event('submit') as unknown as React.FormEvent)}
+                  className="bg-red-400 hover:bg-red-500 text-black font-medium border-0 flex items-center"
+                >
+                  
+                  {t('common.finish', 'Finish')}
+                </Button>
+              )}
+              <Button
+                onClick={handleNextStep}
+                className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium border-0 flex items-center"
+                disabled={!getCurrentStepValidation()}
+              >
+                {t('common.next', 'Next')}
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={() => handleSubmit(new Event('submit') as unknown as React.FormEvent)}
+              className="bg-green-500 hover:bg-green-600 text-black font-medium border-0 flex items-center"
+              disabled={!isStep4Valid}
+            >
+              <Check className="h-4 w-4 mr-2" />
+              {t('common.finish', 'Finish')}
+            </Button>
+          )}
+        </div>
       </div>
+    </div>
     </div>
   );
 };
