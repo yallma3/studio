@@ -8,6 +8,7 @@ export interface Agent {
   capabilities: string;
   tools: ToolConfig[];
   llmId: string; // ID of the LLM to use for this agent
+  variables?: Record<string, string>; // Variables for templating in background and other fields
 }
 
 export interface ToolConfig {
