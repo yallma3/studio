@@ -9,19 +9,16 @@ import { saveWorkspaceToDefaultLocation } from "../modules/projects/utils/storag
 import WorkspaceCreationWizard from "../modules/projects/components/WorkspaceCreationWizard";
 
 interface HomeScreenProps {
-  onCreateNew: () => void;
   onOpenFromFile: () => void;
   onOpenFromPath: (path: string, id: string) => void;
   onOpenWorkspace?: (workspaceData: WorkspaceData) => void;
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
-  onCreateNew,
   onOpenFromFile,
   onOpenFromPath,
   onOpenWorkspace: onOpenWorkspace,
 }) => {
-  onCreateNew();
   const { t } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
   const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false);
