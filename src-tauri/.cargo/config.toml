@@ -11,4 +11,4 @@ rustflags = [
 ]
 
 [build]
-rustflags = ["-C", "target-feature=+crt-static"] 
+#rustflags = ["-C", "target-feature=+crt-static"] 

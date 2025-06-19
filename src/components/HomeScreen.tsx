@@ -1,78 +1,115 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Settings, Bell } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
-import Tabs from "./ui/tabs";
-import ProjectsTab from "../modules/projects/components/ProjectsTab";
-import AgentsTab from "../modules/agents/components/AgentsTab";
-import FlowsTab from "../modules/flows/components/FlowsTab";
+import WorkspacesTab from "../modules/projects/components/ProjectsTab";
+import { WorkspaceData } from "../modules/projects/types/Types";
+import SettingsView from "./settings/SettingsView";
+import { saveWorkspaceToDefaultLocation } from "../modules/projects/utils/storageUtils";
+import WorkspaceCreationWizard from "../modules/projects/components/WorkspaceCreationWizard";
 
 interface HomeScreenProps {
-  onCreateNew: (type: "flows" | "agents" | "projects") => void;
-  onOpenFromFile: (type: "flows" | "agents" | "projects") => void;
-  onOpenFromPath: (path: string, id: string, type: "flows" | "agents" | "projects") => void;
+  onCreateNew: () => void;
+  onOpenFromFile: () => void;
+  onOpenFromPath: (path: string, id: string) => void;
+  onOpenWorkspace?: (workspaceData: WorkspaceData) => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onCreateNew, onOpenFromFile, onOpenFromPath }) => {
-  const [activeTab, setActiveTab] = useState<string>("flows");
+const HomeScreen: React.FC<HomeScreenProps> = ({
+  onCreateNew,
+  onOpenFromFile,
+  onOpenFromPath,
+  onOpenWorkspace: onOpenWorkspace,
+}) => {
+  onCreateNew();
   const { t } = useTranslation();
-  
-  const tabs = [
-    { id: "projects", label: t('tabs.projects', 'Projects') },
-    { id: "agents", label: t('tabs.agents', 'Agents') },
-    { id: "flows", label: t('tabs.flows', 'Flows') }
-  ];
+  const [showSettings, setShowSettings] = useState(false);
+  const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false);
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "projects":
-        return <ProjectsTab 
-          onCreateNew={() => onCreateNew("projects")} 
-          onOpenFromFile={() => onOpenFromFile("projects")} 
-          onOpenFromPath={(path, id) => onOpenFromPath(path, id, "projects")}
-        />;
-      case "agents":
-        return <AgentsTab 
-          onCreateNew={() => onCreateNew("agents")} 
-          onOpenFromFile={() => onOpenFromFile("agents")} 
-          onOpenFromPath={(path, id) => onOpenFromPath(path, id, "agents")} 
-        />;
-      case "flows":
-      default:
-        return <FlowsTab 
-          onCreateNew={() => onCreateNew("flows")} 
-          onOpenFromFile={() => onOpenFromFile("flows")} 
-          onOpenFromPath={(path, id) => onOpenFromPath(path, id, "flows")} 
-        />;
+  const onCreateWorkspace = () => {
+    console.log(isCreateWizardOpen);
+    setIsCreateWizardOpen(true);
+    console.log(isCreateWizardOpen);
+  };
+
+  const handleCloseCreateWizard = () => {
+    setIsCreateWizardOpen(false);
+  };
+
+  const handleCreateWorkspace = async (workspaceData: WorkspaceData) => {
+    // console.log(`Creating new Workspace: ${workspaceData.name}`);
+    // console.log('Workspace data:', workspaceData);
+
+    try {
+      // Save the workspace to the default location
+      await saveWorkspaceToDefaultLocation(workspaceData);
+
+      // Open the workspace in WorkspaceCanvas if onOpenWorkspace is provided
+      if (onOpenWorkspace) {
+        onOpenWorkspace(workspaceData);
+      }
+    } catch (error) {
+      console.error("Error saving workspace:", error);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden" dir="auto">
-      {/* Header */}
-      <header className="relative z-10 px-8 py-6">
-        <div className="flex items-center justify-between">
-          <div className="text-2xl md:text-3xl font-bold text-white flex items-center font-mono">
-            <img src="/yaLLMa3.svg" alt={t('app.title')} className="w-32" />
-          </div>
-          <LanguageSelector />
+    <div>
+      {!isCreateWizardOpen && (
+        <div className="min-h-screen bg-gradient-to-b from-zinc-900 to-black text-white">
+          {/* Header */}
+          <header className="border-b border-zinc-800 bg-zinc-950/50 backdrop-blur-sm sticky top-0 z-10">
+            <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5">
+                  <img
+                    src="/yaLLMa3.svg"
+                    alt={t("app.title")}
+                    className="w-32"
+                  />
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <button className="text-zinc-400 hover:text-white p-2 hover:bg-zinc-500 rounded-md cursor-pointer">
+                    <Bell className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className="text-zinc-400 hover:text-white p-2 hover:bg-zinc-500 rounded-md cursor-pointer"
+                  >
+                    <Settings className="h-5 w-5" />
+                  </button>
+                </div>
+                <LanguageSelector />
+              </div>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="relative z-10">
+            <WorkspacesTab
+              onCreateNew={onCreateWorkspace}
+              onOpenFromFile={onOpenFromFile}
+              onOpenFromPath={onOpenFromPath}
+            />
+          </main>
+
+          {/* Settings Modal */}
+          {showSettings && (
+            <SettingsView onClose={() => setShowSettings(false)} />
+          )}
         </div>
-      </header>
-
-      {/* Tabs */}
-      <div className="container mx-auto relative z-10 px-4 mt-4">
-        <Tabs 
-          activeTab={activeTab} 
-          onTabChange={setActiveTab} 
-          tabs={tabs} 
+      )}
+      {isCreateWizardOpen && (
+        <WorkspaceCreationWizard
+          onClose={handleCloseCreateWizard}
+          onCreateWorkspace={handleCreateWorkspace}
         />
-      </div>
-
-      {/* Main Content */}
-      <main className="relative z-10">
-        {renderTabContent()}
-      </main>
+      )}
     </div>
   );
 };
 
-export default HomeScreen; 
+export default HomeScreen;

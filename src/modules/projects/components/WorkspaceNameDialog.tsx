@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-interface ProjectNameDialogProps {
+interface WorkspaceNameDialogProps {
   isOpen: boolean;
   initialName: string;
   onClose: () => void;
   onSave: (name: string) => void;
 }
 
-const ProjectNameDialog: React.FC<ProjectNameDialogProps> = ({
+const WorkspaceNameDialog: React.FC<WorkspaceNameDialogProps> = ({
   isOpen,
   initialName,
   onClose,
@@ -32,7 +32,7 @@ const ProjectNameDialog: React.FC<ProjectNameDialogProps> = ({
       <div className="bg-[#1E1E1E] rounded-lg shadow-lg w-full max-w-md overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
           <h3 className="text-lg font-medium text-white">
-            {t('projects.saveProject', 'Save Project')}
+            {t('workspaces.saveWorkspace', 'Save Workspace')}
           </h3>
           <button
             onClick={onClose}
@@ -44,15 +44,15 @@ const ProjectNameDialog: React.FC<ProjectNameDialogProps> = ({
         
         <form onSubmit={handleSubmit} className="p-4">
           <div className="mb-4">
-            <label htmlFor="project-name" className="block text-sm font-medium text-gray-300 mb-2">
-              {t('projects.projectName', 'Project Name')}
+            <label htmlFor="workspace-name" className="block text-sm font-medium text-gray-300 mb-2">
+              {t('workspaces.workspaceName', 'Workspace Name')}
             </label>
             <input
               type="text"
-              id="project-name"
+              id="workspace-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={t('projects.enterProjectName', 'Enter project name...')}
+              placeholder={t('workspaces.enterWorkspaceName', 'Enter workspace name...')}
               className="w-full px-3 py-2 bg-[#2A2A2A] text-white rounded border border-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
               autoFocus
             />
@@ -84,4 +84,4 @@ const ProjectNameDialog: React.FC<ProjectNameDialogProps> = ({
   );
 };
 
-export default ProjectNameDialog; 
+export default WorkspaceNameDialog; 
