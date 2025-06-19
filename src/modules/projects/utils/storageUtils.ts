@@ -1,35 +1,37 @@
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
+import { appDataDir } from "@tauri-apps/api/path";
+import {WorkspaceData} from '../types/Types'
 
-export interface ProjectState {
-  projectId: string;
-  projectName: string | null;
+export interface WorkspaceState {
+  workspaceId: string;
+  workspaceName: string | null;
   description?: string;
   createdAt: number;
   updatedAt: number;
-  flows: string[]; // IDs of flows related to this project
-  agents: string[]; // IDs of agents related to this project
+  flows: string[]; // IDs of flows related to this workspace
+  agents: string[]; // IDs of agents related to this workspace
 }
 
-export interface ProjectSaveResult {
+export interface WorkspaceSaveResult {
   path: string;
-  projectState: ProjectState;
+  workspaceState: WorkspaceData;
 }
 
-// Save project state to a file
-export const saveProjectState = async (projectState: ProjectState): Promise<ProjectSaveResult> => {
+// Save workspace state to a file
+export const saveWorkspaceState = async (workspaceState: WorkspaceData): Promise<WorkspaceSaveResult> => {
   try {
-    // If project has a name, use it for the file name, otherwise use the ID
-    const fileName = `${projectState.projectName || projectState.projectId}.llmproject.json`;
+    // If workspace has a name, use it for the file name, otherwise use the ID
+    const fileName = `${workspaceState.name || workspaceState.id}.yallma3`;
     
     // Initialize the save path dialog
     const savePath = await save({
-      title: 'Save Project',
+      title: 'Save workspace',
       defaultPath: fileName,
       filters: [{
-        name: 'yaLLma Project',
-        extensions: ['llmproject.json']
+        name: 'yaLLma3 workspace',
+        extensions: ['yallma3']
       }]
     });
     
@@ -39,7 +41,7 @@ export const saveProjectState = async (projectState: ProjectState): Promise<Proj
     
     // Update timestamps
     const updatedState = {
-      ...projectState,
+      ...workspaceState,
       updatedAt: Date.now()
     };
     
@@ -48,24 +50,63 @@ export const saveProjectState = async (projectState: ProjectState): Promise<Proj
     
     return {
       path: savePath,
-      projectState: updatedState
+      workspaceState: updatedState
     };
   } catch (error) {
-    console.error('Error saving project:', error);
+    console.error('Error saving workspace:', error);
     throw error;
   }
 };
 
-// Load project state from file picker
-export const loadProjectState = async (): Promise<ProjectSaveResult> => {
+// Save workspace to a file with .yallma3 extension
+export const saveWorkspace = async (workspaceState: WorkspaceData): Promise<WorkspaceSaveResult> => {
+  try {
+    // If workspace has a name, use it for the file name, otherwise use the ID
+    const fileName = `${workspaceState.name || workspaceState.id}.yallma3`;
+    
+    // Initialize the save path dialog
+    const savePath = await save({
+      title: 'Save workspace',
+      defaultPath: fileName,
+      filters: [{
+        name: 'yaLLma3 workspace',
+        extensions: ['yallma3']
+      }]
+    });
+    
+    if (!savePath) {
+      throw new Error('Save operation cancelled');
+    }
+    
+    // Update timestamps
+    const updatedState = {
+      ...workspaceState,
+      updatedAt: Date.now()
+    };
+    
+    // Write the file as JSON
+    await writeTextFile(savePath, JSON.stringify(updatedState, null, 2));
+    
+    return {
+      path: savePath,
+      workspaceState: updatedState
+    };
+  } catch (error) {
+    console.error('Error saving workspace:', error);
+    throw error;
+  }
+};
+
+// Load workspace state from file picker
+export const loadWorkspaceState = async (): Promise<WorkspaceSaveResult> => {
   try {
     // Open file picker dialog
     const filePath = await open({
-      title: 'Load Project',
+      title: 'Load workspace',
       multiple: false,
       filters: [{
-        name: 'yaLLma Project',
-        extensions: ['llmproject.json']
+        name: 'yaLLma3 workspace',
+        extensions: ['yallma3']
       }]
     });
     
@@ -75,26 +116,61 @@ export const loadProjectState = async (): Promise<ProjectSaveResult> => {
     
     // Read and parse the file
     const fileContent = await readTextFile(filePath);
-    const projectState = JSON.parse(fileContent) as ProjectState;
+    const workspaceState = JSON.parse(fileContent) as WorkspaceData;
     
     return {
       path: filePath,
-      projectState
+      workspaceState: workspaceState
     };
   } catch (error) {
-    console.error('Error loading project:', error);
+    console.error('Error loading workspace:', error);
     throw error;
   }
 };
 
-// Load project state from a specific path
-export const loadProjectStateFromPath = async (path: string, id: string): Promise<ProjectState> => {
+// Load workspace state from a specific path
+export const loadWorkspaceStateFromPath = async (path: string, id: string): Promise<WorkspaceData> => {
   try {
-    const configPath = await join(path, `${id}.llmproject.json`);
+    const configPath = await join(path, `${id}.yallma3`);
     const fileContent = await readTextFile(configPath);
-    return JSON.parse(fileContent) as ProjectState;
+    return JSON.parse(fileContent) as WorkspaceData;
   } catch (error) {
-    console.error(`Error loading project from path: ${path}/${id}`, error);
+    console.error(`Error loading workspace from path: ${path}/${id}`, error);
     throw error;
   }
-}; 
+};
+
+// Save workspace to the default app storage directory without prompting user
+export const saveWorkspaceToDefaultLocation = async (workspaceState: WorkspaceData): Promise<WorkspaceSaveResult> => {
+  try {
+    // If workspace has a name, use it for the file name, otherwise use the ID
+    const fileName = `${workspaceState.name || workspaceState.id}.yallma3`;
+    
+    // Create a workspaces directory in the app data directory
+    // const workspacesDir = 'workspaces';
+    
+    // Check if the workspaces directory exists, if not create it
+    
+    
+
+    
+    // Update timestamps
+    const updatedState = {
+      ...workspaceState,
+      updatedAt: Date.now()
+    };
+    
+    const filePath = await join(await appDataDir(), `${fileName}`);
+    
+    // Write the file as JSON
+    await writeTextFile(filePath, JSON.stringify(updatedState, null, 2));
+    
+    return {
+      path: filePath,
+      workspaceState: updatedState
+    };
+  } catch (error) {
+    console.error('Error saving workspace to default location:', error);
+    throw error;
+  }
+};

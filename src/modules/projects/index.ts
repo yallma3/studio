@@ -1,5 +1,5 @@
-import ProjectsTab from './components/ProjectsTab';
+import WorkspacesTab from './components/ProjectsTab';
 
 export {
-  ProjectsTab
+  WorkspacesTab as ProjectsTab
 }; 
