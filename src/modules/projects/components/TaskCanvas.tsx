@@ -122,7 +122,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
   useEffect(() => {
     if (tasks && tasks.length > 0) {
       // Convert tasks to task nodes with positions and sockets
-      const nodes = tasks.map((task, index) => {
+      const nodes = tasks.map((task) => {
         // Create unique socket IDs for each task
         const inputSocketId = `input-${task.id}`;
         const outputSocketId = `output-${task.id}`;
@@ -130,11 +130,22 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
         // Check if we have a stored position for this node
         const storedPosition = nodePositionsRef.current.get(task.id);
         
-        // Use stored position if available, otherwise use default grid layout
-        const position = storedPosition || {
-          x: 100 + (index % 3) * 350, // Default grid layout
-          y: 100 + Math.floor(index / 3) * 250
-        };
+        // Use stored position if available, otherwise calculate new position only for truly new tasks
+        let position;
+        if (storedPosition) {
+          position = storedPosition;
+        } else {
+          // This is a new task, find the next available grid position
+          // Count how many tasks already have positions stored
+          const existingPositionsCount = Array.from(nodePositionsRef.current.keys()).length;
+          const gridIndex = existingPositionsCount;
+          position = {
+            x: 100 + (gridIndex % 3) * 420, // Use count of existing positions, not current index
+            y: 100 + Math.floor(gridIndex / 3) * 250
+          };
+          // Store this position immediately so it's preserved
+          nodePositionsRef.current.set(task.id, position);
+        }
         
         return {
           ...task,
@@ -155,6 +166,35 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
       });
       
       setTaskNodes(nodes);
+      
+      // Check for deleted tasks and clean up their connections
+      if (prevTasksRef.current.length > 0) {
+        const currentTaskIds = new Set(tasks.map(task => task.id));
+        const deletedTaskIds = prevTasksRef.current
+          .filter(prevTask => !currentTaskIds.has(prevTask.id))
+          .map(deletedTask => deletedTask.id);
+        
+        if (deletedTaskIds.length > 0) {
+          // Remove connections involving deleted tasks
+          setConnections(prevConnections => 
+            prevConnections.filter(connection => {
+              // Check if this connection involves any deleted task
+              const fromTask = taskNodes.find(n => n.outputSocket.id === connection.fromSocketId);
+              const toTask = taskNodes.find(n => n.inputSocket.id === connection.toSocketId);
+              
+              // Keep connection only if both tasks still exist
+              return fromTask && toTask && 
+                     !deletedTaskIds.includes(fromTask.id) && 
+                     !deletedTaskIds.includes(toTask.id);
+            })
+          );
+          
+          // Also clean up stored positions for deleted tasks
+          deletedTaskIds.forEach(taskId => {
+            nodePositionsRef.current.delete(taskId);
+          });
+        }
+      }
       
       // Only create initial connections if this is the first time loading tasks
       if (prevTasksRef.current.length === 0 && tasks.length > 1) {
@@ -524,10 +564,9 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
   return (
     <div
       id="task-canvas"
-      className="bg-[#121212] rounded-md"
+      className="bg-[#121212] rounded-md h-[calc(100vh-190px)]"
       style={{
         width: "100%",
-        height: "600px",
         position: "relative",
         overflow: "hidden",
         cursor: isPanningActive ? "grabbing" : "grab",
@@ -589,9 +628,9 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
               key={`connection-${connection.fromSocketId}-${connection.toSocketId}`}
               d={path}
               fill="none"
-              stroke="#3B82F6"
+              stroke="#FFC72C"
               strokeWidth={isSelected ? "3" : "2"}
-              strokeDasharray={isSelected ? "none" : "5,5"}
+              
               className="transition-all duration-200"
             />
           );
@@ -607,7 +646,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
               dragConnection.toY
             )}
             fill="none"
-            stroke="#3B82F6"
+            stroke="#FFC72C"
             strokeWidth="2"
             strokeDasharray="5,5"
             className="animate-pulse"
@@ -623,7 +662,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
         {taskNodes.map((task) => (
           <div
             key={task.id}
-            className={`absolute bg-[#1d1d1d] rounded border ${task.selected ? 'border-blue-500' : 'border-gray-800'} p-4 shadow-lg cursor-move`}
+            className={`absolute bg-[#1d1d1d] rounded border ${task.selected ? 'border-[#FFC72C]' : 'border-[#FFC72C]/20'} p-4 shadow-lg cursor-move`}
             style={{
               ...getNodeStyle(task),
               width: TASK_NODE_WIDTH,
@@ -634,7 +673,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
           >
             {/* Input socket (left side) */}
             <div
-              className={`absolute bg-[#1d1d1d] border-2 ${connections.some(conn => conn.toSocketId === task.inputSocket.id) ? 'border-blue-500 bg-blue-500' : 'border-blue-500/50 hover:border-blue-500'}`}
+              className={`absolute bg-[#1d1d1d] border-2 ${connections.some(conn => conn.toSocketId === task.inputSocket.id) ? 'border-[#FFC72C] bg-[#FFC72C]' : 'border-[#FFC72C]/50 hover:border-[#FFC72C]'}`}
               style={{
                 position: 'absolute',
                 width: SOCKET_SIZE,
@@ -658,7 +697,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
             
             {/* Output socket (right side) */}
             <div
-              className={`absolute bg-[#1d1d1d] border-2 ${connections.some(conn => conn.fromSocketId === task.outputSocket.id) ? 'border-blue-500 bg-blue-500' : 'border-blue-500/50 hover:border-blue-500'}`}
+              className={`absolute bg-[#1d1d1d] border-2 ${connections.some(conn => conn.fromSocketId === task.outputSocket.id) ? 'border-[#FFC72C] bg-[#FFC72C]' : 'border-[#FFC72C]/50 hover:border-[#FFC72C]'}`}
               style={{
                 position: 'absolute',
                 width: SOCKET_SIZE,
@@ -678,14 +717,14 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
             />
             <div className="flex justify-between items-start mb-2">
               <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-medium text-white text-lg">{task.name}</h3>
+                <div className="flex items-center justify-start gap-2">
+                  <h3 className="font-medium text-white text-lg truncate">{task.name}</h3>
                   {task.executeWorkflow ? (
                     <span className="bg-purple-600/20 text-purple-400 text-xs px-2 py-0.5 rounded-full border border-purple-600/30">
                       {t('projects.workflow', 'Workflow')}
                     </span>
                   ) : (
-                    <span className="bg-blue-600/20 text-blue-400 text-xs px-2 py-0.5 rounded-full border border-blue-600/30">
+                    <span className="bg-[#FFC72C]/20 text-[#FFC72C] text-xs px-2 mx-1 py-0.5 rounded-full border border-[#FFC72C]/30">
                       {t('projects.agent', 'Agent')}
                     </span>
                   )}
@@ -693,7 +732,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
               </div>
               <div className="flex gap-2">
                 <button 
-                  className="text-blue-400 hover:text-blue-300 p-1"
+                  className="text-[#FFC72C] hover:text-[#FFD666] p-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (onTaskEdit) onTaskEdit(task.id);
@@ -737,7 +776,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
                 ) : (
                   <>
                     <span className="text-gray-400 block">{t('projects.assignedAgent', 'Assigned Agent')}:</span>
-                    <span className="text-blue-400 line-clamp-1">
+                    <span className="text-[#FFC72C] line-clamp-1">
                       {task.assignedAgent ? 
                         (projectData?.agents.find(a => a.id === task.assignedAgent)?.name || task.assignedAgent) : 
                         t('projects.autoAssign', 'Auto-assign')}
@@ -753,7 +792,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
       {/* Zoom Controls UI */}
       <div className="absolute bottom-5 right-5 flex flex-col gap-2 bg-[#111] p-2 rounded-md backdrop-blur-sm border border-gray-800">
         <button 
-          className="bg-blue-600/30 hover:bg-blue-600/50 transition-colors duration-200 text-white p-2 rounded-md flex items-center justify-center w-10 h-10"
+          className="bg-[#FFC72C]/30 hover:bg-[#FFC72C]/50 transition-colors duration-200 text-white p-2 rounded-md flex items-center justify-center w-10 h-10"
           onClick={zoomIn}
           title="Zoom In"
         >
@@ -765,7 +804,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
           </svg>
         </button>
         <button 
-          className="bg-blue-600/30 hover:bg-blue-600/50 transition-colors duration-200 text-white p-2 rounded-md flex items-center justify-center w-10 h-10"
+          className="bg-[#FFC72C]/30 hover:bg-[#FFC72C]/50 transition-colors duration-200 text-white p-2 rounded-md flex items-center justify-center w-10 h-10"
           onClick={zoomOut}
           title="Zoom Out"
         >
@@ -776,7 +815,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
           </svg>
         </button>
         <button 
-          className="bg-blue-600/30 hover:bg-blue-600/50 transition-colors duration-200 text-white p-2 rounded-md flex items-center justify-center w-10 h-10"
+          className="bg-[#FFC72C]/30 hover:bg-[#FFC72C]/50 transition-colors duration-200 text-white p-2 rounded-md flex items-center justify-center w-10 h-10"
           onClick={resetView}
           title="Reset View"
         >
@@ -787,7 +826,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
       </div>
       
       {/* Scale indicator */}
-      <div className="absolute bottom-5 left-5 text-white text-xs bg-blue-600/30 px-2 py-1 rounded backdrop-blur-sm">
+      <div className="absolute bottom-5 left-5 text-white text-xs bg-[#FFC72C]/30 px-2 py-1 rounded backdrop-blur-sm">
         {Math.round(transform.scale * 100)}%
       </div>
       
@@ -809,7 +848,7 @@ const TaskCanvas: React.FC<TaskCanvasProps> = ({ tasks, onTaskEdit, onTaskDelete
             .map(task => (
               <button
                 key={task.id}
-                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-blue-600/30 transition-colors"
+                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#FFC72C]/30 transition-colors"
                 onClick={() => handleCreateConnection(contextMenu.taskId || '', task.id)}
               >
                 {task.name}

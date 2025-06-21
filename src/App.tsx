@@ -34,32 +34,7 @@ const App: React.FC = () => {
   }, [i18n.language]);
   
   // Handle creating a new graph, agent, or workspace
-  const handleCreateNew = () => {
-    
-   
-      // Generate a unique ID for the new workspace
-      const newWorkspaceId = `workspace-${Date.now()}`;
-      
-      // Create a workspaceData object instead of workspaceState
-      const workspaceData: WorkspaceData = {
-        id: newWorkspaceId,
-        name: "",
-        description: "",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        mainLLM: "",
-        apiKey: "",
-        useSavedCredentials: false,
-        tasks: [],
-        agents: [],
-        workflows: [],
-      };
-      
-      setCurrentWorkspaceData(workspaceData);
-    
-    
-    setCurrentView("canvas");
-  };
+ 
   
   // Handle opening a graph/agent/workspace from file system
   const handleLoadFromFile = async () => {
@@ -110,7 +85,6 @@ const App: React.FC = () => {
     <div className="app-container">
       {currentView === "home" ? (
         <HomeScreen 
-          onCreateNew={handleCreateNew}
           onOpenFromFile={handleLoadFromFile}
           onOpenFromPath={handleOpenFromPath}
           onOpenWorkspace={handleOpenWorkspace}
