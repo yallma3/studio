@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { ArrowLeft, Save, AlertCircle, CheckCircle, Users, ListTodo, Folder, GitBranch } from "lucide-react";
+import { ArrowLeft, Save, AlertCircle, CheckCircle } from "lucide-react";
 import { saveWorkspaceToDefaultLocation } from "../utils/storageUtils";
 import { useTranslation } from "react-i18next";
 import WorkspaceNameDialog from "./WorkspaceNameDialog.tsx";
@@ -146,81 +146,71 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
     await handleSaveWorkspace(name);
   };
 
-  // Tab button component
-  const TabButton: React.FC<{ tab: WorkspaceTab; label: string; icon: React.ReactNode }> = ({ tab, label, icon }) => (
-    <button
-      className={`flex items-center gap-2 px-4 py-2 rounded-t-md font-medium transition-colors
-        ${activeTab === tab 
-          ? 'bg-[#121212] text-yellow-400 border-t border-l border-r border-gray-700' 
-          : 'bg-[#0a0a0a] text-gray-400 hover:text-white'}`}
-      onClick={() => setActiveTab(tab)}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  );
+
   
   return (
-    <div className="relative w-full h-screen bg-black overflow-hidden">
-      {/* Header toolbar */}
-      <div className="absolute top-0 left-0 right-0 h-12 bg-[#111827] border-b border-gray-800 flex items-center justify-between px-4 z-10">
-        <div className="flex items-center">
-          <button 
-            className="text-gray-400 hover:text-white p-2 rounded flex items-center space-x-1"
-            onClick={onReturnToHome}
-            title={t('common.backToHome', 'Back to Home')}
-          >
-            <ArrowLeft size={16} />
-            <span>{t('common.back', 'Back')}</span>
-          </button>
-        </div>
-        
-        <div className="text-white font-mono">
-          {workspaceData.name || t('workspaces.untitled', 'Untitled Workspace')}
-        </div>
-        
-        <div className="flex items-center gap-4">
-        {hasUnsavedChanges && (
-            <div className="text-gray-500 text-sm font-medium ">
-              {t('workspaces.unsavedChanges', 'Unsaved changes')}
+    <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
+      {/* Header */}
+      <div className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm relative z-10">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-4">
+            <button 
+              className="text-zinc-400 hover:text-white p-2 rounded flex items-center"
+              onClick={onReturnToHome}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </button>
+            <div>
+              <h1 className="text-xl font-semibold text-white">
+                {workspaceData.name || t('workspaces.untitled', 'Untitled Workspace')}
+              </h1>
+          
             </div>
-          )}
-          <button
-            className="bg-yellow-500 hover:bg-yellow-600 text-black px-3 py-1 rounded text-sm font-medium flex items-center space-x-1"
-            onClick={() => setWorkspaceNameDialogOpen(true)}
-            title={t('common.save', 'Save')}
-          >
-            <Save size={14} />
-            <span>{t('common.save', 'Save')}</span>
-          </button>
+          </div>
+          <div className="flex items-center gap-4">
+            {hasUnsavedChanges && (
+              <div className="text-zinc-500 text-sm font-medium">
+                {t('workspaces.unsavedChanges', 'Unsaved changes')}
+              </div>
+            )}
+            <button 
+              className="bg-[#FFC72C] hover:bg-[#FFD700] text-black font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
+              onClick={() => setWorkspaceNameDialogOpen(true)}
+            >
+              <Save className="h-4 w-4" />
+              Save
+            </button>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="px-6">
+          <div className="flex gap-6">
+            {[
+              { key: 'workspace', label: t('workspaces.workspace', 'Workspace') },
+              { key: 'tasks', label: t('workspaces.tasks', 'Tasks') },
+              { key: 'agents', label: t('workspaces.agents', 'Agents') },
+              { key: 'aiflows', label: t('workspaces.aiFlows', 'AI Workflows') }
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                className={`pb-4 px-1 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.key
+                    ? "border-[#FFC72C] text-[#FFC72C]"
+                    : "border-transparent text-zinc-400 hover:text-white hover:border-zinc-600"
+                }`}
+                onClick={() => setActiveTab(tab.key as WorkspaceTab)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       
       {/* Main canvas area */}
-      <div className="absolute inset-0 pt-12 bg-[#0a0a0a]">
-        {/* Tabs */}
-        <div className="flex border-b border-gray-800 px-4 pt-2 bg-[#0a0a0a]">
-          <TabButton 
-            tab="workspace" 
-            label={t('workspaces.workspace', 'Workspace')} 
-            icon={<Folder size={16} />} 
-          />
-          <TabButton 
-            tab="tasks" 
-            label={t('workspaces.tasks', 'Tasks')} 
-            icon={<ListTodo size={16} />} 
-          />
-          <TabButton 
-            tab="agents" 
-            label={t('workspaces.agents', 'Agents')} 
-            icon={<Users size={16} />} 
-          />
-          <TabButton 
-            tab="aiflows" 
-            label={t('workspaces.aiFlows', 'AI Workflows')} 
-            icon={<GitBranch size={16} />} 
-          />
-        </div>
+      <div className="flex-1 bg-[#0a0a0a] overflow-hidden">
         
         <div className="w-full h-full overflow-auto p-6">
           {/* Render the appropriate tab component based on activeTab */}
