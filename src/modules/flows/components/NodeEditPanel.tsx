@@ -82,30 +82,13 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     }, 300); // Match this duration with the CSS transition
   };
 
-  // Handle submit with animation
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    e.stopPropagation(); // Stop event propagation explicitly
-    console.log("Form submitted", { title, value: nodeValue });
-
-    if (!node) return;
-
-    setIsVisible(false);
-    // Wait for animation to complete before saving
-    setTimeout(() => {
-      onSave({
-        title,
-        nodeValue: nodeValue,
-      });
-    }, 300); // Match this duration with the CSS transition
-  };
 
   const getValueLabel = (param: ConfigParameterType) => {
     if (!node) return t("nodeEdit.valueLabels.default");
 
     let _label = "";
     //attempt parameter i18n resource
-    let _local_Lable = param.i18n?.[i18n.language]?.[param.parameterName];
+    const _local_Lable = param.i18n?.[i18n.language]?.[param.parameterName];
     if (_local_Lable) _label = _local_Lable.Name;
     else _label = t(param.parameterName); // fallback to default trnaslation
 
@@ -253,11 +236,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
         </div>
       </div>
 
-      <form
-        id="node-edit-form"
-        onSubmit={handleSubmit}
-        className="p-4 space-y-6 flex-grow"
-      >
+      <div className="p-4 space-y-6 flex-grow">
         <div className="space-y-2">
           <label
             htmlFor="node-title-input"
@@ -328,25 +307,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
             </ul>
           </div>
         </div>
-
-        <div className="pt-4 mt-auto">
-          <div className="flex space-x-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-800 transition-colors"
-            >
-              {t("nodeEdit.cancel")}
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-[#FFC72C] text-black font-medium rounded-md hover:bg-[#FFB300] transition-colors"
-            >
-              {t("nodeEdit.saveChanges")}
-            </button>
-          </div>
-        </div>
-      </form>
+      </div>
     </div>
   );
 };

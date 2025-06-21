@@ -212,7 +212,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
       {/* Main canvas area */}
       <div className="flex-1 bg-[#0a0a0a] overflow-hidden">
         
-        <div className="w-full h-full overflow-auto p-6">
+        <div className="w-full h-full overflow-auto">
           {/* Render the appropriate tab component based on activeTab */}
           {activeTab === 'workspace' && <WorkspaceTab workspaceData={workspaceData} onUpdateWorkspace={handleUpdateWorkspace} />}
           {activeTab === 'tasks' && <TasksTab workspaceData={workspaceData} />}

@@ -24,7 +24,9 @@ i18n
   .init({
     resources,
     fallbackLng: 'en',
-    debug: true,
+    debug: false,
+    saveMissing: false,
+    missingKeyHandler: false,
     interpolation: {
       escapeValue: false, // not needed for react as it escapes by default
     },
