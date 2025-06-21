@@ -24,7 +24,7 @@ To build and run the app, follow these steps:
 git clone git@github.com:yaLLMa3/studio.git
 ```
 
-2. `cd` into your the cloned folder and run `yarn` in the root folder
+2. `cd` into the cloned folder and run `yarn` in the root folder
 3. Start the app in development mode by running `yarn dev`
 
 # yaLLma3 Studio
