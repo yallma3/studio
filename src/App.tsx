@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import WorkspaceCanvas from "./modules/projects/components/ProjectCanvas.tsx";
 import HomeScreen from "./components/HomeScreen.tsx";
-import { loadWorkspaceState, loadWorkspaceStateFromPath } from "./modules/projects/utils/storageUtils.ts";
+import { loadWorkspaceState, loadWorkspaceStateFromPath, initializeDefaultDirectories } from "./modules/projects/utils/storageUtils.ts";
 import { WorkspaceData } from "./modules/projects/types/Types.ts";
 
 import { initFlowSystem } from "./modules/flows/initFlowSystem.ts";
@@ -13,9 +13,10 @@ const App: React.FC = () => {
   const { i18n } = useTranslation();
   
   
-  // Setup language direction based on current language
+  // Setup language direction based on current language and initialize directories
   useEffect(() => {
     initFlowSystem()
+    initializeDefaultDirectories()
     document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);

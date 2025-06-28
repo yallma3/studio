@@ -90,6 +90,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               onCreateNew={onCreateWorkspace}
               onOpenFromFile={onOpenFromFile}
               onOpenFromPath={onOpenFromPath}
+              onOpenWorkspace={onOpenWorkspace}
             />
           </main>
 

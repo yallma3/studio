@@ -13,6 +13,22 @@
     "fs:allow-app-read",
     "fs:allow-appdata-write",
     "fs:allow-appdata-read",
+    "fs:allow-appdata-write-recursive",
+    "fs:allow-appdata-read-recursive",
+    "fs:allow-mkdir",
+    "fs:allow-create",
+    "fs:allow-write-text-file",
+    "fs:allow-read-text-file",
+    "fs:allow-exists",
+    "fs:allow-read-dir",
+    {
+      "identifier": "fs:scope-appdata-recursive",
+      "allow": [
+        {
+          "path": "$APPDATA/**"
+        }
+      ]
+    },
     {
       "identifier": "opener:allow-open-url",
       "allow": [

@@ -619,6 +619,21 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                   </h3>
                   
                   <div className="space-y-4">
+                  <div className="flex flex-col gap-2">
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1 ">
+                        {t('workspaces.workspaceName', 'Workspace Name')} <span className="text-yellow-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={workspaceData.name}
+                        onChange={handleWorkspaceDataChange}
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        placeholder={t('workspaces.enterWorkspaceName', 'Enter workspace name')}
+                        required
+                      />
+                    </div>
                     <div className="flex flex-col gap-2">
                       <label htmlFor="description" className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-1 ">
                         {t('workspaces.workspaceDescription', 'Workspace Description')}
@@ -637,21 +652,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         placeholder={t('workspaces.enterWorkspaceDescription', 'Describe the purpose of this workspace...')}
                       />
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1 ">
-                        {t('workspaces.workspaceName', 'Workspace Name')} <span className="text-yellow-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        value={workspaceData.name}
-                        onChange={handleWorkspaceDataChange}
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                        placeholder={t('workspaces.enterWorkspaceName', 'Enter workspace name')}
-                        required
-                      />
-                    </div>
+                   
                   </div>
                 </div>
                 
