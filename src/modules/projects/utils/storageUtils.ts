@@ -12,7 +12,7 @@
 */
 
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
+import { writeTextFile, readTextFile, mkdir, exists, readDir } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
 import { appDataDir } from "@tauri-apps/api/path";
 import {WorkspaceData} from '../types/Types'
@@ -153,19 +153,137 @@ export const loadWorkspaceStateFromPath = async (path: string, id: string): Prom
   }
 };
 
+// Load all workspaces from the Workspaces directory
+export const loadAllWorkspaces = async (): Promise<WorkspaceData[]> => {
+  try {
+    // Get the app data directory
+    const appDir = await appDataDir();
+    const workspacesDirPath = await join(appDir, 'Workspaces');
+    
+    // Check if Workspaces directory exists
+    if (!(await exists(workspacesDirPath))) {
+      return [];
+    }
+    
+    // Read directory contents
+    const entries = await readDir(workspacesDirPath);
+    const workspaces: WorkspaceData[] = [];
+    
+    // Filter for .yallma3 files and load them
+    for (const entry of entries) {
+      if (entry.name && entry.name.endsWith('.yallma3')) {
+        try {
+          const filePath = await join(workspacesDirPath, entry.name);
+          const fileContent = await readTextFile(filePath);
+          const workspaceData = JSON.parse(fileContent) as WorkspaceData;
+          workspaces.push(workspaceData);
+        } catch (error) {
+          console.error(`Error loading workspace ${entry.name}:`, error);
+        }
+      }
+    }
+    
+    // Sort by updatedAt descending (newest first)
+    return workspaces.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  } catch (error) {
+    console.error('Error loading workspaces:', error);
+    return [];
+  }
+};
+
+// Save recent workspaces to JSON file
+export const saveRecentWorkspaces = async (recentWorkspaces: string[]): Promise<void> => {
+  try {
+    const appDir = await appDataDir();
+    const recentFilePath = await join(appDir, 'recent-workspaces.json');
+    await writeTextFile(recentFilePath, JSON.stringify(recentWorkspaces, null, 2));
+  } catch (error) {
+    console.error('Error saving recent workspaces:', error);
+  }
+};
+
+// Load recent workspaces from JSON file
+export const loadRecentWorkspaces = async (): Promise<string[]> => {
+  try {
+    const appDir = await appDataDir();
+    const recentFilePath = await join(appDir, 'recent-workspaces.json');
+    
+    if (!(await exists(recentFilePath))) {
+      return [];
+    }
+    
+    const fileContent = await readTextFile(recentFilePath);
+    return JSON.parse(fileContent) as string[];
+  } catch (error) {
+    console.error('Error loading recent workspaces:', error);
+    return [];
+  }
+};
+
+// Save favorite workspaces to JSON file
+export const saveFavoriteWorkspaces = async (favoriteWorkspaces: string[]): Promise<void> => {
+  try {
+    const appDir = await appDataDir();
+    const favoritesFilePath = await join(appDir, 'favorite-workspaces.json');
+    await writeTextFile(favoritesFilePath, JSON.stringify(favoriteWorkspaces, null, 2));
+  } catch (error) {
+    console.error('Error saving favorite workspaces:', error);
+  }
+};
+
+// Load favorite workspaces from JSON file
+export const loadFavoriteWorkspaces = async (): Promise<string[]> => {
+  try {
+    const appDir = await appDataDir();
+    const favoritesFilePath = await join(appDir, 'favorite-workspaces.json');
+    
+    if (!(await exists(favoritesFilePath))) {
+      return [];
+    }
+    
+    const fileContent = await readTextFile(favoritesFilePath);
+    return JSON.parse(fileContent) as string[];
+  } catch (error) {
+    console.error('Error loading favorite workspaces:', error);
+    return [];
+  }
+};
+
+// Initialize default directories on app start
+export const initializeDefaultDirectories = async (): Promise<void> => {
+  try {
+    // Get the app data directory
+    const appDir = await appDataDir();
+    
+    // Create the Flows directory path
+    const flowsDirPath = await join(appDir, 'Flows');
+    const workspacesDirPath = await join(appDir, 'Workspaces');
+    
+    // Create the Flows directory if it doesn't exist
+    if (!(await exists(flowsDirPath))) {
+      await mkdir(flowsDirPath, { recursive: true });
+      console.log('Created Flows directory:', flowsDirPath);
+    }
+    if (!(await exists(workspacesDirPath))) {
+      await mkdir(workspacesDirPath, { recursive: true });
+      console.log('Created Workspaces directory:', workspacesDirPath);
+    }
+  } catch (error) {
+    console.error('Error initializing default directories:', error);
+  }
+};
+
 // Save workspace to the default app storage directory without prompting user
 export const saveWorkspaceToDefaultLocation = async (workspaceState: WorkspaceData): Promise<WorkspaceSaveResult> => {
   try {
     // If workspace has a name, use it for the file name, otherwise use the ID
     const fileName = `${workspaceState.name || workspaceState.id}.yallma3`;
     
-    // Create a workspaces directory in the app data directory
-    // const workspacesDir = 'workspaces';
+    // Get the app data directory
+    const appDir = await appDataDir();
     
-    // Check if the workspaces directory exists, if not create it
-    
-    
-
+    // Create the Workspaces directory path
+    const workspacesDirPath = await join(appDir, 'Workspaces');
     
     // Update timestamps
     const updatedState = {
@@ -173,7 +291,8 @@ export const saveWorkspaceToDefaultLocation = async (workspaceState: WorkspaceDa
       updatedAt: Date.now()
     };
     
-    const filePath = await join(await appDataDir(), `${fileName}`);
+    // Create the full file path inside the Workspaces directory
+    const filePath = await join(workspacesDirPath, fileName);
     
     // Write the file as JSON
     await writeTextFile(filePath, JSON.stringify(updatedState, null, 2));
