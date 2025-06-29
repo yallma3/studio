@@ -1,5 +1,5 @@
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { writeTextFile, readTextFile, mkdir, exists, readDir } from '@tauri-apps/plugin-fs';
+import { writeTextFile, readTextFile, mkdir, exists, readDir, remove } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
 import { appDataDir } from "@tauri-apps/api/path";
 import {WorkspaceData} from '../types/Types'
@@ -381,6 +381,30 @@ export const saveWorkspaceToDefaultLocation = async (workspaceState: WorkspaceDa
     };
   } catch (error) {
     console.error('Error saving workspace to default location:', error);
+    throw error;
+  }
+};
+
+// Delete workspace from the default app storage directory
+export const deleteWorkspace = async (workspaceId: string): Promise<void> => {
+  try {
+    // Get the app data directory
+    const appDir = await appDataDir();
+    const workspacesDirPath = await join(appDir, 'Workspaces');
+    
+    // Create the file path
+    const fileName = `${workspaceId}.yallma3`;
+    const filePath = await join(workspacesDirPath, fileName);
+    
+    // Check if file exists before attempting to delete
+    if (await exists(filePath)) {
+      await remove(filePath);
+      console.log(`Deleted workspace: ${workspaceId}`);
+    } else {
+      console.warn(`Workspace file not found: ${workspaceId}`);
+    }
+  } catch (error) {
+    console.error('Error deleting workspace:', error);
     throw error;
   }
 };
