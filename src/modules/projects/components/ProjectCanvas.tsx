@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { ArrowLeft, Save, AlertCircle, CheckCircle } from "lucide-react";
-import { saveWorkspaceToDefaultLocation, workspaceFileExists } from "../utils/storageUtils";
+import { ArrowLeft, Save, AlertCircle, CheckCircle, Download } from "lucide-react";
+import { saveWorkspaceToDefaultLocation, workspaceFileExists, saveWorkspaceState } from "../utils/storageUtils";
 import { useTranslation } from "react-i18next";
 import { WorkspaceData } from "../types/Types";
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
@@ -131,6 +131,29 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
       showToast(t('workspaces.saveError', 'Failed to save workspace'), 'error');
     }
   };
+
+  // Handle exporting workspace to file
+  const handleExportWorkspace = async () => {
+    if (!workspaceData) return;
+    
+    try {
+      const updatedWorkspace = { 
+        ...workspaceData,
+        updatedAt: Date.now()
+      };
+      
+      // Update state
+      setWorkspaceData(updatedWorkspace);
+      
+      // Export to file with workspace name as default filename
+      await saveWorkspaceState(updatedWorkspace);
+      
+      showToast(t('workspaces.exported', 'Workspace exported successfully'), 'success');
+    } catch (error) {
+      console.error("Error exporting workspace:", error);
+      showToast(t('workspaces.exportError', 'Failed to export workspace'), 'error');
+    }
+  };
   
   // Handle updating workspace data - only update state, don't save to file
   const handleUpdateWorkspace = async (updatedData: Partial<WorkspaceData>) => {
@@ -186,13 +209,22 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
                 {t('workspaces.unsavedChanges', 'Unsaved changes')}
               </div>
             )}
-            <button 
-              className="bg-[#FFC72C] hover:bg-[#FFD700] text-black font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
-              onClick={handleSaveWorkspace}
-            >
-              <Save className="h-4 w-4" />
-              Save
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                onClick={handleExportWorkspace}
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </button>
+              <button 
+                className="bg-[#FFC72C] hover:bg-[#FFD700] text-black font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                onClick={handleSaveWorkspace}
+              >
+                <Save className="h-4 w-4" />
+                Save
+              </button>
+            </div>
           </div>
         </div>
 

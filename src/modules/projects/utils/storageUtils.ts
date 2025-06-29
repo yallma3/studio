@@ -82,12 +82,14 @@ const regenerateWorkspaceIds = async (workspaceData: WorkspaceData): Promise<Wor
 // Save workspace state to a file
 export const saveWorkspaceState = async (workspaceState: WorkspaceData): Promise<WorkspaceSaveResult> => {
   try {
-    // Use ID for file name instead of name
-    const fileName = `${workspaceState.id}.yallma3`;
+    // Use workspace name for file name, fall back to ID if no name
+    const fileName = workspaceState.name 
+      ? `${workspaceState.name}.yallma3`
+      : `${workspaceState.id}.yallma3`;
     
     // Initialize the save path dialog
     const savePath = await save({
-      title: 'Save workspace',
+      title: 'Export workspace',
       defaultPath: fileName,
       filters: [{
         name: 'yaLLma3 workspace',
@@ -96,7 +98,7 @@ export const saveWorkspaceState = async (workspaceState: WorkspaceData): Promise
     });
     
     if (!savePath) {
-      throw new Error('Save operation cancelled');
+      throw new Error('Export operation cancelled');
     }
     
     // Update timestamps
@@ -113,7 +115,7 @@ export const saveWorkspaceState = async (workspaceState: WorkspaceData): Promise
       workspaceState: updatedState
     };
   } catch (error) {
-    console.error('Error saving workspace:', error);
+    console.error('Error exporting workspace:', error);
     throw error;
   }
 };
