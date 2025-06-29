@@ -11,9 +11,9 @@ import {
   Trash2,
   Expand,
   Minimize,
-  Save,
   X,
-  Key
+  Key,
+  Check
 } from "lucide-react";
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../../../components/ui/card";
@@ -302,8 +302,8 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
               {isEditing ? (
                 <>
                   <Button variant="outline" size="sm" onClick={handleSave} className="border-green-600 hover:bg-green-700 text-green-400">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
+                    <Check className="h-4 w-4 mr-2" />
+                    Confirm
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleCancel} className="border-zinc-700 hover:bg-zinc-800 text-zinc-300">
                     <X className="h-4 w-4 mr-2" />

@@ -6,11 +6,22 @@ import { WorkspaceData, LLMOption, Agent, Task } from "../types/Types";
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { TooltipHelper } from "../../../components/ui/tooltip-helper";
 import Select  from "../../../components/ui/select"; 
+import { generateUniqueWorkspaceId } from "../utils/storageUtils";
 
 interface WorkspaceCreationWizardProps {
   onClose: () => void;
   onCreateWorkspace: (workspaceData: WorkspaceData) => void;
 }
+
+// Generate clean, short random string
+const generateCleanId = (length: number = 6): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   onClose,
@@ -84,7 +95,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   
   // workspace data state
   const [workspaceData, setWorkspaceData] = useState<WorkspaceData>({
-    id: `workspace-${Date.now()}`,
+    id: "", // Will be set when component mounts
     createdAt: Date.now(),
     updatedAt: Date.now(),
     // Step 1: workspace Basics
@@ -105,6 +116,33 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     // Workflows
     workflows: []
   });
+  
+  // Initialize unique workspace ID when component mounts
+  useEffect(() => {
+    const initializeWorkspaceId = async () => {
+      const uniqueId = await generateUniqueWorkspaceId();
+      setWorkspaceData(prev => ({
+        ...prev,
+        id: uniqueId
+      }));
+    };
+    
+    initializeWorkspaceId();
+  }, []);
+  
+  // Generate unique task ID - updated format
+  const generateTaskId = (): string => {
+    const shortDate = Date.now().toString().slice(-6);
+    const randomPart = generateCleanId(3);
+    return `tk-${shortDate}${randomPart}`;
+  };
+  
+  // Generate unique agent ID - updated format
+  const generateAgentId = (): string => {
+    const shortDate = Date.now().toString().slice(-6);
+    const randomPart = generateCleanId(3);
+    return `ag-${shortDate}${randomPart}`;
+  };
   
   // State for selected provider
   const [selectedProvider, setSelectedProvider] = useState<string>("Groq");
@@ -194,9 +232,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
       // Call the onCreateWorkspace callback
       onCreateWorkspace(workspaceData);
       
-      // Reset form
+      // Reset form with new unique ID
+      const newUniqueId = await generateUniqueWorkspaceId();
       setWorkspaceData({
-        id: `workspace-${Date.now()}`,
+        id: newUniqueId,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         name: "",
@@ -261,7 +300,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
       } else {
         // Add new task
         const task: Task = {
-          id: Date.now().toString(),
+          id: generateTaskId(),
           name: newTask.name,
           description: newTask.description,
           expectedOutput: newTask.expectedOutput,
@@ -324,8 +363,15 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
       } else {
         // Add new agent
         const agent: Agent = {
-          id: Date.now().toString(),
-          ...newAgent
+          id: generateAgentId(),
+          name: newAgent.name,
+          role: newAgent.role,
+          objective: newAgent.objective,
+          background: newAgent.background,
+          capabilities: newAgent.capabilities,
+          tools: newAgent.tools,
+          llmId: newAgent.llmId,
+          variables: newAgent.variables
         };
         
         setWorkspaceData(prev => ({
@@ -334,7 +380,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         }));
       }
       
-      // Reset form and edit state
+      // Reset form
       setNewAgent({
         name: "",
         role: "",

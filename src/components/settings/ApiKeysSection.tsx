@@ -9,6 +9,23 @@ interface ApiKey {
   lastModified: string;
 }
 
+// Generate clean, short random string
+const generateCleanId = (length: number = 6): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
+// Generate unique API key ID
+const generateApiKeyId = (): string => {
+  const shortDate = Date.now().toString().slice(-6);
+  const randomPart = generateCleanId(3);
+  return `key-${shortDate}${randomPart}`;
+};
+
 const ApiKeysSection: React.FC = () => {
   const { t } = useTranslation();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
@@ -24,9 +41,12 @@ const ApiKeysSection: React.FC = () => {
     const savedKeys = localStorage.getItem('externalApiKeys');
     if (savedKeys) {
       try {
-        setApiKeys(JSON.parse(savedKeys));
-      } catch (e) {
-        console.error('Failed to parse saved API keys', e);
+        const parsedKeys = JSON.parse(savedKeys);
+        setApiKeys(parsedKeys);
+        // Hide all keys by default
+        setHiddenKeys(new Set(parsedKeys.map((key: ApiKey) => key.id)));
+      } catch (error) {
+        console.error('Error parsing saved API keys:', error);
       }
     }
   }, []);
@@ -40,7 +60,7 @@ const ApiKeysSection: React.FC = () => {
     if (!newProvider.trim() || !newApiKey.trim()) return;
     
     const newKey: ApiKey = {
-      id: Date.now().toString(),
+      id: generateApiKeyId(),
       provider: newProvider.trim(),
       key: newApiKey.trim(),
       lastModified: new Date().toISOString(),
@@ -175,8 +195,6 @@ const ApiKeysSection: React.FC = () => {
           </div>
         </div>
       )}
-
-
 
       <div className="space-y-4">
         {apiKeys.length === 0 ? (

@@ -5,9 +5,10 @@ import { X, Plus, Trash2, Edit } from "lucide-react";
 
 interface AgentsTabProps {
   workspaceData: WorkspaceData;
+  onTabChanges?: () => void;
 }
 
-const AgentsTab: React.FC<AgentsTabProps> = ({ workspaceData: workspaceData }) => {
+const AgentsTab: React.FC<AgentsTabProps> = ({ workspaceData: workspaceData, onTabChanges }) => {
   const { t } = useTranslation();
 
   const [agents, setAgents] = useState<Agent[]>(workspaceData.agents || []);
@@ -122,6 +123,9 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ workspaceData: workspaceData }) =
 
     // Update the workspace data
     workspaceData.agents = updatedAgents;
+    
+    // Signal that tab has changes
+    onTabChanges?.();
   };
 
   const handleSaveAgent = () => {
@@ -169,6 +173,9 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ workspaceData: workspaceData }) =
 
     // Update the workspace data
     workspaceData.agents = updatedAgents;
+
+    // Signal that tab has changes
+    onTabChanges?.();
 
     // Close the dialog
     setShowAgentDialog(false);
