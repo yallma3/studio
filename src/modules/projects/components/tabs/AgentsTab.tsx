@@ -18,9 +18,10 @@ import { X, Plus, Trash2, Edit } from "lucide-react";
 
 interface AgentsTabProps {
   workspaceData: WorkspaceData;
+  onTabChanges?: () => void;
 }
 
-const AgentsTab: React.FC<AgentsTabProps> = ({ workspaceData: workspaceData }) => {
+const AgentsTab: React.FC<AgentsTabProps> = ({ workspaceData: workspaceData, onTabChanges }) => {
   const { t } = useTranslation();
 
   const [agents, setAgents] = useState<Agent[]>(workspaceData.agents || []);
@@ -135,6 +136,9 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ workspaceData: workspaceData }) =
 
     // Update the workspace data
     workspaceData.agents = updatedAgents;
+    
+    // Signal that tab has changes
+    onTabChanges?.();
   };
 
   const handleSaveAgent = () => {
@@ -182,6 +186,9 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ workspaceData: workspaceData }) =
 
     // Update the workspace data
     workspaceData.agents = updatedAgents;
+
+    // Signal that tab has changes
+    onTabChanges?.();
 
     // Close the dialog
     setShowAgentDialog(false);
@@ -323,7 +330,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ workspaceData: workspaceData }) =
           </div>
         ) : (
           <div className="text-zinc-400 py-8 text-center">
-            {t('workspaces.noAgents', 'No agents have been created for this workspace')}
+            {t('workspaces.noAgents', 'No agents have been added to this workspace yet')}
           </div>
         )}
       </div>
