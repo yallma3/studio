@@ -36,7 +36,6 @@ import {
 import {
   saveCanvasState,
   CanvasState,
-  exportCanvasState,
 } from "../utils/storageUtils";
 import { generateConnectionPath } from "../utils/connectionUtils";
 import { duplicateNode } from "../utils/nodeOperations";
@@ -46,6 +45,11 @@ import { useCanvasTransform } from "../hooks/useCanvasTransform";
 import { useConnectionDrag } from "../hooks/useConnectionDrag";
 import { useContextMenu } from "../hooks/useContextMenu";
 import { ResultDialog } from "./ResultDialog";
+
+// Add WorkflowFile import
+import { WorkflowFile } from "../../projects/utils/workflowStorageUtils";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 
 // Toast notification component
 interface ToastProps {
@@ -98,8 +102,9 @@ const Toast: React.FC<ToastProps> = ({
 
 const NodeCanvas: React.FC<{
   graph: CanvasState | null;
-  onReturnToHome: () => void;
-}> = ({ graph, onReturnToHome }) => {
+  onReturnToHome: (updatedCanvasState?: CanvasState) => void;
+  workflowMeta?: WorkflowFile | null;
+}> = ({ graph, onReturnToHome, workflowMeta }) => {
   const { t } = useTranslation();
 
   // Canvas state (nodes and connections)
@@ -617,7 +622,49 @@ const NodeCanvas: React.FC<{
   const exportAsJson = async () => {
     if (!graph) return;
     try {
-      await exportCanvasState(graph, nodes, connections, nextNodeId.current);
+      // Create updated canvas state
+      const canvasState: CanvasState = {
+        graphId: graph.graphId,
+        graphName: graph.graphName,
+        nodes,
+        connections,
+        nextNodeId: nextNodeId.current
+      };
+
+      let exportData: WorkflowFile;
+
+      if (workflowMeta) {
+        // Export as complete WorkflowFile with metadata
+        exportData = {
+          ...workflowMeta,
+          canvasState: canvasState,
+          updatedAt: Date.now()
+        };
+      } else {
+        // Fallback: convert CanvasState to basic WorkflowFile
+        exportData = {
+          id: canvasState.graphId,
+          name: canvasState.graphName || 'Exported Workflow',
+          description: 'Workflow exported from canvas',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          canvasState: canvasState
+        };
+      }
+
+      // Open save dialog
+      const filePath = await save({
+        filters: [{
+          name: 'JSON',
+          extensions: ['json']
+        }],
+        defaultPath: `${exportData.name || 'workflow'}.json`
+      });
+
+      if (!filePath) return;
+
+      // Write WorkflowFile to selected location
+      await writeTextFile(filePath, JSON.stringify(exportData, null, 2));
 
       showToast(t("canvas.jsonExportSuccess"), "success");
       setFileMenuOpen(false);
@@ -989,7 +1036,20 @@ const NodeCanvas: React.FC<{
         />
         <div className="absolute top-5 left-5 flex gap-2 z-20 items-center justify-center">
           <button
-            onClick={onReturnToHome}
+            onClick={() => {
+              // Create updated canvas state to pass back
+              if (graph) {
+                const updatedCanvasState: CanvasState = {
+                  ...graph,
+                  nodes,
+                  connections,
+                  nextNodeId: nextNodeId.current
+                };
+                onReturnToHome(updatedCanvasState);
+              } else {
+                onReturnToHome();
+              }
+            }}
             className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20"
             aria-label={t("canvas.returnToHome")}
             title={t("canvas.returnToHome")}

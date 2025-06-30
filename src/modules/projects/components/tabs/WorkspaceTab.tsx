@@ -294,7 +294,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
                     placeholder="Workspace description"
                   />
                 ) : (
-                  workspaceData.description || 'This project is for creating social media posts for various platforms from post text, image and tone for every platform like Facebook, X, Instagram and LinkedIn.'
+                  workspaceData.description || 'No description provided'
                 )}
               </CardDescription>
             </div>
