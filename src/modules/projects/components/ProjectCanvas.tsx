@@ -11,11 +11,10 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import React, { useState, useCallback } from "react";
-import { ArrowLeft, Save, AlertCircle, CheckCircle } from "lucide-react";
-import { saveWorkspaceToDefaultLocation } from "../utils/storageUtils";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { ArrowLeft, Save, AlertCircle, CheckCircle, Download, Play, MoreVertical } from "lucide-react";
+import { saveWorkspaceToDefaultLocation, workspaceFileExists, saveWorkspaceState } from "../utils/storageUtils";
 import { useTranslation } from "react-i18next";
-import WorkspaceNameDialog from "./WorkspaceNameDialog.tsx";
 import { WorkspaceData } from "../types/Types";
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
@@ -75,9 +74,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
   // Track if there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   
-  // Workspace name dialog state
-  const [workspaceNameDialogOpen, setWorkspaceNameDialogOpen] = useState<boolean>(false);
-  
   // Toast notification state
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error'; isClosing: boolean }>({
     visible: false,
@@ -85,6 +81,43 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
     type: "success",
     isClosing: false
   });
+  
+  // Dropdown menu state
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Check if workspace is imported (doesn't exist locally) and set unsaved flag
+  useEffect(() => {
+    const checkWorkspaceExists = async () => {
+      try {
+        const exists = await workspaceFileExists(workspaceData);
+        if (!exists) {
+          // Workspace doesn't exist locally, likely imported - mark as unsaved
+          setHasUnsavedChanges(true);
+        }
+      } catch (error) {
+        console.error('Error checking workspace existence:', error);
+        // On error, assume it's imported and mark as unsaved
+        setHasUnsavedChanges(true);
+      }
+    };
+
+    checkWorkspaceExists();
+  }, [workspaceData.id]); // Only run when workspace ID changes
+  
+  // Handle clicks outside dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   
   // Show toast notification
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -104,21 +137,20 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
     }, 200); // Match with transition duration in Toast component
   }, []);
   
-  // Handle saving workspace state
-  const handleSaveWorkspace = async (workspaceName?: string) => {
+  // Handle saving workspace state - simplified to just save directly
+  const handleSaveWorkspace = async () => {
     if (!workspaceData) return;
     
     try {
       const updatedWorkspace = { 
-        ...workspaceData, 
-        name: workspaceName || workspaceData.name,
+        ...workspaceData,
         updatedAt: Date.now()
       };
       
       // Update state
       setWorkspaceData(updatedWorkspace);
       
-      // Save to storage
+      // Save to storage using workspace ID
       await saveWorkspaceToDefaultLocation(updatedWorkspace);
       
       // Clear unsaved changes flag
@@ -129,6 +161,36 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
       console.error("Error saving workspace:", error);
       showToast(t('workspaces.saveError', 'Failed to save workspace'), 'error');
     }
+  };
+
+  // Handle exporting workspace to file
+  const handleExportWorkspace = async () => {
+    if (!workspaceData) return;
+    
+    try {
+      const updatedWorkspace = { 
+        ...workspaceData,
+        updatedAt: Date.now()
+      };
+      
+      // Update state
+      setWorkspaceData(updatedWorkspace);
+      
+      // Export to file with workspace name as default filename
+      await saveWorkspaceState(updatedWorkspace);
+      
+      showToast(t('workspaces.exported', 'Workspace exported successfully'), 'success');
+      setIsDropdownOpen(false); // Close dropdown after export
+    } catch (error) {
+      console.error("Error exporting workspace:", error);
+      showToast(t('workspaces.exportError', 'Failed to export workspace'), 'error');
+    }
+  };
+
+  // Handle running workspace (placeholder for future implementation)
+  const handleRunWorkspace = async () => {
+    // TODO: Implement run logic
+    showToast(t('workspaces.runNotImplemented', 'Run functionality not implemented yet'), 'error');
   };
   
   // Handle updating workspace data - only update state, don't save to file
@@ -152,15 +214,12 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
       showToast(t('workspaces.updateError', 'Failed to update workspace'), 'error');
     }
   };
-  
-  // Handle saving with name
-  const handleSaveWithName = async (name: string) => {
-    setWorkspaceNameDialogOpen(false);
-    await handleSaveWorkspace(name);
+
+  // Simple callback for tabs to signal they have changes (without updating workspace data)
+  const handleTabChanges = () => {
+    setHasUnsavedChanges(true);
   };
 
-
-  
   return (
     <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
       {/* Header */}
@@ -177,6 +236,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
             <div>
               <h1 className="text-xl font-semibold text-white">
                 {workspaceData.name || t('workspaces.untitled', 'Untitled Workspace')}
+                
               </h1>
           
             </div>
@@ -187,13 +247,48 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
                 {t('workspaces.unsavedChanges', 'Unsaved changes')}
               </div>
             )}
-            <button 
-              className="bg-[#FFC72C] hover:bg-[#FFD700] text-black font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
-              onClick={() => setWorkspaceNameDialogOpen(true)}
-            >
-              <Save className="h-4 w-4" />
-              Save
-            </button>
+            <div className="flex items-center gap-2">
+             
+              
+              <button 
+                className="bg-green-600 hover:bg-green-500 text-white font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                onClick={handleRunWorkspace}
+              >
+                <Play className="h-4 w-4" />
+                
+              </button>
+              <button 
+                className="bg-[#FFC72C] hover:bg-[#FFD700] text-black font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                onClick={handleSaveWorkspace}
+              >
+                <Save className="h-4 w-4" />
+                
+              </button>
+               {/* Dropdown Menu */}
+               <div className="relative" ref={dropdownRef}>
+                <button 
+                  className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium p-2 rounded flex items-center transition-colors"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+                
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg z-50">
+                    <div className="py-1">
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center gap-2"
+                        onClick={handleExportWorkspace}
+                      >
+                        <Download className="h-4 w-4" />
+                        Export Workspace
+                      </button>
+                      {/* Future options can be added here */}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -228,21 +323,11 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
         <div className="w-full h-full overflow-auto">
           {/* Render the appropriate tab component based on activeTab */}
           {activeTab === 'workspace' && <WorkspaceTab workspaceData={workspaceData} onUpdateWorkspace={handleUpdateWorkspace} />}
-          {activeTab === 'tasks' && <TasksTab workspaceData={workspaceData} />}
-          {activeTab === 'agents' && <AgentsTab workspaceData={workspaceData} />}
-          {activeTab === 'aiflows' && <AiFlowsTab workspaceData={workspaceData} />}
+          {activeTab === 'tasks' && <TasksTab workspaceData={workspaceData} onTabChanges={handleTabChanges} />}
+          {activeTab === 'agents' && <AgentsTab workspaceData={workspaceData} onTabChanges={handleTabChanges} />}
+          {activeTab === 'aiflows' && <AiFlowsTab workspaceData={workspaceData} onTabChanges={handleTabChanges} />}
         </div>
       </div>
-      
-      {/* Workspace name dialog */}
-      {workspaceNameDialogOpen && (
-        <WorkspaceNameDialog
-          isOpen={workspaceNameDialogOpen}
-          initialName={workspaceData.name}
-          onClose={() => setWorkspaceNameDialogOpen(false)}
-          onSave={handleSaveWithName}
-        />
-      )}
       
       {/* Toast notification */}
       {toast.visible && (
