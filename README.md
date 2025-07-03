@@ -53,7 +53,7 @@ Located in `src/modules/agents/`:
 
 ### 3. Flows Module
 
-Located in `src/modules/flows/`:
+Located in `src/modules/flow/`:
 
 - `components/` - UI components for flow management and visualization
 - `utils/` - Utility functions for flow operations

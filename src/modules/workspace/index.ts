@@ -11,19 +11,8 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import './app/App.css'
+import WorkspaceHome from './WorkspaceHome';
 
-import App from './app/App.tsx'
-// Import i18n config
-import './i18n/i18n.ts'
-// Import RTL styles
-import './i18n/rtl.css'
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+export {
+  WorkspaceHome
+}; 
