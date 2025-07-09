@@ -11,25 +11,31 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useTranslation } from "react-i18next";
+
 import { WorkspaceData, LLMOption } from "../../types/Types";
-import { 
-  Edit, 
-  Hash, 
-  Brain, 
-  Calendar, 
-  Clock, 
-  Play, 
-  Pause, 
+import {
+  Edit,
+  Hash,
+  Brain,
+  Calendar,
+  Clock,
+  Play,
+  Pause,
   Trash2,
   Expand,
   Minimize,
   X,
   Key,
-  Check
+  Check,
 } from "lucide-react";
 
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../../../components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "../../../../components/ui/card";
 import { Button } from "../../../../components/ui/button";
 import { ScrollArea } from "../../../../components/ui/scroll-area";
 import Select from "../../../../components/ui/select";
@@ -42,110 +48,117 @@ interface WorkspaceTabProps {
 interface ConsoleEvent {
   id: string;
   timestamp: number;
-  type: 'info' | 'warning' | 'error' | 'success';
+  type: "info" | "warning" | "error" | "success";
   message: string;
   details?: string;
 }
 
-const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWorkspace: onUpdateWorkspace }) => {
-  
+const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
+  workspaceData,
+  onUpdateWorkspace: onUpdateWorkspace,
+}) => {
   // Console state
   const [events, setEvents] = useState<ConsoleEvent[]>([]);
   const [isConsoleRunning, setIsConsoleRunning] = useState(true);
   const [isConsoleExpanded, setIsConsoleExpanded] = useState(false);
 
+  // Available LLM options
+  const availableLLMs: LLMOption[] = useMemo(
+    () => [
+      {
+        id: "gpt-4",
+        name: "GPT-4",
+        provider: "OpenAI",
+        tokenLimit: 8192,
+      },
+      {
+        id: "gpt-3.5-turbo",
+        name: "GPT-3.5 Turbo",
+        provider: "OpenAI",
+        tokenLimit: 4096,
+      },
+      {
+        id: "claude-3-opus",
+        name: "Claude 3 Opus",
+        provider: "Anthropic",
+        tokenLimit: 200000,
+      },
+      {
+        id: "claude-3-sonnet",
+        name: "Claude 3 Sonnet",
+        provider: "Anthropic",
+        tokenLimit: 100000,
+      },
+      {
+        id: "gemini-pro",
+        name: "Gemini Pro",
+        provider: "Google",
+        tokenLimit: 32768,
+      },
+      {
+        id: "llama-3-70b",
+        name: "Llama 3 (70B)",
+        provider: "Meta",
+        tokenLimit: 8192,
+      },
+      {
+        id: "mixtral-8x7b",
+        name: "Mixtral 8x7B",
+        provider: "Groq",
+        tokenLimit: 32768,
+      },
+      {
+        id: "llama-2-70b",
+        name: "Llama 2 (70B)",
+        provider: "Groq",
+        tokenLimit: 4096,
+      },
+    ],
+    []
+  );
 
-   // Available LLM options
-   const availableLLMs: LLMOption[] = useMemo(() => [
-    {
-      id: "gpt-4",
-      name: "GPT-4",
-      provider: "OpenAI",
-      tokenLimit: 8192
-    },
-    {
-      id: "gpt-3.5-turbo",
-      name: "GPT-3.5 Turbo",
-      provider: "OpenAI",
-      tokenLimit: 4096
-    },
-    {
-      id: "claude-3-opus",
-      name: "Claude 3 Opus",
-      provider: "Anthropic",
-      tokenLimit: 200000
-    },
-    {
-      id: "claude-3-sonnet",
-      name: "Claude 3 Sonnet",
-      provider: "Anthropic",
-      tokenLimit: 100000  
-    },
-    {
-      id: "gemini-pro",
-      name: "Gemini Pro",
-      provider: "Google",
-      tokenLimit: 32768
-    },
-    {
-      id: "llama-3-70b",
-      name: "Llama 3 (70B)",
-      provider: "Meta",
-      tokenLimit: 8192
-    },
-    {
-      id: "mixtral-8x7b",
-      name: "Mixtral 8x7B",
-      provider: "Groq",
-      tokenLimit: 32768
-    },
-    {
-      id: "llama-2-70b",
-      name: "Llama 2 (70B)",
-      provider: "Groq",
-      tokenLimit: 4096
-    }
-  ], []);
-  
   // Helper function to determine provider from LLM ID
-  const getProviderFromLLM = useCallback((llmId: string): string | null => {
-    if (!llmId) return null;
-    const llm = availableLLMs.find(llm => llm.id === llmId);
-    return llm ? llm.provider : null;
-  }, [availableLLMs]);
-  
+  const getProviderFromLLM = useCallback(
+    (llmId: string): string | null => {
+      if (!llmId) return null;
+      const llm = availableLLMs.find((llm) => llm.id === llmId);
+      return llm ? llm.provider : null;
+    },
+    [availableLLMs]
+  );
+
   // Get unique providers from available LLMs
-  const llmProviders = [...new Set(availableLLMs.map(llm => llm.provider))];
-  
+  const llmProviders = [...new Set(availableLLMs.map((llm) => llm.provider))];
+
   // State for editing mode
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  
+
   // State for form values
   const [formValues, setFormValues] = useState({
-    name: workspaceData.name || '',
-    description: workspaceData.description || '',
-    mainLLM: workspaceData.mainLLM || '',
-    apiKey: workspaceData.apiKey || '',
-    useSavedCredentials: workspaceData.useSavedCredentials || false
+    name: workspaceData.name || "",
+    description: workspaceData.description || "",
+    mainLLM: workspaceData.mainLLM || "",
+    apiKey: workspaceData.apiKey || "",
+    useSavedCredentials: workspaceData.useSavedCredentials || false,
   });
-  
+
   // State for selected provider
   const [selectedProvider, setSelectedProvider] = useState<string>(
     // Try to determine the provider from the mainLLM
     getProviderFromLLM(workspaceData.mainLLM) || "Groq"
   );
-  
+
   // Handle input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormValues(prev => ({
+    setFormValues((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
-  
 
-  
   // Handle save
   const handleSave = async () => {
     if (onUpdateWorkspace) {
@@ -154,35 +167,35 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
         description: formValues.description,
         mainLLM: formValues.mainLLM,
         apiKey: formValues.apiKey,
-        useSavedCredentials: formValues.useSavedCredentials
+        useSavedCredentials: formValues.useSavedCredentials,
       });
     }
     setIsEditing(false);
   };
-  
+
   // Handle cancel
   const handleCancel = () => {
     // Reset form values to original data
     setFormValues({
-      name: workspaceData.name || '',
-      description: workspaceData.description || '',
-      mainLLM: workspaceData.mainLLM || '',
-      apiKey: workspaceData.apiKey || '',
-      useSavedCredentials: workspaceData.useSavedCredentials || false
+      name: workspaceData.name || "",
+      description: workspaceData.description || "",
+      mainLLM: workspaceData.mainLLM || "",
+      apiKey: workspaceData.apiKey || "",
+      useSavedCredentials: workspaceData.useSavedCredentials || false,
     });
     // Reset provider selection
     setSelectedProvider(getProviderFromLLM(workspaceData.mainLLM) || "Groq");
     setIsEditing(false);
-  };  
+  };
 
   // Sync form values when workspace data changes
   useEffect(() => {
     setFormValues({
-      name: workspaceData.name || '',
-      description: workspaceData.description || '',
-      mainLLM: workspaceData.mainLLM || '',
-      apiKey: workspaceData.apiKey || '',
-      useSavedCredentials: workspaceData.useSavedCredentials || false
+      name: workspaceData.name || "",
+      description: workspaceData.description || "",
+      mainLLM: workspaceData.mainLLM || "",
+      apiKey: workspaceData.apiKey || "",
+      useSavedCredentials: workspaceData.useSavedCredentials || false,
     });
     setSelectedProvider(getProviderFromLLM(workspaceData.mainLLM) || "Groq");
   }, [workspaceData, getProviderFromLLM]);
@@ -190,7 +203,9 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
   // Update selected provider when mainLLM changes via Select component
   useEffect(() => {
     if (formValues.mainLLM) {
-      const selectedLLM = availableLLMs.find(llm => llm.id === formValues.mainLLM);
+      const selectedLLM = availableLLMs.find(
+        (llm) => llm.id === formValues.mainLLM
+      );
       if (selectedLLM && selectedLLM.provider !== selectedProvider) {
         setSelectedProvider(selectedLLM.provider);
       }
@@ -201,26 +216,26 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
   useEffect(() => {
     const sampleEvents: ConsoleEvent[] = [
       {
-        id: '1',
+        id: "1",
         timestamp: Date.now() - 30000,
-        type: 'info',
-        message: 'Workspace initialized successfully',
-        details: 'All components loaded and ready'
+        type: "info",
+        message: "Workspace initialized successfully",
+        details: "All components loaded and ready",
       },
       {
-        id: '2',
+        id: "2",
         timestamp: Date.now() - 20000,
-        type: 'success',
-        message: 'LLM connection established',
-        details: 'Connected to gpt-3.5-turbo'
+        type: "success",
+        message: "LLM connection established",
+        details: "Connected to gpt-3.5-turbo",
       },
       {
-        id: '3',
+        id: "3",
         timestamp: Date.now() - 10000,
-        type: 'info',
-        message: 'Auto-save enabled',
-        details: 'Workspace will be saved every 5 minutes'
-      }
+        type: "info",
+        message: "Auto-save enabled",
+        details: "Workspace will be saved every 5 minutes",
+      },
     ];
     setEvents(sampleEvents);
   }, []);
@@ -229,26 +244,24 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
   useEffect(() => {
     if (!isConsoleRunning) return;
 
-    
-      // const eventTypes: ('info' | 'warning' | 'error' | 'success')[] = ['info', 'warning', 'error', 'success'];
-      // const messages = [
-      //   'Task executed successfully',
-      //   'Agent response received',
-      //   'Workflow step completed',
-      //   'Model inference completed',
-      //   'Data processed successfully'
-      // ];
+    // const eventTypes: ('info' | 'warning' | 'error' | 'success')[] = ['info', 'warning', 'error', 'success'];
+    // const messages = [
+    //   'Task executed successfully',
+    //   'Agent response received',
+    //   'Workflow step completed',
+    //   'Model inference completed',
+    //   'Data processed successfully'
+    // ];
 
-      // const newEvent: ConsoleEvent = {
-      //   id: Date.now().toString(),
-      //   timestamp: Date.now(),
-      //   type: eventTypes[Math.floor(Math.random() * eventTypes.length)],
-      //   message: messages[Math.floor(Math.random() * messages.length)],
-      //   details: Math.random() > 0.5 ? 'Additional context information' : undefined
-      // };
+    // const newEvent: ConsoleEvent = {
+    //   id: Date.now().toString(),
+    //   timestamp: Date.now(),
+    //   type: eventTypes[Math.floor(Math.random() * eventTypes.length)],
+    //   message: messages[Math.floor(Math.random() * messages.length)],
+    //   details: Math.random() > 0.5 ? 'Additional context information' : undefined
+    // };
 
-      // setEvents(prev => [newEvent, ...prev].slice(0, 50)); // Keep only last 50 events
-   
+    // setEvents(prev => [newEvent, ...prev].slice(0, 50)); // Keep only last 50 events
 
     // return () => clearInterval(interval);
   }, [isConsoleRunning]);
@@ -263,14 +276,14 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
 
   const getEventColor = (type: string) => {
     switch (type) {
-      case 'error':
-        return 'text-red-400';
-      case 'warning':
-        return 'text-yellow-400';
-      case 'success':
-        return 'text-green-400';
+      case "error":
+        return "text-red-400";
+      case "warning":
+        return "text-yellow-400";
+      case "success":
+        return "text-green-400";
       default:
-        return 'text-blue-400';
+        return "text-blue-400";
     }
   };
 
@@ -293,7 +306,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
                     placeholder="Workspace name"
                   />
                 ) : (
-                  workspaceData.name || 'Content Creation'
+                  workspaceData.name || "Content Creation"
                 )}
               </CardTitle>
               <CardDescription className="text-zinc-400 text-sm leading-relaxed">
@@ -307,26 +320,36 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
                     placeholder="Workspace description"
                   />
                 ) : (
-                  workspaceData.description || 'No description provided'
+                  workspaceData.description || "No description provided"
                 )}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               {isEditing ? (
                 <>
-                  <Button variant="outline" size="sm" onClick={handleSave} className="border-green-600 hover:bg-green-700 text-green-400">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSave}
+                    className="border-green-600 hover:bg-green-700 text-green-400"
+                  >
                     <Check className="h-4 w-4 mr-2" />
                     Confirm
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleCancel} className="border-zinc-700 hover:bg-zinc-800 text-zinc-300">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancel}
+                    className="border-zinc-700 hover:bg-zinc-800 text-zinc-300"
+                  >
                     <X className="h-4 w-4 mr-2" />
                     Cancel
                   </Button>
                 </>
               ) : (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setIsEditing(true)}
                   className="border-zinc-700 hover:bg-zinc-800 text-zinc-300"
                 >
@@ -339,29 +362,42 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
           <CardContent className="pt-4">
             <div className="grid grid-cols-2 gap-x-12 gap-y-6">
               <div>
-                <label className="text-sm text-zinc-400 block mb-2">Workspace ID</label>
+                <label className="text-sm text-zinc-400 block mb-2">
+                  Workspace ID
+                </label>
                 <div className="flex items-center gap-2">
                   <Hash className="h-4 w-4 text-zinc-500" />
                   <code className="text-sm text-[#FFC72C] font-mono">
-                    {workspaceData.id || 'workspace-1748435851397'}
+                    {workspaceData.id || "workspace-1748435851397"}
                   </code>
                 </div>
               </div>
-              
+
               <div>
-                <label className="text-sm text-zinc-400 block mb-2">Created</label>
+                <label className="text-sm text-zinc-400 block mb-2">
+                  Created
+                </label>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-zinc-500" />
                   <span className="text-sm text-white">
-                    {workspaceData.createdAt 
-                      ? new Date(workspaceData.createdAt).toLocaleDateString('en-GB') + ', ' + new Date(workspaceData.createdAt).toLocaleTimeString('en-GB', { hour12: false })
-                      : '28/05/2025, 15:37:31'}
+                    {workspaceData.createdAt
+                      ? new Date(workspaceData.createdAt).toLocaleDateString(
+                          "en-GB"
+                        ) +
+                        ", " +
+                        new Date(workspaceData.createdAt).toLocaleTimeString(
+                          "en-GB",
+                          { hour12: false }
+                        )
+                      : "28/05/2025, 15:37:31"}
                   </span>
                 </div>
               </div>
-              
+
               <div>
-                <label className="text-sm text-zinc-400 block mb-2">Main LLM</label>
+                <label className="text-sm text-zinc-400 block mb-2">
+                  Main LLM
+                </label>
                 <div className="flex items-center gap-2">
                   <Brain className="h-4 w-4 text-zinc-500" />
                   {isEditing ? (
@@ -372,7 +408,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
                             id="provider"
                             value={selectedProvider}
                             onChange={(value) => setSelectedProvider(value)}
-                            options={llmProviders.map(provider => ({ value: provider, label: provider }))}
+                            options={llmProviders.map((provider) => ({
+                              value: provider,
+                              label: provider,
+                            }))}
                             placeholder="Select a provider..."
                             label="Select Provider"
                           />
@@ -380,16 +419,31 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
                         <div className="flex-1">
                           <Select
                             id="model"
-                            value={formValues.mainLLM || ''}
-                            onChange={(value) => setFormValues(prev => ({ ...prev, mainLLM: value }))}
+                            value={formValues.mainLLM || ""}
+                            onChange={(value) =>
+                              setFormValues((prev) => ({
+                                ...prev,
+                                mainLLM: value,
+                              }))
+                            }
                             options={[
-                              { value: '', label: 'Select a model...', disabled: true },
+                              {
+                                value: "",
+                                label: "Select a model...",
+                                disabled: true,
+                              },
                               ...availableLLMs
-                                .filter(llm => !selectedProvider || llm.provider === selectedProvider)
-                                .map(llm => ({
+                                .filter(
+                                  (llm) =>
+                                    !selectedProvider ||
+                                    llm.provider === selectedProvider
+                                )
+                                .map((llm) => ({
                                   value: llm.id,
-                                  label: `${llm.name} - ${llm.tokenLimit.toLocaleString()} tokens`
-                                }))
+                                  label: `${
+                                    llm.name
+                                  } - ${llm.tokenLimit.toLocaleString()} tokens`,
+                                })),
                             ]}
                             disabled={!selectedProvider}
                             label="Select Model"
@@ -399,20 +453,29 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
                     </div>
                   ) : (
                     <span className="text-sm text-[#FFC72C] font-medium">
-                      {workspaceData.mainLLM || 'gpt-3.5-turbo'}
+                      {workspaceData.mainLLM || "gpt-3.5-turbo"}
                     </span>
                   )}
                 </div>
               </div>
-              
+
               <div>
-                <label className="text-sm text-zinc-400 block mb-2">Last Updated</label>
+                <label className="text-sm text-zinc-400 block mb-2">
+                  Last Updated
+                </label>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-zinc-500" />
                   <span className="text-sm text-white">
-                    {workspaceData.updatedAt 
-                      ? new Date(workspaceData.updatedAt).toLocaleDateString('en-GB') + ', ' + new Date(workspaceData.updatedAt).toLocaleTimeString('en-GB', { hour12: false })
-                      : '28/05/2025, 15:46:54'}
+                    {workspaceData.updatedAt
+                      ? new Date(workspaceData.updatedAt).toLocaleDateString(
+                          "en-GB"
+                        ) +
+                        ", " +
+                        new Date(workspaceData.updatedAt).toLocaleTimeString(
+                          "en-GB",
+                          { hour12: false }
+                        )
+                      : "28/05/2025, 15:46:54"}
                   </span>
                 </div>
               </div>
@@ -421,32 +484,50 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
               {isEditing && formValues.mainLLM && (
                 <>
                   <div className="col-span-2">
-                    <label className="text-sm text-zinc-400 block mb-2">API Configuration</label>
-                    
+                    <label className="text-sm text-zinc-400 block mb-2">
+                      API Configuration
+                    </label>
+
                     {/* API Key Options */}
                     <div className="flex gap-2 mb-4">
                       <button
                         type="button"
-                        onClick={() => setFormValues(prev => ({ ...prev, useSavedCredentials: false }))}
-                        className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${!formValues.useSavedCredentials 
-                          ? 'bg-[#FFC72C] text-black font-medium' 
-                          : 'bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700'}`}
+                        onClick={() =>
+                          setFormValues((prev) => ({
+                            ...prev,
+                            useSavedCredentials: false,
+                          }))
+                        }
+                        className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
+                          !formValues.useSavedCredentials
+                            ? "bg-[#FFC72C] text-black font-medium"
+                            : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
+                        }`}
                       >
                         New Key
                       </button>
                       <button
                         type="button"
-                        onClick={() => setFormValues(prev => ({ ...prev, useSavedCredentials: true }))}
-                        className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${formValues.useSavedCredentials 
-                          ? 'bg-[#FFC72C] text-black font-medium' 
-                          : 'bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700'}`}
+                        onClick={() =>
+                          setFormValues((prev) => ({
+                            ...prev,
+                            useSavedCredentials: true,
+                          }))
+                        }
+                        className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
+                          formValues.useSavedCredentials
+                            ? "bg-[#FFC72C] text-black font-medium"
+                            : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
+                        }`}
                       >
                         Keys Vault
                       </button>
                     </div>
-                    
+
                     {/* API Key Input Container with fixed height */}
-                    <div className="h-24"> {/* Fixed height container */}
+                    <div className="h-24">
+                      {" "}
+                      {/* Fixed height container */}
                       {!formValues.useSavedCredentials ? (
                         <div>
                           <div className="relative">
@@ -470,13 +551,22 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
                           <Select
                             id="savedKey"
                             value={formValues.apiKey}
-                            onChange={(value) => setFormValues(prev => ({ ...prev, apiKey: value }))}
+                            onChange={(value) =>
+                              setFormValues((prev) => ({
+                                ...prev,
+                                apiKey: value,
+                              }))
+                            }
                             options={[
-                              { value: '', label: 'Select a saved key...', disabled: true },
-                              { value: 'key1', label: 'Groq API Key' },
-                              { value: 'key2', label: 'OpenAI API Key' },
-                              { value: 'key3', label: 'Anthropic API Key' },
-                              { value: 'key4', label: 'Google API Key' }
+                              {
+                                value: "",
+                                label: "Select a saved key...",
+                                disabled: true,
+                              },
+                              { value: "key1", label: "Groq API Key" },
+                              { value: "key2", label: "OpenAI API Key" },
+                              { value: "key3", label: "Anthropic API Key" },
+                              { value: "key4", label: "Google API Key" },
                             ]}
                             label="Saved Key"
                           />
@@ -560,16 +650,27 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ workspaceData, onUpdateWork
                 </div>
               ) : (
                 events.map((event) => (
-                  <div key={event.id} className="flex items-start gap-3 p-2 rounded hover:bg-zinc-800/50">
+                  <div
+                    key={event.id}
+                    className="flex items-start gap-3 p-2 rounded hover:bg-zinc-800/50"
+                  >
                     <span className="text-zinc-500 text-xs mt-0.5 min-w-[60px]">
                       {formatTimestamp(event.timestamp)}
                     </span>
-                    <span className={`text-xs font-medium min-w-[60px] ${getEventColor(event.type)}`}>
+                    <span
+                      className={`text-xs font-medium min-w-[60px] ${getEventColor(
+                        event.type
+                      )}`}
+                    >
                       [{event.type.toUpperCase()}]
                     </span>
                     <div className="flex-1">
                       <div className="text-white">{event.message}</div>
-                      {event.details && <div className="text-zinc-400 text-xs mt-1">{event.details}</div>}
+                      {event.details && (
+                        <div className="text-zinc-400 text-xs mt-1">
+                          {event.details}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
