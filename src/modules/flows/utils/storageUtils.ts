@@ -13,6 +13,14 @@ export interface CanvasState {
   nextNodeId: number;
 }
 
+/**
+ * Restores processor functions to an array of nodes by using registered node factories.
+ *
+ * For each node, retrieves the corresponding factory based on its type and reattaches the processor function. If no factory is found for a node type, the node is returned unchanged.
+ *
+ * @param nodes - The array of nodes to process
+ * @returns A new array of nodes with processor functions reattached where possible
+ */
 function reattachNodeProcessors(nodes: NodeType[]): NodeType[] {
   console.log("REATTACHING")
   return nodes.map(node => {
