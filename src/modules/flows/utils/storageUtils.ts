@@ -13,10 +13,12 @@
 
 import { appDataDir } from "@tauri-apps/api/path";
 import { join } from "@tauri-apps/api/path";
+
 import { NodeType, Connection, GraphState } from "../types/NodeTypes.ts";
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs';
 import { nodeRegistry } from "../types/NodeRegistry.ts";
+
 
 export interface CanvasState {
   graphId: string;
@@ -40,6 +42,23 @@ function reattachNodeProcessors(nodes: NodeType[]): NodeType[] {
     }
   });
 }
+
+// Generate clean, short random string
+const generateCleanId = (length: number = 6): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
+// Generate unique graph ID - updated format
+const generateGraphId = (): string => {
+  const shortDate = Date.now().toString().slice(-6);
+  const randomPart = generateCleanId(3);
+  return `gf-${shortDate}${randomPart}`;
+};
 
 /**
  * Save canvas state to a JSON file
@@ -111,42 +130,46 @@ export const saveCanvasState = async (graphId: string, nodes: NodeType[], connec
  */
 export const loadCanvasState = async (): Promise<{canvasState: CanvasState, newGraphId: string} | null> => {
   try {
+   
     
     const file = await open({
         multiple: false,
         directory: false,
-        extensions: ['json']
+        filters: [{
+          name: 'JSON',
+          extensions: ['json']
+        }]
       });
       
 
       if (!file) {
         return null;
-      }
-      const content = await readTextFile(file);
+       }
+       const content = await readTextFile(file);
 
-      const fileName = file.split('/').pop() || file
-      const graphDir =await appDataDir();
-      
-      const newGraphPath = await join(graphDir, fileName);
-      
-      await mkdir(graphDir, { recursive: true });
+       const fileName = file.split('/').pop() || file
+       const graphDir =await appDataDir();
+       
+       const newGraphPath = await join(graphDir, fileName);
+       
+       await mkdir(graphDir, { recursive: true });
 
-      // Copy file into internal storage
-      await writeTextFile(newGraphPath, content);
+       // Copy file into internal storage
+       await writeTextFile(newGraphPath, content);
 
-      
-      const parsedContent = JSON.parse(content);
-      const nodes = reattachNodeProcessors(parsedContent.nodes)
-      const canvasState = {
-        ...parsedContent,
-        nodes
-      }
+       
+       const parsedContent = JSON.parse(content);
+       const nodes = reattachNodeProcessors(parsedContent.nodes)
+       const canvasState = {
+         ...parsedContent,
+         nodes
+       }
       
 
     try {
       // Parse the JSON string
 
-      const newGraphId = `graph-${Date.now()}`;
+      const newGraphId = generateGraphId();
       const newGraphState: GraphState = {
         id: newGraphId,
         name: fileName,

@@ -19,9 +19,10 @@ import { X } from "lucide-react";
 
 interface TasksTabProps {
   workspaceData: WorkspaceData;
+  onTabChanges?: () => void;
 }
 
-const TasksTab: React.FC<TasksTabProps> = ({ workspaceData: workspaceData }) => {
+const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onTabChanges }) => {
   const { t } = useTranslation();
 
   const [viewMode, setViewMode] = useState<'list' | 'canvas'>('canvas');
@@ -87,6 +88,9 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData: workspaceData }) => 
     
     // Update the workspace data
     workspaceData.tasks = updatedTasks;
+    
+    // Signal that tab has changes
+    onTabChanges?.();
   };
 
   const handleShowTaskDialog = () => {
@@ -155,6 +159,9 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData: workspaceData }) => 
     // Update state and workspace data
     setTasks(updatedTasks);
     workspaceData.tasks = updatedTasks;
+
+    // Signal that tab has changes
+    onTabChanges?.();
 
     // Reset editing state and close the dialog
     setEditingTaskId(null);

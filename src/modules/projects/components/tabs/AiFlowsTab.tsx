@@ -20,6 +20,7 @@ import { Plus, ArrowRight, Trash2 } from "lucide-react";
 
 interface AiFlowsTabProps {
   workspaceData: WorkspaceData;
+  onTabChanges?: () => void;
 }
 
 interface Workflow {
@@ -31,7 +32,24 @@ interface Workflow {
   graph?: CanvasState; // Canvas state for the workflow
 }
 
-const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ workspaceData: workspaceData }) => {
+// Generate clean, short random string
+const generateCleanId = (length: number = 6): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
+// Generate unique graph ID - updated format
+const generateGraphId = (): string => {
+  const shortDate = Date.now().toString().slice(-6);
+  const randomPart = generateCleanId(3);
+  return `gf-${shortDate}${randomPart}`;
+};
+
+const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ workspaceData: workspaceData, onTabChanges }) => {
   const { t } = useTranslation();
   const [selectedWorkflow, setSelectedWorkflow] = useState<CanvasState | null>(null);
 
@@ -78,7 +96,7 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ workspaceData: workspaceData })
   };
 
   const handleCreateNewFlow = () => {
-    const newGraphId = `graph-${Date.now()}`;
+    const newGraphId = generateGraphId();
       const canvasState: CanvasState = {
         graphId: newGraphId,
         graphName: null,
@@ -111,6 +129,9 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ workspaceData: workspaceData })
     if (workspaceData.workflows) {
       workspaceData.workflows = updatedWorkflows;
     }
+    
+    // Signal that tab has changes
+    onTabChanges?.();
     
     // Close confirmation dialog
     setShowDeleteConfirm(null);

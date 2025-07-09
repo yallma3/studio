@@ -13,10 +13,11 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 import React, { useState, useEffect } from "react";
-import { Plus, FolderUp, Layers, Calendar, Star } from "lucide-react";
+import { Plus, FolderUp, Layers, Star, Trash } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { loadAllWorkspaces, loadRecentWorkspaces, saveRecentWorkspaces, loadFavoriteWorkspaces, saveFavoriteWorkspaces } from "../utils/storageUtils";
+import { loadAllWorkspaces, loadRecentWorkspaces, saveRecentWorkspaces, loadFavoriteWorkspaces, saveFavoriteWorkspaces, deleteWorkspace } from "../utils/storageUtils";
 import { WorkspaceData } from "../types/Types";
+import { ConfirmationDialog } from "../../../components/ui/ConfirmationDialog";
 
 
 interface WorkspacesTabProps {
@@ -35,6 +36,11 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({ onCreateNew, onOpenFromFi
   const [activeTab, setActiveTab] = useState<'all' | 'recent' | 'favorites'>('all');
   const [recentWorkspaces, setRecentWorkspaces] = useState<string[]>([]);
   const [favoriteWorkspaces, setFavoriteWorkspaces] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; workspaceId: string; workspaceName: string }>({
+    isOpen: false,
+    workspaceId: '',
+    workspaceName: ''
+  });
 
   // Load workspaces and preferences when component mounts
   useEffect(() => {
@@ -84,6 +90,51 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({ onCreateNew, onOpenFromFi
       : [...favoriteWorkspaces, workspaceId];
     setFavoriteWorkspaces(updatedFavorites);
     await saveFavoriteWorkspaces(updatedFavorites);
+  };
+
+  // Handle delete workspace button click - show confirmation dialog
+  const handleDeleteWorkspace = (workspaceId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent opening workspace when clicking delete
+    const workspace = workspaces.find(w => w.id === workspaceId);
+    setConfirmDelete({
+      isOpen: true,
+      workspaceId,
+      workspaceName: workspace?.name || workspace?.id || 'Unknown Workspace'
+    });
+  };
+
+  // Confirm deletion
+  const confirmDeleteWorkspace = async () => {
+    try {
+      await deleteWorkspace(confirmDelete.workspaceId);
+      
+      // Update the workspaces list
+      setWorkspaces(prevWorkspaces => prevWorkspaces.filter(w => w.id !== confirmDelete.workspaceId));
+      
+      // Remove from recent and favorites if present
+      const updatedRecent = recentWorkspaces.filter(id => id !== confirmDelete.workspaceId);
+      const updatedFavorites = favoriteWorkspaces.filter(id => id !== confirmDelete.workspaceId);
+      
+      if (updatedRecent.length !== recentWorkspaces.length) {
+        setRecentWorkspaces(updatedRecent);
+        await saveRecentWorkspaces(updatedRecent);
+      }
+      
+      if (updatedFavorites.length !== favoriteWorkspaces.length) {
+        setFavoriteWorkspaces(updatedFavorites);
+        await saveFavoriteWorkspaces(updatedFavorites);
+      }
+    } catch (error) {
+      console.error('Failed to delete workspace:', error);
+      // You could add a toast notification here for error handling
+    } finally {
+      setConfirmDelete({ isOpen: false, workspaceId: '', workspaceName: '' });
+    }
+  };
+
+  // Cancel deletion
+  const cancelDeleteWorkspace = () => {
+    setConfirmDelete({ isOpen: false, workspaceId: '', workspaceName: '' });
   };
 
   // Get filtered workspaces based on active tab
@@ -226,7 +277,7 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({ onCreateNew, onOpenFromFi
                   <div className="flex items-center gap-3 text-zinc-400 text-sm">
                     <button
                       onClick={(e) => toggleFavorite(workspace.id, e)}
-                      className={`p-1 rounded hover:bg-zinc-600 transition-colors ${
+                      className={`p-1  transition-colors cursor-pointer ${
                         favoriteWorkspaces.includes(workspace.id) 
                           ? 'text-yellow-500' 
                           : 'text-zinc-500 hover:text-yellow-500'
@@ -234,8 +285,11 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({ onCreateNew, onOpenFromFi
                     >
                       <Star className={`h-4 w-4 ${favoriteWorkspaces.includes(workspace.id) ? 'fill-current' : ''}`} />
                     </button>
+                    <button className="p-1  transition-colors cursor-pointer text-zinc-500" onClick={(e) => handleDeleteWorkspace(workspace.id, e)}>
+                      <Trash className="h-4 w-4 hover:text-red-600/60" />
+                    </button>
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
+                      
                       <span>{formatDate(workspace.updatedAt || workspace.createdAt)}</span>
                     </div>
                   </div>
@@ -245,6 +299,18 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({ onCreateNew, onOpenFromFi
           )}
         </div>
     </div>
+
+    {/* Confirmation Dialog */}
+    <ConfirmationDialog
+      isOpen={confirmDelete.isOpen}
+      title={t('workspaces.confirmDelete', 'Confirm Delete')}
+      message={t('workspaces.deleteWorkspaceConfirmation', `Are you sure you want to delete "${confirmDelete.workspaceName}"? This action cannot be undone.`)}
+      confirmText={t('common.delete', 'Delete')}
+      cancelText={t('common.cancel', 'Cancel')}
+      confirmVariant="danger"
+      onConfirm={confirmDeleteWorkspace}
+      onCancel={cancelDeleteWorkspace}
+    />
 
     </div>
   );
