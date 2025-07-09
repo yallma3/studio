@@ -262,22 +262,12 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
                 className="bg-green-600 hover:bg-green-500 text-white font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
                 onClick={handleRunWorkspace}
               >
-                <Play className="h-4 w-4" />
-                
-
-              <button 
-                className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
-                onClick={handleExportWorkspace}
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </button>
+                </button>
               <button 
                 className="bg-[#FFC72C] hover:bg-[#FFD700] text-black font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
                 onClick={handleSaveWorkspace}
               >
                 <Save className="h-4 w-4" />
-
                 
               </button>
                {/* Dropdown Menu */}
@@ -304,7 +294,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
                   </div>
                 )}
               </div>
-
             </div>
           </div>
         </div>
