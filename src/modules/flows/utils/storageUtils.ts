@@ -11,8 +11,7 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import { appDataDir } from "@tauri-apps/api/path";
-import { join } from "@tauri-apps/api/path";
+import { join, appDataDir } from "@tauri-apps/api/path";
 
 import { NodeType, Connection, GraphState } from "../types/NodeTypes.ts";
 import { open, save } from '@tauri-apps/plugin-dialog';

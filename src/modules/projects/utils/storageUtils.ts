@@ -341,14 +341,16 @@ export const initializeDefaultDirectories = async (): Promise<void> => {
     // Get the app data directory
     const appDir = await appDataDir();
     
-    // Create the Flows directory path
-    const flowsDirPath = await join(appDir, 'Flows');
+
+    // Create the flows directory path (lowercase to match workflow storage utilities)
+    const flowsDirPath = await join(appDir, 'flows');
     const workspacesDirPath = await join(appDir, 'Workspaces');
     
-    // Create the Flows directory if it doesn't exist
+    // Create the flows directory if it doesn't exist
     if (!(await exists(flowsDirPath))) {
       await mkdir(flowsDirPath, { recursive: true });
-      console.log('Created Flows directory:', flowsDirPath);
+      console.log('Created flows directory:', flowsDirPath);
+
     }
     if (!(await exists(workspacesDirPath))) {
       await mkdir(workspacesDirPath, { recursive: true });

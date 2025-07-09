@@ -22,7 +22,9 @@ interface TasksTabProps {
   onTabChanges?: () => void;
 }
 
+
 const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onTabChanges }) => {
+
   const { t } = useTranslation();
 
   const [viewMode, setViewMode] = useState<'list' | 'canvas'>('canvas');
@@ -331,7 +333,7 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onTabChanges }) => {
           )
         ) : (
           <div className="text-zinc-400 py-8 text-center">
-            {t('workspaces.noTasks', 'No tasks have been created for this workspace')}
+            {t('workspaces.noTasks', 'No tasks have been added to this workspace yet')}
           </div>
         )}
       </div>

@@ -11,15 +11,10 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import React, { useState, useCallback } from "react";
-import { ArrowLeft, Save, AlertCircle, CheckCircle } from "lucide-react";
-import React, { useState, useCallback, useEffect } from "react";
-import { ArrowLeft, Save, AlertCircle, CheckCircle, Download } from "lucide-react";
-import {
-  saveWorkspaceToDefaultLocation,
-  saveWorkspaceState,
-  workspaceFileExists,
-} from "../utils/storageUtils";
+
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { ArrowLeft, Save, AlertCircle, CheckCircle, Download, Play, MoreVertical } from "lucide-react";
+import { saveWorkspaceToDefaultLocation, workspaceFileExists, saveWorkspaceState } from "../utils/storageUtils";
 import { useTranslation } from "react-i18next";
 import { WorkspaceData } from "../types/Types";
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
@@ -88,6 +83,12 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
     isClosing: false
   });
   
+
+  // Dropdown menu state
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+
   // Check if workspace is imported (doesn't exist locally) and set unsaved flag
   useEffect(() => {
     const checkWorkspaceExists = async () => {
@@ -107,6 +108,22 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
     checkWorkspaceExists();
   }, [workspaceData.id]); // Only run when workspace ID changes
   
+
+  // Handle clicks outside dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
+
   // Show toast notification
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({
@@ -168,11 +185,21 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
       await saveWorkspaceState(updatedWorkspace);
       
       showToast(t('workspaces.exported', 'Workspace exported successfully'), 'success');
+
+      setIsDropdownOpen(false); // Close dropdown after export
+
     } catch (error) {
       console.error("Error exporting workspace:", error);
       showToast(t('workspaces.exportError', 'Failed to export workspace'), 'error');
     }
   };
+
+  // Handle running workspace (placeholder for future implementation)
+  const handleRunWorkspace = async () => {
+    // TODO: Implement run logic
+    showToast(t('workspaces.runNotImplemented', 'Run functionality not implemented yet'), 'error');
+  };
+
   
   // Handle updating workspace data - only update state, don't save to file
   const handleUpdateWorkspace = async (updatedData: Partial<WorkspaceData>) => {
@@ -229,20 +256,44 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ workspaceData: initia
               </div>
             )}
             <div className="flex items-center gap-2">
+             
+              
               <button 
-                className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
-                onClick={handleExportWorkspace}
+                className="bg-green-600 hover:bg-green-500 text-white font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                onClick={handleRunWorkspace}
               >
-                <Download className="h-4 w-4" />
-                Export
-              </button>
+                </button>
               <button 
                 className="bg-[#FFC72C] hover:bg-[#FFD700] text-black font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
                 onClick={handleSaveWorkspace}
               >
                 <Save className="h-4 w-4" />
-                Save
+                
               </button>
+               {/* Dropdown Menu */}
+               <div className="relative" ref={dropdownRef}>
+                <button 
+                  className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium p-2 rounded flex items-center transition-colors"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+                
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg z-50">
+                    <div className="py-1">
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center gap-2"
+                        onClick={handleExportWorkspace}
+                      >
+                        <Download className="h-4 w-4" />
+                        Export Workspace
+                      </button>
+                      {/* Future options can be added here */}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

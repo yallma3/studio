@@ -29,6 +29,9 @@ const App: React.FC = () => {
   // Setup language direction based on current language and initialize directories
   useEffect(() => {
     initFlowSystem()
+
+    initializeDefaultDirectories()
+
     // Ensure directory initialization completes before proceeding
     (async () => {
       try {
@@ -40,10 +43,7 @@ const App: React.FC = () => {
     document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);
-    document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.lang = i18n.language;
-  }, [i18n.language]);
-  
+
   // Handle creating a new graph, agent, or workspace
  
   

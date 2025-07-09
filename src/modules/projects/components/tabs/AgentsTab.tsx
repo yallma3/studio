@@ -330,7 +330,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({ workspaceData: workspaceData, onT
           </div>
         ) : (
           <div className="text-zinc-400 py-8 text-center">
-            {t('workspaces.noAgents', 'No agents have been created for this workspace')}
+            {t('workspaces.noAgents', 'No agents have been added to this workspace yet')}
           </div>
         )}
       </div>
