@@ -18,9 +18,6 @@ import { useTranslation } from "react-i18next";
 import { loadAllWorkspaces, loadRecentWorkspaces, saveRecentWorkspaces, loadFavoriteWorkspaces, saveFavoriteWorkspaces } from "../utils/storageUtils";
 import { WorkspaceData } from "../types/Types";
 
-import { useTranslation } from "react-i18next";
-import { loadAllWorkspaces, loadRecentWorkspaces, saveRecentWorkspaces, loadFavoriteWorkspaces, saveFavoriteWorkspaces } from "../utils/storageUtils";
-import { WorkspaceData } from "../types/Types";
 
 interface WorkspacesTabProps {
   onCreateNew: () => void;
