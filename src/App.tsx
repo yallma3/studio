@@ -29,7 +29,17 @@ const App: React.FC = () => {
   // Setup language direction based on current language and initialize directories
   useEffect(() => {
     initFlowSystem()
-    initializeDefaultDirectories()
+    // Ensure directory initialization completes before proceeding
+    (async () => {
+      try {
+        await initializeDefaultDirectories()
+      } catch (error) {
+        console.error("Failed to initialize default directories", error)
+      }
+    })()
+    document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
     document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);
