@@ -1,3 +1,5 @@
+
+
 /*
 * yaLLMa3 - Framework for building AI agents that are capable of learning from their environment and interacting with it.
  
@@ -17,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { loadAllWorkspaces, loadRecentWorkspaces, saveRecentWorkspaces, loadFavoriteWorkspaces, saveFavoriteWorkspaces, deleteWorkspace } from "../utils/storageUtils";
 import { WorkspaceData } from "../types/Types";
 import { ConfirmationDialog } from "../../../components/ui/ConfirmationDialog";
+
 
 interface WorkspacesTabProps {
   onCreateNew: () => void;
@@ -200,6 +203,7 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({ onCreateNew, onOpenFromFi
                 ? 'text-white bg-zinc-900' 
                 : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
             }`}
+
           >
             All Workspaces
           </button>
@@ -223,6 +227,88 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({ onCreateNew, onOpenFromFi
           >
             Favorites
           </button>
+          <button 
+            onClick={() => setActiveTab('favorites')}
+            className={`p-2 px-4 rounded-md transition-colors ${
+              activeTab === 'favorites' 
+                ? 'text-white bg-zinc-900' 
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+            }`}
+          >
+            Favorites
+          </button>
+        </div>
+        </div>
+        <div className="w-full h-96 rounded-lg border-zinc-800 border bg-zinc-900">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="bg-zinc-800 rounded-full p-4 mb-6">
+                <Layers className="h-12 w-12 text-zinc-400 animate-pulse" />
+              </div>
+              <p className="text-zinc-400">Loading workspaces...</p>
+            </div>
+          ) : getFilteredWorkspaces().length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="bg-zinc-800 rounded-full p-4 mb-6">
+               <Layers className="h-12 w-12 text-zinc-400" />
+              </div>
+              <h2 className="text-xl font-bold mb-2">
+                {activeTab === 'recent' && 'No recent workspaces'}
+                {activeTab === 'favorites' && 'No favorite workspaces'}
+                {activeTab === 'all' && 'No workspaces yet'}
+              </h2>
+              <p className="text-zinc-400 mb-6">
+                {activeTab === 'recent' && 'Workspaces you open will appear here'}
+                {activeTab === 'favorites' && 'Star workspaces to add them to favorites'}
+                {activeTab === 'all' && 'Create a new workspace to get started with your AI development journey'}
+              </p>
+              {activeTab === 'all' && (
+                <button
+                  className="flex items-center justify-center text-sm gap-1 text-[#E6B328] hover:text-[#FFC72C] cursor-pointer"
+                  onClick={() => onCreateNew()}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create New Workspace
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="p-4 space-y-2 h-full overflow-y-auto">
+              {getFilteredWorkspaces().map((workspace) => (
+                <div
+                  key={workspace.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 cursor-pointer transition-colors"
+                  onClick={() => handleOpenWorkspace(workspace)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="bg-zinc-700 rounded-full p-2">
+                      <Layers className="h-4 w-4 text-zinc-400" />
+                    </div>
+                    <h3 className="font-medium text-white">{workspace.name || workspace.id}</h3>
+                  </div>
+                  <div className="flex items-center gap-3 text-zinc-400 text-sm">
+                    <button
+                      onClick={(e) => toggleFavorite(workspace.id, e)}
+                      className={`p-1  transition-colors cursor-pointer ${
+                        favoriteWorkspaces.includes(workspace.id) 
+                          ? 'text-yellow-500' 
+                          : 'text-zinc-500 hover:text-yellow-500'
+                      }`}
+                    >
+                      <Star className={`h-4 w-4 ${favoriteWorkspaces.includes(workspace.id) ? 'fill-current' : ''}`} />
+                    </button>
+                    <button className="p-1  transition-colors cursor-pointer text-zinc-500" onClick={(e) => handleDeleteWorkspace(workspace.id, e)}>
+                      <Trash className="h-4 w-4 hover:text-red-600/60" />
+                    </button>
+                    <div className="flex items-center gap-2">
+                      
+                      <span>{formatDate(workspace.updatedAt || workspace.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         </div>
         <div className="w-full h-96 rounded-lg border-zinc-800 border bg-zinc-900">

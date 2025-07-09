@@ -22,7 +22,9 @@ interface TasksTabProps {
   onTabChanges?: () => void;
 }
 
-const TasksTab: React.FC<TasksTabProps> = ({ workspaceData: workspaceData, onTabChanges }) => {
+
+const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onTabChanges }) => {
+
   const { t } = useTranslation();
 
   const [viewMode, setViewMode] = useState<'list' | 'canvas'>('canvas');

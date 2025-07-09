@@ -149,6 +149,7 @@ const WorkflowCreationDialog: React.FC<{
   );
 };
 
+
 // Workflow Import Dialog Component
 const WorkflowImportDialog: React.FC<{
   isOpen: boolean;
@@ -156,6 +157,7 @@ const WorkflowImportDialog: React.FC<{
   onImport: (workflowIds: string[]) => void;
   currentWorkspaceWorkflows: string[];
 }> = ({ isOpen, onClose, onImport, currentWorkspaceWorkflows }) => {
+
   const { t } = useTranslation();
   const [availableWorkflows, setAvailableWorkflows] = useState<WorkflowFile[]>([]);
   const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([]);
@@ -462,6 +464,7 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ workspaceData, onTabChanges }) 
   };
 
   const handleCreateNewFlow = () => {
+
     setShowCreateDialog(true);
   };
 
@@ -492,6 +495,7 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ workspaceData, onTabChanges }) 
   const handleCreateWorkflow = async (name: string, description: string) => {
     try {
       const newGraphId = generateGraphId();
+
       const canvasState: CanvasState = {
         graphId: newGraphId,
         graphName: name,
@@ -557,6 +561,14 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ workspaceData, onTabChanges }) 
     } catch (error) {
       console.error('Error deleting workflow:', error);
     }
+
+    
+    // Signal that tab has changes
+    onTabChanges?.();
+    
+    // Close confirmation dialog
+    setShowDeleteConfirm(null);
+
   };
 
   const cancelDeleteFlow = () => {
