@@ -34,8 +34,6 @@ const App: React.FC = () => {
   useEffect(() => {
     initFlowSystem();
 
-    initializeDefaultDirectories();
-
     // Ensure directory initialization completes before proceeding
     (async () => {
       try {

@@ -78,7 +78,7 @@ const Toast: React.FC<ToastProps> = ({
   );
 };
 
-type WorkspaceTab = "workspace" | "tasks" | "agents" | "aiflows";
+type _WorkspaceTab = "workspace" | "tasks" | "agents" | "aiflows";
 
 interface WorkspaceCanvasProps {
   workspaceData: WorkspaceData;
@@ -90,7 +90,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   onReturnToHome,
 }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("workspace");
+  const [activeTab, setActiveTab] = useState<_WorkspaceTab>("workspace");
 
   // Maintain workspace data in state
   const [workspaceData, setWorkspaceData] =
@@ -359,7 +359,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                     ? "border-[#FFC72C] text-[#FFC72C]"
                     : "border-transparent text-zinc-400 hover:text-white hover:border-zinc-600"
                 }`}
-                onClick={() => setActiveTab(tab.key as WorkspaceTab)}
+                onClick={() => setActiveTab(tab.key as _WorkspaceTab)}
               >
                 {tab.label}
               </button>
