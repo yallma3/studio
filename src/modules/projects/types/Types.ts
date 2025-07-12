@@ -66,13 +66,21 @@ export interface WorkspaceData {
   mainLLM: string;
   apiKey: string;
   useSavedCredentials: boolean;
-  
+
   // Step 3: Tasks
   tasks: Task[];
-  
+
   // Step 4: Agents
   agents: Agent[];
-  
+
   // Workflows
   workflows: Workflow[];
+}
+
+export interface ConsoleEvent {
+  id: string;
+  timestamp: number;
+  type: "info" | "warning" | "error" | "success";
+  message: string;
+  details?: string;
 }

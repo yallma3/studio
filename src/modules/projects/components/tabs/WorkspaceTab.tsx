@@ -12,7 +12,7 @@
 */
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 
-import { WorkspaceData, LLMOption } from "../../types/Types";
+import { WorkspaceData, LLMOption, ConsoleEvent } from "../../types/Types";
 import {
   Edit,
   Hash,
@@ -43,22 +43,17 @@ import Select from "../../../../components/ui/select";
 interface WorkspaceTabProps {
   workspaceData: WorkspaceData;
   onUpdateWorkspace?: (updatedData: Partial<WorkspaceData>) => Promise<void>;
-}
-
-interface ConsoleEvent {
-  id: string;
-  timestamp: number;
-  type: "info" | "warning" | "error" | "success";
-  message: string;
-  details?: string;
+  events: ConsoleEvent[];
 }
 
 const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   workspaceData,
   onUpdateWorkspace: onUpdateWorkspace,
+  events: initialEvents,
 }) => {
   // Console state
   const [events, setEvents] = useState<ConsoleEvent[]>([]);
+
   const [isConsoleRunning, setIsConsoleRunning] = useState(true);
   const [isConsoleExpanded, setIsConsoleExpanded] = useState(false);
 
@@ -212,33 +207,9 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     }
   }, [formValues.mainLLM, availableLLMs, selectedProvider]);
 
-  // Add sample events when component mounts
   useEffect(() => {
-    const sampleEvents: ConsoleEvent[] = [
-      {
-        id: "1",
-        timestamp: Date.now() - 30000,
-        type: "info",
-        message: "Workspace initialized successfully",
-        details: "All components loaded and ready",
-      },
-      {
-        id: "2",
-        timestamp: Date.now() - 20000,
-        type: "success",
-        message: "LLM connection established",
-        details: "Connected to gpt-3.5-turbo",
-      },
-      {
-        id: "3",
-        timestamp: Date.now() - 10000,
-        type: "info",
-        message: "Auto-save enabled",
-        details: "Workspace will be saved every 5 minutes",
-      },
-    ];
-    setEvents(sampleEvents);
-  }, []);
+    setEvents(initialEvents);
+  }, [initialEvents]);
 
   // Simulate real-time events
   useEffect(() => {
