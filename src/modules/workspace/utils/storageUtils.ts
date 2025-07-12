@@ -207,16 +207,20 @@ export const loadWorkspaceState = async (): Promise<WorkspaceSaveResult> => {
 };
 
 // Load workspace state from a specific path - with ID regeneration for imports
-export const loadWorkspaceStateFromPath = async (path: string, id: string): Promise<WorkspaceData> => {
+export const loadWorkspaceStateFromPath = async (
+  path: string,
+  id: string,
+  regenerateIds: boolean = false
+): Promise<WorkspaceData> => {
   try {
     const configPath = await join(path, `${id}.yallma3`);
     const fileContent = await readTextFile(configPath);
     const originalWorkspaceData = JSON.parse(fileContent) as WorkspaceData;
-    
-    // Regenerate all IDs for the imported workspace
-    const workspaceDataWithNewIds = await regenerateWorkspaceIds(originalWorkspaceData);
-    
-    return workspaceDataWithNewIds;
+
+    if (regenerateIds) {
+      return await regenerateWorkspaceIds(originalWorkspaceData);
+    }
+    return originalWorkspaceData;
   } catch (error) {
     console.error(`Error loading workspace from path: ${path}/${id}`, error);
     throw error;
