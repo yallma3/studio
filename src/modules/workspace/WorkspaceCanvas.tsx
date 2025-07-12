@@ -27,7 +27,9 @@ import {
   saveWorkspaceState,
 } from "./utils/storageUtils";
 import { useTranslation } from "react-i18next";
-import { WorkspaceData } from "./types/Types";
+
+import { WorkspaceData, ConsoleEvent } from "./types/Types";
+
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
 // Toast notification component
@@ -79,7 +81,7 @@ const Toast: React.FC<ToastProps> = ({
   );
 };
 
-type WorkspaceTab = "workspace" | "tasks" | "agents" | "aiflows";
+type WorkspaceTabSelector = "workspace" | "tasks" | "agents" | "aiflows";
 
 interface WorkspaceCanvasProps {
   workspaceData: WorkspaceData;
@@ -91,7 +93,40 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   onReturnToHome,
 }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("workspace");
+  const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
+  const initEvents: ConsoleEvent[] = [
+    {
+      id: "1",
+      timestamp: Date.now() - 30000,
+      type: "info",
+      message: "Workspace initialized successfully",
+      details: "All components loaded and ready",
+    },
+    {
+      id: "2",
+      timestamp: Date.now() - 20000,
+      type: "success",
+      message: "LLM connection established",
+      details: "Connected to gpt-3.5-turbo",
+    },
+    {
+      id: "3",
+      timestamp: Date.now() - 10000,
+      type: "info",
+      message: "Auto-save enabled",
+      details: "Workspace will be saved every 5 minutes",
+    },
+  ];
+
+  const [events, setEvents] = useState<ConsoleEvent[]>(initEvents);
+
+  const addEvent = (newEvent: ConsoleEvent) => {
+    try {
+      setEvents((prev) => [...prev, newEvent]);
+    } catch (error) {
+      console.error("Failed to add console event:", error);
+    }
+  };
 
   // Maintain workspace data in state
   const [workspaceData, setWorkspaceData] =
@@ -232,6 +267,14 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
   // Handle running workspace (placeholder for future implementation)
   const handleRunWorkspace = async () => {
+    if (!workspaceData) return;
+    // Post a new ConsoleEvent to the events in WorkspaceTab component
+    addEvent({
+      id: crypto.randomUUID(), // Generate a unique ID for the event
+      type: "info",
+      message: t("workspaces.runStarted", "Running workspace..."),
+      timestamp: Date.now(),
+    });
     // TODO: Implement run logic
     showToast(
       t(
@@ -361,7 +404,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                     ? "border-[#FFC72C] text-[#FFC72C]"
                     : "border-transparent text-zinc-400 hover:text-white hover:border-zinc-600"
                 }`}
-                onClick={() => setActiveTab(tab.key as WorkspaceTab)}
+                onClick={() => setActiveTab(tab.key as WorkspaceTabSelector)}
               >
                 {tab.label}
               </button>
@@ -378,6 +421,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
             <WorkspaceTab
               workspaceData={workspaceData}
               onUpdateWorkspace={handleUpdateWorkspace}
+              events={events}
             />
           )}
           {activeTab === "tasks" && (
