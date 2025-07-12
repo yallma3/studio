@@ -12,7 +12,7 @@
 */
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 
-import { WorkspaceData, LLMOption, ConsoleEvent } from "../../types/Types";
+import { WorkspaceData, LLMOption, ConsoleEvent } from "../types/Types";
 import {
   Edit,
   Hash,

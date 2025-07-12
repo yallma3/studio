@@ -28,7 +28,7 @@ import {
 } from "./utils/storageUtils";
 import { useTranslation } from "react-i18next";
 
-import { WorkspaceData, ConsoleEvent } from "../types/Types";
+import { WorkspaceData, ConsoleEvent } from "./types/Types";
 
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
@@ -81,7 +81,7 @@ const Toast: React.FC<ToastProps> = ({
   );
 };
 
-type WorkspaceTab = "workspace" | "tasks" | "agents" | "aiflows";
+type WorkspaceTabSelector = "workspace" | "tasks" | "agents" | "aiflows";
 
 interface WorkspaceCanvasProps {
   workspaceData: WorkspaceData;
@@ -93,7 +93,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   onReturnToHome,
 }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<_WorkspaceTab>("workspace");
+  const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
   const initEvents: ConsoleEvent[] = [
     {
       id: "1",
@@ -401,7 +401,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                     ? "border-[#FFC72C] text-[#FFC72C]"
                     : "border-transparent text-zinc-400 hover:text-white hover:border-zinc-600"
                 }`}
-                onClick={() => setActiveTab(tab.key as WorkspaceTab)}
+                onClick={() => setActiveTab(tab.key as WorkspaceTabSelector)}
               >
                 {tab.label}
               </button>
