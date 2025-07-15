@@ -59,10 +59,12 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
 
   // Filter input and output sockets
   const inputSockets = node.sockets.filter(
-    (socket): socket is Socket & { type: "input" } => socket.type === "input"
+    (socket: any): socket is Socket & { type: "input" } =>
+      socket.type === "input"
   );
   const outputSockets = node.sockets.filter(
-    (socket): socket is Socket & { type: "output" } => socket.type === "output"
+    (socket: any): socket is Socket & { type: "output" } =>
+      socket.type === "output"
   );
 
   // Calculate vertical offset for centering sockets

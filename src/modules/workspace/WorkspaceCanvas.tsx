@@ -32,6 +32,9 @@ import { WorkspaceData, ConsoleEvent } from "./types/Types";
 
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
+//get access to singltone nodeRegistry
+import { nodeRegistry } from "../flow/types/NodeRegistry";
+
 // Toast notification component
 interface ToastProps {
   message: string;
@@ -272,14 +275,23 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       message: t("workspaces.runStarted", "Running workspace..."),
       timestamp: Date.now(),
     });
-    // TODO: Implement run logic
-    showToast(
-      t(
-        "workspaces.runNotImplemented",
-        "Run functionality not implemented yet"
-      ),
-      "error"
-    );
+
+    // instance of main LLM
+    const mainLLM = nodeRegistry.createNode("GroqChatNode", 0, { x: 0, y: 0 });
+    if (!mainLLM) {
+      console.error("Failed to create main LLM node");
+      return;
+    } else {
+      if (mainLLM.setConfigParameter)
+        mainLLM.setConfigParameter("API Key", workspaceData.apiKey || "");
+      console.log("Main LLM node created successfully:", mainLLM);
+    }
+    //mainLLM.sockets.
+
+    // workspaceData.tasks.forEach((task) => {
+    //   const agent = task.assignedAgent;
+    //   console.log("Running task:", task.name, "with agent:", agent);
+    // });
   };
 
   // Handle updating workspace data - only update state, don't save to file
