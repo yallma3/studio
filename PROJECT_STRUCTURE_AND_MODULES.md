@@ -1,4 +1,4 @@
-# yaLLMa3 Studio Project Structure & Management Guide
+# yaLLMa3 Studio
 
 ## Overview
 
@@ -8,12 +8,10 @@ yaLLMa3 Studio is a visual IDE for building AI agents using a modular, desktop a
 
 ### Technology Stack
 
-- **Frontend**: React 19 + TypeScript + Vite + TailwindCSS 4.1
-- **Backend**: Tauri 2.x (Rust-based)
-- **UI Framework**: Custom components + Lucide React icons
-- **Internationalization**: i18next (Arabic/English support with RTL)
-- **Package Manager**: Yarn 1.22
-- **Build System**: Vite + Tauri CLI
+- React 19 + TypeScript + Vite + TailwindCSS 4.1
+- Tauri 2.x (Rust-based)
+- i18next (Arabic/English support with RTL)
+- Yarn as package manager
 
 ## Current Directory Structure
 

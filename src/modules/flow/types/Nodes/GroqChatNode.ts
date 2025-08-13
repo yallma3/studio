@@ -19,7 +19,7 @@ import {
 } from "../NodeTypes";
 import { NodeRegistry } from "../NodeRegistry";
 export interface ChatNode extends BaseNode {
-  nodeType: "Chat";
+  nodeType: string;
   nodeValue?: NodeValue;
   process: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
 }
@@ -31,8 +31,8 @@ export function createNGroqChatNode(
   return {
     id,
     title: "Chat",
-    nodeValue: "Model:",
-    nodeType: "Chat",
+    nodeValue: "llama 3.1 8b instant",
+    nodeType: "GroqChat",
     sockets: [
       {
         id: id * 100 + 1,
@@ -78,7 +78,10 @@ export function createNGroqChatNode(
       const prompt = String(promptValue || "");
 
       // Extract model name from node value
-      const modelMatch = String(n.nodeValue || "");
+      const modelMatch = n.nodeValue?.toString().trim().toLowerCase().replace(/\s+/g, "-") || "";
+      console.log("n.nodeValue", n.nodeValue);
+      console.log("modelMatch", modelMatch);
+
       const model = modelMatch ? modelMatch : "llama-3.1-8b-instant"; // Default fallback
 
       // Use system prompt from input, but don't use the node.value (which now contains the model)
@@ -86,14 +89,22 @@ export function createNGroqChatNode(
 
       try {
         // Get API key from .env using Vite's environment variable format
-        const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+        // const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
-        if (!GROQ_API_KEY) {
-          throw new Error(
-            "GROQ API key not found. Please check your .env file and ensure it has VITE_GROQ_API_KEY defined."
-          );
+        // if (!GROQ_API_KEY) {
+        //   throw new Error(
+        //     "GROQ API key not found. Please check your .env file and ensure it has VITE_GROQ_API_KEY defined."
+        //   );
+        // }
+        let GROQ_API_KEY = "";
+        if(n.getConfigParameter){
+          GROQ_API_KEY = n.getConfigParameter("API Key")?.paramValue as string || "";
+        }
+        else{
+          throw new Error("API Key not found");
         }
 
+        console.log("GROQ_API_KEY", GROQ_API_KEY);
         console.log(`Using model: ${model}`);
         console.log(
           `Executing Chat node ${n.id} with prompt: "${prompt.substring(
@@ -223,5 +234,5 @@ export function createNGroqChatNode(
 
 export function register(nodeRegistry: NodeRegistry): void {
   console.log("Registering Groq Chat Node");
-  nodeRegistry.registerNodeType("GroqChatNode", createNGroqChatNode);
+  nodeRegistry.registerNodeType("GroqChat", createNGroqChatNode);
 }

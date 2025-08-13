@@ -126,5 +126,5 @@ export function register(nodeRegistry: NodeRegistry): void {
     };
   }
 
-  nodeRegistry.registerNodeType("TextNode", createTextNode);
+  nodeRegistry.registerNodeType("Text", createTextNode);
 }

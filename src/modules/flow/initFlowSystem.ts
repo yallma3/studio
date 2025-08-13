@@ -29,7 +29,6 @@ export async function initFlowSystem() {
   register(nodeRegistry);
 
   registerMathNode(nodeRegistry);
-
   registerTextNode(nodeRegistry);
   registerGroqChatNode(nodeRegistry);
 }

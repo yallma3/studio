@@ -14,7 +14,7 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { WorkspaceData } from "../types/Types";
 import NodeCanvas from "../../flow/NodeCanvas";
-import { CanvasState } from "../../flow/utils/storageUtils";
+import { CanvasState, reattachNodeProcessors } from "../../flow/utils/storageUtils";
 import { Plus, ArrowRight, Trash2, X, Download, Upload, FolderOpen } from "lucide-react";
 import { 
   WorkflowFile, 
@@ -532,6 +532,8 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({ workspaceData, onTabChanges }) 
   };
 
   const handleEditFlow = (workflow: WorkflowFile) => {
+    const reattachedNodes = reattachNodeProcessors(workflow.canvasState.nodes);
+    workflow.canvasState.nodes = reattachedNodes;
     setSelectedWorkflow(workflow.canvasState);
     setSelectedWorkflowMeta(workflow);
     setShowCanvas(true);

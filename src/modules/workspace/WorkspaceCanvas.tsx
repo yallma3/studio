@@ -34,6 +34,8 @@ import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
 //get access to singltone nodeRegistry
 import { nodeRegistry } from "../flow/types/NodeRegistry";
+import { GroqChatRunner, parseLLMResponse, executeTasksSequentially, convertToSequentialSteps } from "./utils/runtimeUtils";
+
 
 // Toast notification component
 interface ToastProps {
@@ -97,34 +99,11 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
-  const initEvents: ConsoleEvent[] = [
-    {
-      id: "1",
-      timestamp: Date.now() - 30000,
-      type: "info",
-      message: "Workspace initialized successfully",
-      details: "All components loaded and ready",
-    },
-    {
-      id: "2",
-      timestamp: Date.now() - 20000,
-      type: "success",
-      message: "LLM connection established",
-      details: "Connected to gpt-3.5-turbo",
-    },
-    {
-      id: "3",
-      timestamp: Date.now() - 10000,
-      type: "info",
-      message: "Auto-save enabled",
-      details: "Workspace will be saved every 5 minutes",
-    },
-  ];
+  const initEvents: ConsoleEvent[] = [];
 
   const [events, setEvents] = useState<ConsoleEvent[]>(initEvents);
 
   const addEvent = (newEvent: ConsoleEvent) => {
-    console.log("Adding event:", newEvent);
     setEvents((prev) => [...prev, newEvent]);
   };
 
@@ -264,9 +243,134 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       );
     }
   };
-
+  const prompt = `
+  You are an expert AI project planner. Given the following project metadata, return a structured execution plan in **valid JSON**.
+  
+  ---
+  
+  Project Info:
+  {
+    "name": "${workspaceData.name}",
+    "description": "${workspaceData.description}"
+  }
+  
+  Agents:
+  ${JSON.stringify(
+    workspaceData.agents.map(agent => ({
+      id: agent.id,
+      name: agent.name,
+      role: agent.role,
+      objective: agent.objective,
+      background: agent.background,
+      capabilities: agent.capabilities,
+      tools: agent.tools?.map(t => t.name) || [],
+      llmId: agent.llmId
+    })),
+    null,
+    2
+  )}
+  
+  Tasks:
+  ${JSON.stringify(
+    workspaceData.tasks.map(task => ({
+      id: task.id,
+      name: task.name,
+      description: task.description,
+      expectedOutput: task.expectedOutput,
+      type: task.executeWorkflow ? "workflow" : "agentic",
+      workflow: task.executeWorkflow && task.workflowId
+        ? {
+            id: task.workflowId,
+            name: task.workflowName || "Unnamed Workflow"
+          }
+        : null,
+      assignedAgent: task.executeWorkflow
+        ? null
+        : (task.assignedAgent
+            ? {
+                name: workspaceData.agents.find(a => a.id === task.assignedAgent)?.name || "Unknown",
+                fixed: true
+              }
+            : {
+                name: null,
+                fixed: false
+              })
+    })),
+    null,
+    2
+  )}
+  
+  Workflows:
+  ${JSON.stringify(
+    workspaceData.workflows.map(wf => ({
+      id: wf.id,
+      name: wf.name,
+      description: wf.description
+    })),
+    null,
+    2
+  )}
+  
+  ---
+  
+  Instructions:
+  Based on the above context, return a project execution plan as valid JSON only.
+  
+  ### JSON Format to Return:
+  
+  {
+    "project": {
+      "name": "string",
+      "objective": "string"
+    },
+    "steps": [
+      {
+        "step": 1,
+        "task": "string = task id",
+        "type": "agentic" | "workflow",
+        "agent": "string (if type is agentic and assignedAgent.fixed is true, use it; if fixed is false, choose the most suitable agent based on the agent's background, role, capabilities, and tools) = agent id,",
+        "workflow": "string (if type is workflow) = workflow id",
+        "description": "string",
+        "inputs": ["string"],
+        "outputs": ["string"],
+        "toolsUsed": ["string"],
+        "dependsOn": [stepNumber]
+      }
+    ],
+    "collaboration": {
+      "notes": "string",
+      "pairings": [
+        {
+          "agents": ["string", "string"],
+          "purpose": "string"
+        }
+      ]
+    },
+    "workflowRecommendations": [
+      {
+        "name": "string",
+        "action": "use" | "ignore" | "move_to_separate_project",
+        "notes": "string"
+      }
+    ]
+  }
+  
+  Notes:
+  - Each step must have either an "agent" (for agentic tasks) or a "workflow" (for automated tasks), never both.
+  - For steps where "type" is "agentic":
+    - If the task includes a pre-assigned agent, use their name in the "agent" field.
+    - If the agent is not pre-assigned, choose the most suitable agent based on role, tools, and capabilities.
+  - For steps where "type" is "workflow", provide the "workflow" field with the workflow name and omit the "agent".
+  - Fill in "toolsUsed" only if relevant tools are needed from the agent’s toolset.
+  - Use "dependsOn" to specify step order or prerequisites if necessary.
+  - Output a clean and valid JSON object only — no markdown or extra explanation.
+  
+  Only return the JSON object — no additional text, markdown, or explanation.
+  No Notes at the end.
+  `;
   // Handle running workspace (placeholder for future implementation)
   const handleRunWorkspace = async () => {
+
     if (!workspaceData) return;
     // Post a new ConsoleEvent to the events in WorkspaceTab component
     addEvent({
@@ -276,22 +380,94 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       timestamp: Date.now(),
     });
 
-    // instance of main LLM
-    const mainLLM = nodeRegistry.createNode("GroqChatNode", 0, { x: 0, y: 0 });
-    if (!mainLLM) {
-      console.error("Failed to create main LLM node");
-      return;
-    } else {
-      if (mainLLM.setConfigParameter)
-        mainLLM.setConfigParameter("API Key", workspaceData.apiKey || "");
-      console.log("Main LLM node created successfully:", mainLLM);
-    }
-    //mainLLM.sockets.
+    // Main workspace LLM
+    const runner = new GroqChatRunner(
+      nodeRegistry,
+      workspaceData.apiKey,
+      (event: ConsoleEvent) => console.log(event),
+    );
+    const result = await runner.run("", prompt)
+    
+    if (result) {
+      const parsed = parseLLMResponse(result);
 
-    // workspaceData.tasks.forEach((task) => {
-    //   const agent = task.assignedAgent;
-    //   console.log("Running task:", task.name, "with agent:", agent);
-    // });
+      // Consosle Events for Project Plan
+      if (parsed) {
+        console.log("✅ Parsed result:", parsed);
+
+        addEvent({
+          id: crypto.randomUUID(),
+          type: "success",
+          message: `Project Plan Generated`,
+          timestamp: Date.now(),
+        });
+
+      }else{
+        console.log("⚠️ No parsed result");
+        addEvent({
+          id: crypto.randomUUID(), // Generate a unique ID for the event
+          type: "error",
+          message: `Error generating project plan`,
+          timestamp: Date.now(),
+        });
+      }
+
+      // Run steps sequentially using the reusable function
+      if (parsed?.steps && parsed.steps.length > 0) {
+
+        // Tasks are executed sequentially ( For now ) will be replaced with Tasks graph
+        // Task graph of tasks that are executed in parallel or sequentially
+        // will be implemented in the future
+        const sequentialSteps = convertToSequentialSteps(parsed);
+        
+        
+        const results = await executeTasksSequentially({
+          nodeRegistry,
+          workspaceData: workspaceData,
+          steps: sequentialSteps,
+          onStepStart: (step, stepNumber) => {
+            addEvent({
+              id: crypto.randomUUID(), // Generate a unique ID for the event
+              type: "info",
+              message: `🚀 Starting step ${stepNumber}: ${step.description}`,
+              timestamp: Date.now(),
+            });
+          },
+          onStepComplete: (result) => {
+            addEvent({
+              id: crypto.randomUUID(), // Generate a unique ID for the event
+              type: "success",
+              message: `✅ Step ${result.stepNumber} completed successfully`,
+              timestamp: Date.now(),
+            });
+          },
+          onError: (error, stepNumber) => {
+            addEvent({
+              id: crypto.randomUUID(), // Generate a unique ID for the event
+              type: "error",
+              message: `❌ Step ${stepNumber} failed: ${error}`,
+              timestamp: Date.now(),
+            });
+          },
+          onComplete: (results) => {
+            const successfulSteps = results.filter(r => r.success).length;
+            addEvent({
+              id: crypto.randomUUID(), // Generate a unique ID for the event
+              type: "success",
+              message: `🎉 Execution completed: ${successfulSteps}/${results.length} steps successful`,
+              timestamp: Date.now(),
+            });
+          }
+        });
+        
+        console.log("📊 Execution Summary:", results);
+      } else {
+        console.log("⚠️ No steps found in parsed result");
+      }
+      
+     
+    }
+
   };
 
   // Handle updating workspace data - only update state, don't save to file
@@ -323,6 +499,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   const handleTabChanges = () => {
     setHasUnsavedChanges(true);
   };
+
+ 
 
   return (
     <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
