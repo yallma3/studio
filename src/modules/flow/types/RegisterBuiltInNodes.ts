@@ -17,7 +17,6 @@ import {
   createBooleanNode,
   createImageNode,
   createAddNode,
-  createJoinNode,
 } from "./NodeTypes";
 
 export function registerBuiltInNodes(): void {
@@ -25,5 +24,4 @@ export function registerBuiltInNodes(): void {
   nodeRegistry.registerNodeType("Boolean", createBooleanNode);
   nodeRegistry.registerNodeType("Image", createImageNode);
   nodeRegistry.registerNodeType("Add", createAddNode);
-  nodeRegistry.registerNodeType("Join", createJoinNode);
 }

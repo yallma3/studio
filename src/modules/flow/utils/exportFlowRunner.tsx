@@ -12,9 +12,9 @@
 */
 
 import { NodeType, Connection } from "../types/NodeTypes";
-import { executeNode } from "../types/NodeProcessor";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
+
 
 /**
  * Exports the current flow as a standalone JavaScript file that can be run with Node.js
@@ -34,11 +34,11 @@ export const exportFlowRunner = async (
       y: node.y,
       nodeType: node.nodeType,
       title: node.title,
-      value: node.nodeValue,
+      nodeValue: node.nodeValue,
       sockets: node.sockets.map((socket) => ({
         id: socket.id,
         title: socket.title,
-        position: socket.type,
+        type: socket.type,
         nodeId: socket.nodeId,
         dataType: socket.dataType,
       })),
@@ -48,6 +48,22 @@ export const exportFlowRunner = async (
       toSocket: conn.toSocket,
     })),
   };
+  // Dynamically build processors object from the actual nodes
+  const processors: Record<string, string> = {};
+  for (const node of nodes) {
+    // Check if the node has a processText property (for custom nodes)
+   
+    processors[node.nodeType] = node.process?.toString() || "";
+    
+    // For built-in nodes, we'll define them in the generated code below
+  }
+  let processorsString = "";
+  for (const processor of Object.keys(processors)) {
+    processorsString += `
+    ${processor}: ${processors[processor]},
+    `;
+  }
+  console.log("Processors", processorsString)
 
   // Generate the JavaScript code with self-executing functionality
   const jsCode = `
@@ -78,13 +94,6 @@ const processTextTemplate = async (template, getInputValue, nodeId) => {
 
 // Define processors for each node type
 const processors = {
-  Text: async ({ node, getInputValue }) => {
-    // If the node value is a string and contains template variables, process them
-    if (typeof node.value === 'string') {
-      return processTextTemplate(node.value, getInputValue, node.id);
-    }
-    return node.value;
-  },
   Number: async ({ node }) => node.value,
   Boolean: async ({ node }) => node.value,
   Generic: async ({ node }) => node.value,
@@ -92,112 +101,9 @@ const processors = {
     const a = Number(await getInputValue(node.id * 100 + 1) || 0);
     const b = Number(await getInputValue(node.id * 100 + 2) || 0);
     return a + b;
-  },
-  Join: async ({ node, getInputValue }) => {
-    // Process special separator values
-    let separator = String(node.value || "");
-    
-    // Replace special separator placeholders
-    separator = separator
-      .replace(/\\(new line\\)/g, "\\n")  // Replace (new line) with actual newline
-      .replace(/\\\\n/g, "\\n");          // Also support \\n for newlines
-      
-    // Count input sockets to determine how many inputs to process
-    const inputSockets = node.sockets.filter(s => s.type === "input");
-    
-    // Collect all input values
-    const inputValues = await Promise.all(
-      inputSockets.map(async (socket) => {
-        const value = await getInputValue(socket.id);
-        return value !== undefined ? String(value) : "";
-      })
-    );
-    
-    // Join all non-empty values with the separator
-    return inputValues.filter(val => val !== "").join(separator);
-  },
-  Image: async ({ node, getInputValue }) => {
-    // If there's an input source, use that, otherwise use the node's value
-    const sourceValue = await getInputValue(node.id * 100 + 1);
-    return sourceValue !== undefined ? sourceValue : node.value;
-  },
-  Chat: async ({ node, getInputValue }) => {
-    // Get input values
-    const promptValue = await getInputValue(node.id * 100 + 1);
-    const systemPrompt = await getInputValue(node.id * 100 + 2);
-    
-    const prompt = String(promptValue || "");
-    
-    // Extract model name from node value
-    const modelMatch = String(node.value || "");
-    const model = modelMatch ? modelMatch : "llama-3.1-8b-instant"; // Default fallback
-    
-    // Use system prompt from input, but don't use the node.value (which now contains the model)
-    const system = String(systemPrompt || "");
-    
-    try {
-      console.log(\`Using model: \${model}\`);
-      console.log(\`Executing Chat node \${node.id} with prompt: "\${prompt.substring(0, 50)}..."\`);
-      
-      // Look for API key in global config
-      if (!globalConfig.apiKey) {
-        console.log("Note: No API key provided. Using simulated response.");
-        // Create a simulated response based on the prompt
-        const simulatedResponse = \`[Simulated \${model} response to prompt: \${prompt.substring(0, 30)}...]\n\nThis is a simulated response as no API key was provided. To use with real AI services, run with --api-key=YOUR_API_KEY parameter.\`;
-        
-        // Return an object with both values to support multiple outputs
-        return {
-          // Socket id 3 is for Response content
-          [node.id * 100 + 3]: simulatedResponse,
-          // Socket id 4 is for Token count 
-          [node.id * 100 + 4]: prompt.length + simulatedResponse.length
-        };
-      }
-      
-      // Use real API with provided key
-      console.log("Using real API with provided key");
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": \`Bearer \${globalConfig.apiKey}\`
-        },
-        body: JSON.stringify({ 
-          model: model,
-          messages: system ? 
-            [{ role: "user", content: prompt }, { role: "system", content: system }] : 
-            [{ role: "user", content: prompt }],
-          max_tokens: 1000,
-          temperature: 0.7,
-          top_p: 1,
-          frequency_penalty: 0,
-          presence_penalty: 0
-        }),
-      });
-      
-      if (!res.ok) {
-        throw new Error(\`Chat API returned status \${res.status}\`);
-      }
-      
-      const json = await res.json();
-      console.log(\`Chat node \${node.id} received response:\`, json.choices[0].message.content.substring(0, 50) + "...");
-      
-      // Return an object with both values to support multiple outputs
-      return {
-        // Socket id 3 is for Response content
-        [node.id * 100 + 3]: json.choices[0].message.content,
-        // Socket id 4 is for Token count 
-        [node.id * 100 + 4]: json.usage?.total_tokens || 0
-      };
-    } catch (error) {
-      console.error("Error in Chat node:", error);
-      // Return error in the response output
-      return {
-        [node.id * 100 + 3]: \`Error: \${error instanceof Error ? error.message : String(error)}\`,
-        [node.id * 100 + 4]: 0
-      };
-    }
-  },
+  },  
+  // Dynamic processors from the flow
+  ${processorsString}
 };
 
 // Helper functions
@@ -214,7 +120,63 @@ const findSocketById = (socketId, nodes) => {
 };
 
 // NodeProcessor and execution logic
-${executeNode.toString()}
+async function executeNode(node, allNodes, connections, cache) {
+  const executionCache = cache || /* @__PURE__ */ new Map();
+  if (executionCache.has(node.id)) {
+    console.log(
+      \`Waiting for cached result for node \${node.id} (\${node.title})\`
+    );
+    return await executionCache.get(node.id);
+  }
+  console.log(\`Starting execution of node \${node.id} (\${node.title})\`);
+  const executionPromise = (async () => {
+    const getInputValue = async (inputSocketId) => {
+      const incomingConnection = connections.find(
+        (c) => c.toSocket === inputSocketId
+      );
+      if (!incomingConnection) return void 0;
+      const fromSocketId = incomingConnection.fromSocket;
+      const fromSocket = findSocketById(fromSocketId, allNodes);
+      if (!fromSocket) return void 0;
+      const fromNode = findNodeById(fromSocket.nodeId, allNodes);
+      if (!fromNode) return void 0;
+      const result2 = await executeNode(
+        fromNode,
+        allNodes,
+        connections,
+        executionCache
+      );
+      if (
+        typeof result2 === "object" &&
+        result2 !== null &&
+        !Array.isArray(result2)
+      ) {
+        const socketIds = Object.keys(result2)
+          .map(Number)
+          .filter((id) => !isNaN(id));
+        if (socketIds.length > 0) {
+          if (fromSocketId in result2) {
+            const numericResult = result2;
+            return numericResult[fromSocketId];
+          }
+        }
+      }
+      return result2;
+    };
+    if (!processors[node.nodeType]) {
+      throw new Error(
+        \`Node \${node.nodeType} (ID: \${node.id}) does not have a process function\`
+      );
+    }
+    console.log(\`Executing processor for node \${node.id} (\${node.title})\`);
+    const context = { node, getInputValue };
+    const result = await processors[node.nodeType](context);
+    console.log(\`Completed execution of node \${node.id} (\${node.title})\`);
+    return result;
+  })();
+  executionCache.set(node.id, executionPromise);
+  return await executionPromise;
+}
 
 // Main execution function
 async function runFlow(inputOverrides = {}) {

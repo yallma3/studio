@@ -17,9 +17,10 @@ import {
   Save,
   AlertCircle,
   CheckCircle,
-  Download,
+  Share,
   Play,
   MoreVertical,
+  Download,
 } from "lucide-react";
 import {
   saveWorkspaceToDefaultLocation,
@@ -34,7 +35,8 @@ import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
 //get access to singltone nodeRegistry
 import { nodeRegistry } from "../flow/types/NodeRegistry";
-import { GroqChatRunner, parseLLMResponse, executeTasksSequentially, convertToSequentialSteps } from "./utils/runtimeUtils";
+import { GroqChatRunner, parseLLMResponse, executeTasksSequentially, convertToSequentialSteps, generateWorkspacePrompt } from "./utils/runtimeUtils";
+import { exportWorkspaceAsJs } from "./utils/exportWorkspace";
 
 
 // Toast notification component
@@ -148,7 +150,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     };
 
     checkWorkspaceExists();
-  }, [workspaceData.id]); // Only run when workspace ID changes
+  }, [workspaceData]);
 
   // Handle clicks outside dropdown to close it
   useEffect(() => {
@@ -215,7 +217,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   };
 
   // Handle exporting workspace to file
-  const handleExportWorkspace = async () => {
+  const handleShareWorkspace = async () => {
     if (!workspaceData) return;
 
     try {
@@ -243,131 +245,13 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       );
     }
   };
-  const prompt = `
-  You are an expert AI project planner. Given the following project metadata, return a structured execution plan in **valid JSON**.
-  
-  ---
-  
-  Project Info:
-  {
-    "name": "${workspaceData.name}",
-    "description": "${workspaceData.description}"
-  }
-  
-  Agents:
-  ${JSON.stringify(
-    workspaceData.agents.map(agent => ({
-      id: agent.id,
-      name: agent.name,
-      role: agent.role,
-      objective: agent.objective,
-      background: agent.background,
-      capabilities: agent.capabilities,
-      tools: agent.tools?.map(t => t.name) || [],
-      llmId: agent.llmId
-    })),
-    null,
-    2
-  )}
-  
-  Tasks:
-  ${JSON.stringify(
-    workspaceData.tasks.map(task => ({
-      id: task.id,
-      name: task.name,
-      description: task.description,
-      expectedOutput: task.expectedOutput,
-      type: task.executeWorkflow ? "workflow" : "agentic",
-      workflow: task.executeWorkflow && task.workflowId
-        ? {
-            id: task.workflowId,
-            name: task.workflowName || "Unnamed Workflow"
-          }
-        : null,
-      assignedAgent: task.executeWorkflow
-        ? null
-        : (task.assignedAgent
-            ? {
-                name: workspaceData.agents.find(a => a.id === task.assignedAgent)?.name || "Unknown",
-                fixed: true
-              }
-            : {
-                name: null,
-                fixed: false
-              })
-    })),
-    null,
-    2
-  )}
-  
-  Workflows:
-  ${JSON.stringify(
-    workspaceData.workflows.map(wf => ({
-      id: wf.id,
-      name: wf.name,
-      description: wf.description
-    })),
-    null,
-    2
-  )}
-  
-  ---
-  
-  Instructions:
-  Based on the above context, return a project execution plan as valid JSON only.
-  
-  ### JSON Format to Return:
-  
-  {
-    "project": {
-      "name": "string",
-      "objective": "string"
-    },
-    "steps": [
-      {
-        "step": 1,
-        "task": "string = task id",
-        "type": "agentic" | "workflow",
-        "agent": "string (if type is agentic and assignedAgent.fixed is true, use it; if fixed is false, choose the most suitable agent based on the agent's background, role, capabilities, and tools) = agent id,",
-        "workflow": "string (if type is workflow) = workflow id",
-        "description": "string",
-        "inputs": ["string"],
-        "outputs": ["string"],
-        "toolsUsed": ["string"],
-        "dependsOn": [stepNumber]
-      }
-    ],
-    "collaboration": {
-      "notes": "string",
-      "pairings": [
-        {
-          "agents": ["string", "string"],
-          "purpose": "string"
-        }
-      ]
-    },
-    "workflowRecommendations": [
-      {
-        "name": "string",
-        "action": "use" | "ignore" | "move_to_separate_project",
-        "notes": "string"
-      }
-    ]
-  }
-  
-  Notes:
-  - Each step must have either an "agent" (for agentic tasks) or a "workflow" (for automated tasks), never both.
-  - For steps where "type" is "agentic":
-    - If the task includes a pre-assigned agent, use their name in the "agent" field.
-    - If the agent is not pre-assigned, choose the most suitable agent based on role, tools, and capabilities.
-  - For steps where "type" is "workflow", provide the "workflow" field with the workflow name and omit the "agent".
-  - Fill in "toolsUsed" only if relevant tools are needed from the agent’s toolset.
-  - Use "dependsOn" to specify step order or prerequisites if necessary.
-  - Output a clean and valid JSON object only — no markdown or extra explanation.
-  
-  Only return the JSON object — no additional text, markdown, or explanation.
-  No Notes at the end.
-  `;
+
+  const handleExportWorkspace = async () => {
+   console.log("Exporting workspace...");
+   exportWorkspaceAsJs(workspaceData)
+  };
+
+ 
   // Handle running workspace (placeholder for future implementation)
   const handleRunWorkspace = async () => {
 
@@ -380,13 +264,17 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       timestamp: Date.now(),
     });
 
+
+
     // Main workspace LLM
     const runner = new GroqChatRunner(
       nodeRegistry,
       workspaceData.apiKey,
       (event: ConsoleEvent) => console.log(event),
     );
-    const result = await runner.run("", prompt)
+
+
+    const result = await runner.run("", generateWorkspacePrompt(workspaceData))
     
     if (result) {
       const parsed = parseLLMResponse(result);
@@ -551,14 +439,21 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                 </button>
 
                 {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg z-50">
+                  <div className="absolute right-0 mt-2 w-68 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg z-50">
                     <div className="py-1">
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center gap-2"
+                        onClick={handleShareWorkspace}
+                      >
+                        <Share className="h-4 w-4" />
+                        Share Workspace
+                      </button>
                       <button
                         className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center gap-2"
                         onClick={handleExportWorkspace}
                       >
                         <Download className="h-4 w-4" />
-                        Export Workspace
+                        Export Executable Workspace
                       </button>
                       {/* Future options can be added here */}
                     </div>

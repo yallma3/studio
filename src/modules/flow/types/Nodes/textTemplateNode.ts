@@ -12,7 +12,7 @@
 */
 
 import {
-  TextNode,
+  BaseNode,
   Position,
   ConfigParameterType,
   NodeValue,
@@ -20,6 +20,11 @@ import {
 } from "../NodeTypes";
 import { NodeRegistry } from "../NodeRegistry";
 
+export interface TextNode extends BaseNode {
+  nodeType: "Text";
+  nodeValue?: NodeValue;
+  process: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
+}
 // Template processing utility function - shared across multiple node types
 const processTextTemplate = async (
   template: string,

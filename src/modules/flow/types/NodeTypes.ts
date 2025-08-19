@@ -95,11 +95,6 @@ export interface BaseNode {
     value: string | number | boolean
   ) => void;
 }
-export interface TextNode extends BaseNode {
-  nodeType: "Text";
-  nodeValue?: NodeValue;
-  process: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
-}
 
 export interface NumberNode extends BaseNode {
   nodeType: "Number";
@@ -131,22 +126,15 @@ export interface AddNode extends BaseNode {
   process: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
 }
 
-export interface JoinNode extends BaseNode {
-  nodeType: "Join";
-  nodeValue?: NodeValue;
-  process: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
-}
 
 // Define available node types
 export type NodeType =
   | BaseNode
-  | TextNode
   | NumberNode
   | BooleanNode
   | ImageNode
   | GenericNode
   | AddNode
-  | JoinNode;
 
 export type Connection = {
   fromSocket: number;
@@ -386,98 +374,6 @@ export const createAddNode = (
       valueSource: "UserInput",
       UIConfigurable: true,
       description: "Default Number output",
-      isNodeBodyContent: true,
-    },
-  ],
-  getConfigParameters: function () {
-    return this.configParameters || [];
-  },
-  getConfigParameter(parameterName) {
-    const parameter = (this.configParameters ?? []).find(
-      (param) => param.parameterName === parameterName
-    );
-    return parameter;
-  },
-  setConfigParameter(parameterName, value) {
-    const parameter = (this.configParameters ?? []).find(
-      (param) => param.parameterName === parameterName
-    );
-    if (parameter) {
-      parameter.paramValue = value;
-    }
-  },
-});
-
-// Join node to combine multiple inputs with a separator
-export const createJoinNode = (
-  id: number,
-  type: { x: number; y: number }
-): JoinNode => ({
-  id,
-  title: "Join",
-  nodeValue: " ", // This is the separator between inputs (default is a space)
-  nodeType: "Join",
-  sockets: [
-    {
-      id: id * 100 + 1,
-      title: "Input 1",
-      type: "input",
-      nodeId: id,
-      dataType: "unknown",
-    },
-    {
-      id: id * 100 + 2,
-      title: "Input 2",
-      type: "input",
-      nodeId: id,
-      dataType: "unknown",
-    },
-    {
-      id: id * 100 + 111,
-      title: "Output",
-      type: "output",
-      nodeId: id,
-      dataType: "string",
-    },
-  ],
-  x: type.x,
-  y: type.y,
-  width: 240,
-  height: 230, // Increased height to accommodate 50px socket spacing
-  selected: false,
-  processing: false,
-  process: async ({ node, getInputValue }) => {
-    const n = node as JoinNode;
-    // Process special separator values
-    let separator = String(n.nodeValue || "");
-
-    // Replace special separator placeholders
-    separator = separator
-      .replace(/\(new line\)/g, "\n") // Replace (new line) with actual newline
-      .replace(/\\n/g, "\n"); // Also support \n for newlines
-
-    // Count input sockets to determine how many inputs to process
-    const inputSockets = n.sockets.filter((s) => s.type === "input");
-
-    // Collect all input values
-    const inputValues = await Promise.all(
-      inputSockets.map(async (socket) => {
-        const value = await getInputValue(socket.id);
-        return value !== undefined ? String(value) : "";
-      })
-    );
-
-    // Join all non-empty values with the separator
-    return inputValues.filter((val) => val !== "").join(separator);
-  },
-  configParameters: [
-    {
-      parameterName: "Text separator",
-      parameterType: "string",
-      defaultValue: false,
-      valueSource: "UserInput",
-      UIConfigurable: true,
-      description: "Separator between inputs",
       isNodeBodyContent: true,
     },
   ],
