@@ -1,6 +1,6 @@
 import { join, appDataDir } from "@tauri-apps/api/path";
 import { writeTextFile, readTextFile, exists, mkdir, readDir, remove } from '@tauri-apps/plugin-fs';
-import { CanvasState } from "../../flow/utils/storageUtils";
+import { CanvasState, reattachNodeProcessors } from "../../flow/utils/storageUtils";
 
 export interface WorkflowFile {
   id: string;
@@ -75,6 +75,9 @@ export const loadWorkflowFromFile = async (workflowId: string): Promise<Workflow
     
     const fileContent = await readTextFile(filePath);
     const workflowData = JSON.parse(fileContent) as WorkflowFile;
+    
+    // Reattach the process functions that were lost during serialization
+    workflowData.canvasState.nodes = reattachNodeProcessors(workflowData.canvasState.nodes);
     
     return workflowData;
   } catch (error) {

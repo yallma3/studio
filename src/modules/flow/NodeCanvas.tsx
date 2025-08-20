@@ -626,7 +626,7 @@ const NodeCanvas: React.FC<{
 
   // Handle exporting the flow as a JS package
   const exportAsJSPackage = () => {
-    exportFlowRunner(nodes, connections);
+    exportFlowRunner(nodes, connections, false);
     setFileMenuOpen(false);
   };
 

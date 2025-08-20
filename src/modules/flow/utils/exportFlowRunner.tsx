@@ -24,7 +24,8 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
  */
 export const exportFlowRunner = async (
   nodes: NodeType[],
-  connections: Connection[]
+  connections: Connection[],
+  exportToText: boolean
 ) => {
   // Create a simplified version of the flow to avoid circular references
   const flowExport = {
@@ -52,7 +53,7 @@ export const exportFlowRunner = async (
   const processors: Record<string, string> = {};
   for (const node of nodes) {
     // Check if the node has a processText property (for custom nodes)
-   
+    console.log("Node from the flow export", node.process?.toString() || "No process found")
     processors[node.nodeType] = node.process?.toString() || "";
     
     // For built-in nodes, we'll define them in the generated code below
@@ -285,32 +286,38 @@ if (require.main === module) {
       console.error("Error executing flow:", error);
       process.exit(1);
     });
+    ${exportToText ? `
+    // IMPORTANT: Return the flow execution results when called as a function
+    return await runFlow();` : ""}
 }
   `;
+ if (exportToText) {
+  return jsCode;
+  } else {
+    try {
+      // Use Tauri dialog to let the user choose where to save the file
+      const filePath = await save({
+        defaultPath: "flow-runner.js",
+        filters: [
+          {
+            name: "JavaScript",
+            extensions: ["js"],
+          },
+        ],
+      });
 
-  try {
-    // Use Tauri dialog to let the user choose where to save the file
-    const filePath = await save({
-      defaultPath: "flow-runner.js",
-      filters: [
-        {
-          name: "JavaScript",
-          extensions: ["js"],
-        },
-      ],
-    });
-
-    if (filePath) {
-      // Use Tauri file system API to save the file
-      await writeTextFile(filePath, jsCode);
-      console.log(`Flow exported successfully to ${filePath}`);
-      return filePath;
-    } else {
-      console.log("Export canceled by user");
-      return null;
+      if (filePath) {
+        // Use Tauri file system API to save the file
+        await writeTextFile(filePath, jsCode);
+        console.log(`Flow exported successfully to ${filePath}`);
+        return filePath;
+      } else {
+        console.log("Export canceled by user");
+        return null;
+      }
+    } catch (error) {
+      console.error("Failed to export flow:", error);
+      throw error;
     }
-  } catch (error) {
-    console.error("Failed to export flow:", error);
-    throw error;
   }
 };

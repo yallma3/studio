@@ -15,6 +15,7 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { WorkspaceData } from "../types/Types";
 import { generateWorkspacePrompt } from "./runtimeUtils";
 import { loadWorkflowFromFile, WorkflowFile } from "./workflowStorageUtils";
+import { exportFlowRunner } from "../../flow/utils/exportFlowRunner";
 
 
 
@@ -34,18 +35,32 @@ console.log("Used Workflows", usedWorkflows)
 
 // Load only the used workflows
 const workflowDataMap: { [workflowId: string]: WorkflowFile } = {};
+const workFlowRuntimes: { [workflowId: string]: string } = {};
 for (const [workflowName, workflowId] of Object.entries(usedWorkflows)) {
   try {
     const workflowData = await loadWorkflowFromFile(workflowId);
     console.log("Workflow Data", workflowData)
     if (workflowData) {
       workflowDataMap[workflowId] = workflowData;
-      console.log(`📋 Loaded workflow: ${workflowName} (${workflowId})`);
+      const workflowRuntime = await exportFlowRunner(workflowData.canvasState.nodes, workflowData.canvasState.connections, true);
+      if (workflowRuntime) {
+        workFlowRuntimes[workflowId] = workflowRuntime;
+      }else{
+        console.error(`❌ Failed to get workflow runtime for ${workflowName} (${workflowId})`);
+      }
     }
   } catch (error) {
     console.error(`❌ Failed to load workflow ${workflowName} (${workflowId}):`, error);
   }
 }
+
+let runtimeString = "";
+for (const workflowId of Object.keys(workFlowRuntimes)) {
+  runtimeString += `
+  "${workflowId}": async () => { ${workFlowRuntimes[workflowId]} },
+  `;
+}
+
 
 
   // Generate the JavaScript code with self-executing functionality
@@ -93,6 +108,10 @@ class StepResult {
     this.executionTime = executionTime;
     this.error = error;
   }
+}
+
+const runtimes = {
+  ${runtimeString}
 }
 
 // ===== LLM INTEGRATION =====
@@ -567,10 +586,13 @@ class WorkspaceRuntime {
           const runtime = new AgentRuntime(agent, task, new GroqChatRunner(agent.apiKey || workspaceData.apiKey), dependencyContext, this.verbose);
           result = await runtime.run();
         } else if (workflow) {
-          // Execute workflow
+           // Execute workflow
+          const workflowResult = await runtimes[workflow.id]();
+          console.log("Workflow Result", workflowResult[0].result);
           this.log("info", \`Executing workflow: \${workflow.name}\`);
-          const workflowResult = await this.executeWorkflow(workflow);
-          result = workflowResult;
+          // const workflowResult = await this.executeWorkflow(workflow);
+
+          result = workflowResult[0].result;
         }
         
         const executionTime = Date.now() - startTime;

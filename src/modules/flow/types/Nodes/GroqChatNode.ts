@@ -221,7 +221,7 @@ export function createNGroqChatNode(
       );
       return parameter;
     },
-    setConfigParameter(parameterName: string, value: any): void {
+    setConfigParameter(parameterName, value): void {
       const parameter = (this.configParameters ?? []).find(
         (param) => param.parameterName === parameterName
       );
