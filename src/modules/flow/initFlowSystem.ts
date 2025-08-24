@@ -17,6 +17,7 @@ import { register } from "./types/Example/customNode.js";
 import { register as registerMathNode } from "./types/Nodes/mathExpressionNode";
 import { register as registerTextNode } from "./types/Nodes/textTemplateNode";
 import { register as registerGroqChatNode } from "./types/Nodes/GroqChatNode.ts";
+import { register as registerClaudeChatNode } from "./types/Nodes/ClaudeChatNode.ts";
 import { register as registerJoinNode } from "./types/Nodes/JoinTextNode.ts";
 
 import { nodeRegistry } from "./types/NodeRegistry.ts";
@@ -32,6 +33,7 @@ export async function initFlowSystem() {
   registerMathNode(nodeRegistry);
   registerTextNode(nodeRegistry);
   registerGroqChatNode(nodeRegistry);
+  registerClaudeChatNode(nodeRegistry);
   registerJoinNode(nodeRegistry);
 }
 
