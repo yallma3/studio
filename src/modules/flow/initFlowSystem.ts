@@ -19,6 +19,7 @@ import { register as registerTextNode } from "./types/Nodes/textTemplateNode";
 import { register as registerGroqChatNode } from "./types/Nodes/GroqChatNode.ts";
 import { register as registerClaudeChatNode } from "./types/Nodes/ClaudeChatNode.ts";
 import { register as registerJoinNode } from "./types/Nodes/JoinTextNode.ts";
+import{ register as registerArxivNewPapersNode} from "./types/Nodes/ArXivScraper.ts";
 
 import { nodeRegistry } from "./types/NodeRegistry.ts";
 
@@ -35,6 +36,9 @@ export async function initFlowSystem() {
   registerGroqChatNode(nodeRegistry);
   registerClaudeChatNode(nodeRegistry);
   registerJoinNode(nodeRegistry);
+    registerArxivNewPapersNode(nodeRegistry);
+register
+
 }
 
 export async function loadModule(name: string) {

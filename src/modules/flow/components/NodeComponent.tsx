@@ -153,7 +153,9 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
             )}
           </div>
         );
+        
       default:
+        
         // Generic/fallback rendering for any node type
         return (
           <div

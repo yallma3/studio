@@ -48,7 +48,9 @@ export type NodeValue =
   | string
   | number
   | boolean
-  | Record<string, unknown>
+  |string[]
+  | { [socketId: number]: string[] }  
+  | { [socketId: number]: string | number | boolean | null }
   | null;
 
 // Define a type for the context used in node processing

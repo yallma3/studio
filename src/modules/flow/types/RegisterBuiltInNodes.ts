@@ -17,11 +17,13 @@ import {
   createBooleanNode,
   createImageNode,
   createAddNode,
+//  createArxivNewPapersNode,
 } from "./NodeTypes";
-
+//import{ createArxivNewPapersNode } from "./Nodes/ArXivScraper";
 export function registerBuiltInNodes(): void {
   nodeRegistry.registerNodeType("Number", createNumberNode);
   nodeRegistry.registerNodeType("Boolean", createBooleanNode);
   nodeRegistry.registerNodeType("Image", createImageNode);
   nodeRegistry.registerNodeType("Add", createAddNode);
+//  nodeRegistry.registerNodeType("ArxivNewPapers", createArxivNewPapersNode);
 }
