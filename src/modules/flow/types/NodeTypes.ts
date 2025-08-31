@@ -83,7 +83,7 @@ export interface BaseNode {
   selected?: boolean;
   processing?: boolean;
   result?: string | number | true | Record<string, unknown>;
-  process?: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
+  process?: (context: NodeExecutionContext) => Promise<NodeValue | string | string[] | undefined>;
   configParameters?: ConfigParameterType[]; // Configuration parameters for the node
   getConfigParameters?: () => Array<ConfigParameterType>;
   getConfigParameter?: (

@@ -22,6 +22,8 @@ import { register as registerJoinNode } from "./types/Nodes/JoinTextNode.ts";
 import {register as  registerOpenAiNode} from "./types/Nodes/OpenAiChatNode.ts"
 import {register as registerGeminiNode} from "./types/Nodes/GeminiChatNode.ts"
 import {register as registerOpenRouterNode} from "./types/Nodes/OpenRouterChatNode.ts"
+import{ register as registerArxivNewPapersNode} from "./types/Nodes/ArXivScraperNode.ts";
+
 import { nodeRegistry } from "./types/NodeRegistry.ts";
 
 export async function initFlowSystem() {
@@ -40,6 +42,7 @@ export async function initFlowSystem() {
   registerOpenAiNode(nodeRegistry);
   registerGeminiNode(nodeRegistry);
   registerOpenRouterNode(nodeRegistry);
+  registerArxivNewPapersNode(nodeRegistry);
 
 }
 
