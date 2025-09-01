@@ -15,7 +15,6 @@ import { NodeType, Connection } from "../types/NodeTypes";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 
-
 /**
  * Exports the current flow as a standalone JavaScript file that can be run with Node.js
  * @param nodes The current nodes in the flow
@@ -53,9 +52,13 @@ export const exportFlowRunner = async (
   const processors: Record<string, string> = {};
   for (const node of nodes) {
     // Check if the node has a processText property (for custom nodes)
-    console.log("Node from the flow export", node.process?.toString() || "No process found")
-    processors[node.nodeType] = node.process?.toString() || "";
-    
+    console.log(
+      "Node from the flow export",
+      node.process?.toString() || "No process found"
+    );
+    if (typeof node.process === "function") {
+      processors[node.nodeType] = node.process.toString();
+    }
     // For built-in nodes, we'll define them in the generated code below
   }
   let processorsString = "";
@@ -64,7 +67,7 @@ export const exportFlowRunner = async (
     ${processor}: ${processors[processor]},
     `;
   }
-  console.log("Processors", processorsString)
+  console.log("Processors", processorsString);
 
   // Generate the JavaScript code with self-executing functionality
   const jsCode = `
@@ -286,13 +289,17 @@ if (require.main === module) {
       console.error("Error executing flow:", error);
       process.exit(1);
     });
-    ${exportToText ? `
+    ${
+      exportToText
+        ? `
     // IMPORTANT: Return the flow execution results when called as a function
-    return await runFlow();` : ""}
+    return await runFlow();`
+        : ""
+    }
 }
   `;
- if (exportToText) {
-  return jsCode;
+  if (exportToText) {
+    return jsCode;
   } else {
     try {
       // Use Tauri dialog to let the user choose where to save the file

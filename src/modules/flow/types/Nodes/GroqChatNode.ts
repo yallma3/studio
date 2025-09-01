@@ -78,10 +78,10 @@ export function createNGroqChatNode(
       const prompt = String(promptValue || "");
 
       // Extract model name from node value
-      const modelMatch = n.nodeValue?.toString().trim().toLowerCase().replace(/\s+/g, "-") || "";
+      const modelMatch =
+        n.nodeValue?.toString().trim().toLowerCase().replace(/\s+/g, "-") || "";
       console.log("n.nodeValue", n.nodeValue);
       console.log("modelMatch", modelMatch);
-
       const model = modelMatch ? modelMatch : "llama-3.1-8b-instant"; // Default fallback
 
       // Use system prompt from input, but don't use the node.value (which now contains the model)
@@ -97,14 +97,14 @@ export function createNGroqChatNode(
         //   );
         // }
         let GROQ_API_KEY = "";
-        if(n.getConfigParameter){
-          GROQ_API_KEY = n.getConfigParameter("API Key")?.paramValue as string || "";
-        }
-        else{
+        if (n.getConfigParameter) {
+          GROQ_API_KEY =
+            (n.getConfigParameter("API Key")?.paramValue as string) || "";
+        } else {
           throw new Error("API Key not found");
         }
 
-        console.log("GROQ_API_KEY", GROQ_API_KEY);
+        console.log("GROQ_API_KEY", GROQ_API_KEY ? "[set]" : "[missing]");
         console.log(`Using model: ${model}`);
         console.log(
           `Executing Chat node ${n.id} with prompt: "${prompt.substring(
@@ -114,8 +114,8 @@ export function createNGroqChatNode(
         );
         const messages = system
           ? [
-              { role: "user", content: prompt },
               { role: "system", content: system },
+              { role: "user", content: prompt },
             ]
           : [{ role: "user", content: prompt }];
         const res = await fetch(
