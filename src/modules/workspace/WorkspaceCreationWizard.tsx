@@ -206,7 +206,8 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     capabilities: "",
     tools: [],
     llmId: workspaceData.mainLLM, // Default to workspace's main LLM
-    variables: {} // Initialize empty variables object
+    variables: {}, // Initialize empty variables object
+    apiKey: ""
   });
   
   // State for new variable being added
@@ -384,7 +385,8 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           capabilities: newAgent.capabilities,
           tools: newAgent.tools,
           llmId: newAgent.llmId,
-          variables: newAgent.variables
+          variables: newAgent.variables,
+          apiKey: newAgent.apiKey
         };
         
         setWorkspaceData(prev => ({
@@ -402,7 +404,8 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         capabilities: "",
         tools: [],
         llmId: workspaceData.mainLLM, // Keep using workspace's main LLM as default
-        variables: {}
+        variables: {},
+        apiKey: ""
       });
       setIsEditingAgent(false);
     }
@@ -430,7 +433,8 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         capabilities: "",
         tools: [],
         llmId: workspaceData.mainLLM,
-        variables: {}
+        variables: {},
+        apiKey: ""
       });
       setIsEditingAgent(false);
     }
@@ -1260,7 +1264,8 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             background: "",
                             capabilities: "",
                             tools: [],
-                            llmId: workspaceData.mainLLM
+                            llmId: workspaceData.mainLLM,
+                            apiKey: ""
                           });
                           setIsEditingAgent(false);
                         }}

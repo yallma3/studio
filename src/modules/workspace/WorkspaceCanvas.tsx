@@ -17,9 +17,10 @@ import {
   Save,
   AlertCircle,
   CheckCircle,
-  Download,
+  Share,
   Play,
   MoreVertical,
+  Download,
 } from "lucide-react";
 import {
   saveWorkspaceToDefaultLocation,
@@ -31,6 +32,12 @@ import { useTranslation } from "react-i18next";
 import { WorkspaceData, ConsoleEvent } from "./types/Types";
 
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
+
+//get access to singltone nodeRegistry
+import { nodeRegistry } from "../flow/types/NodeRegistry";
+import { GroqChatRunner, parseLLMResponse, executeTasksSequentially, convertToSequentialSteps, generateWorkspacePrompt } from "./utils/runtimeUtils";
+import { exportWorkspaceAsJs } from "./utils/exportWorkspace";
+
 
 // Toast notification component
 interface ToastProps {
@@ -94,33 +101,12 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
-  const initEvents: ConsoleEvent[] = [
-    {
-      id: "1",
-      timestamp: Date.now() - 30000,
-      type: "info",
-      message: "Workspace initialized successfully",
-      details: "All components loaded and ready",
-    },
-    {
-      id: "2",
-      timestamp: Date.now() - 20000,
-      type: "success",
-      message: "LLM connection established",
-      details: "Connected to gpt-3.5-turbo",
-    },
-    {
-      id: "3",
-      timestamp: Date.now() - 10000,
-      type: "info",
-      message: "Auto-save enabled",
-      details: "Workspace will be saved every 5 minutes",
-    },
-  ];
+  const initEvents: ConsoleEvent[] = [];
 
   const [events, setEvents] = useState<ConsoleEvent[]>(initEvents);
 
   const addEvent = (newEvent: ConsoleEvent) => {
+
     try {
       setEvents((prev) => [...prev, newEvent]);
     } catch (error) {
@@ -169,7 +155,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     };
 
     checkWorkspaceExists();
-  }, [workspaceData.id]); // Only run when workspace ID changes
+  }, [workspaceData]);
 
   // Handle clicks outside dropdown to close it
   useEffect(() => {
@@ -236,7 +222,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   };
 
   // Handle exporting workspace to file
-  const handleExportWorkspace = async () => {
+  const handleShareWorkspace = async () => {
     if (!workspaceData) return;
 
     try {
@@ -265,8 +251,15 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     }
   };
 
+  const handleExportWorkspace = async () => {
+   console.log("Exporting workspace...");
+   exportWorkspaceAsJs(workspaceData)
+  };
+
+ 
   // Handle running workspace (placeholder for future implementation)
   const handleRunWorkspace = async () => {
+
     if (!workspaceData) return;
     // Post a new ConsoleEvent to the events in WorkspaceTab component
     addEvent({
@@ -275,14 +268,99 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       message: t("workspaces.runStarted", "Running workspace..."),
       timestamp: Date.now(),
     });
-    // TODO: Implement run logic
-    showToast(
-      t(
-        "workspaces.runNotImplemented",
-        "Run functionality not implemented yet"
-      ),
-      "error"
+
+
+
+    // Main workspace LLM
+    const runner = new GroqChatRunner(
+      nodeRegistry,
+      workspaceData.apiKey,
+      (event: ConsoleEvent) => console.log(event),
     );
+
+
+    const result = await runner.run("", generateWorkspacePrompt(workspaceData))
+    
+    if (result) {
+      const parsed = parseLLMResponse(result);
+
+      // Consosle Events for Project Plan
+      if (parsed) {
+        console.log("✅ Parsed result:", parsed);
+
+        addEvent({
+          id: crypto.randomUUID(),
+          type: "success",
+          message: `Project Plan Generated`,
+          timestamp: Date.now(),
+        });
+
+      }else{
+        console.log("⚠️ No parsed result");
+        addEvent({
+          id: crypto.randomUUID(), // Generate a unique ID for the event
+          type: "error",
+          message: `Error generating project plan`,
+          timestamp: Date.now(),
+        });
+      }
+
+      // Run steps sequentially using the reusable function
+      if (parsed?.steps && parsed.steps.length > 0) {
+
+        // Tasks are executed sequentially ( For now ) will be replaced with Tasks graph
+        // Task graph of tasks that are executed in parallel or sequentially
+        // will be implemented in the future
+        const sequentialSteps = convertToSequentialSteps(parsed);
+        
+        
+        const results = await executeTasksSequentially({
+          nodeRegistry,
+          workspaceData: workspaceData,
+          steps: sequentialSteps,
+          onStepStart: (step, stepNumber) => {
+            addEvent({
+              id: crypto.randomUUID(), // Generate a unique ID for the event
+              type: "info",
+              message: `🚀 Starting step ${stepNumber}: ${step.description}`,
+              timestamp: Date.now(),
+            });
+          },
+          onStepComplete: (result) => {
+            addEvent({
+              id: crypto.randomUUID(), // Generate a unique ID for the event
+              type: "success",
+              message: `✅ Step ${result.stepNumber} completed successfully`,
+              timestamp: Date.now(),
+            });
+          },
+          onError: (error, stepNumber) => {
+            addEvent({
+              id: crypto.randomUUID(), // Generate a unique ID for the event
+              type: "error",
+              message: `❌ Step ${stepNumber} failed: ${error}`,
+              timestamp: Date.now(),
+            });
+          },
+          onComplete: (results) => {
+            const successfulSteps = results.filter(r => r.success).length;
+            addEvent({
+              id: crypto.randomUUID(), // Generate a unique ID for the event
+              type: "success",
+              message: `🎉 Execution completed: ${successfulSteps}/${results.length} steps successful`,
+              timestamp: Date.now(),
+            });
+          }
+        });
+        
+        console.log("📊 Execution Summary:", results);
+      } else {
+        console.log("⚠️ No steps found in parsed result");
+      }
+      
+     
+    }
+
   };
 
   // Handle updating workspace data - only update state, don't save to file
@@ -314,6 +392,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   const handleTabChanges = () => {
     setHasUnsavedChanges(true);
   };
+
+ 
 
   return (
     <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
@@ -364,14 +444,21 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                 </button>
 
                 {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg z-50">
+                  <div className="absolute right-0 mt-2 w-68 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg z-50">
                     <div className="py-1">
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center gap-2"
+                        onClick={handleShareWorkspace}
+                      >
+                        <Share className="h-4 w-4" />
+                        Share Workspace
+                      </button>
                       <button
                         className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center gap-2"
                         onClick={handleExportWorkspace}
                       >
                         <Download className="h-4 w-4" />
-                        Export Workspace
+                        Export Executable Workspace
                       </button>
                       {/* Future options can be added here */}
                     </div>

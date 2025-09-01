@@ -27,7 +27,7 @@ export interface CanvasState {
   nextNodeId: number;
 }
 
-function reattachNodeProcessors(nodes: NodeType[]): NodeType[] {
+export function reattachNodeProcessors(nodes: NodeType[]): NodeType[] {
   console.log("REATTACHING")
   return nodes.map(node => {
     const factory = nodeRegistry.getFactory(node.nodeType);

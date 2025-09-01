@@ -58,12 +58,17 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
   }, [node.result]);
 
   // Filter input and output sockets
-  const inputSockets = node.sockets.filter(
-    (socket): socket is Socket & { type: "input" } => socket.type === "input"
-  );
-  const outputSockets = node.sockets.filter(
-    (socket): socket is Socket & { type: "output" } => socket.type === "output"
-  );
+
+  // Type guards  to narrow socket direction without using `any`
+  const isInputSocket = (
+    socket: Socket
+  ): socket is Socket & { type: "input" } => socket.type === "input";
+  const isOutputSocket = (
+    socket: Socket
+  ): socket is Socket & { type: "output" } => socket.type === "output";
+
+  const inputSockets = node.sockets.filter(isInputSocket);
+  const outputSockets = node.sockets.filter(isOutputSocket);
 
   // Calculate vertical offset for centering sockets
   const getSocketsVerticalOffset = (socketsCount: number) => {

@@ -50,7 +50,7 @@ export function register(nodeRegistry: NodeRegistry): void {
       height: 220,
       selected: false,
       processing: false,
-      process: async ({ node, getInputValue }: any): Promise<number> => {
+      process: async ({ node, getInputValue }): Promise<number> => {
         const a = Number((await getInputValue(node.id * 100 + 1)) || 0);
         const b = Number((await getInputValue(node.id * 100 + 2)) || 0);
         nodeValue = a + b;
@@ -78,7 +78,7 @@ export function register(nodeRegistry: NodeRegistry): void {
         );
         return parameter;
       },
-      setConfigParameter(parameterName: string, value: any): void {
+      setConfigParameter(parameterName, value): void {
         const parameter = (this.configParameters ?? []).find(
           (param) => param.parameterName === parameterName
         );

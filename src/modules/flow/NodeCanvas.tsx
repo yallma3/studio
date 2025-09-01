@@ -19,12 +19,11 @@ import React, {
   useCallback,
 } from "react";
 import { NodeComponent } from "./components/NodeComponent";
-import { NodeType, NodeValue, Socket } from "./types/NodeTypes";
+import { NodeType } from "./types/NodeTypes";
 import CanvasContextMenu from "./components/CanvasContextMenu";
 import NodeContextMenu from "./components/NodeContextMenu";
 import NodeEditPanel from "./components/NodeEditPanel";
 import GraphNameDialog from "./components/GraphNameDialog";
-import { executeNode } from "./types/NodeProcessor";
 import {
   Play,
   Save,
@@ -37,6 +36,7 @@ import {
 } from "lucide-react";
 import { exportFlowRunner } from "./utils/exportFlowRunner";
 import { useTranslation } from "react-i18next";
+import { createFlowRuntime, FlowExecutionOptions } from "./utils/flowRuntime";
 
 // Import utilities
 import { screenToCanvas } from "./utils/canvasTransforms";
@@ -44,7 +44,6 @@ import {
   findSocketById,
   getNodeBySocketId,
   getSocketPosition,
-  buildExecutionGraph,
 } from "./utils/socketUtils";
 import {
   saveCanvasState,
@@ -627,7 +626,7 @@ const NodeCanvas: React.FC<{
 
   // Handle exporting the flow as a JS package
   const exportAsJSPackage = () => {
-    exportFlowRunner(nodes, connections);
+    exportFlowRunner(nodes, connections, false);
     setFileMenuOpen(false);
   };
 
@@ -802,180 +801,55 @@ const NodeCanvas: React.FC<{
     if (executionStatus.isExecuting) return;
 
     try {
-      // Set execution status to running
-      setExecutionStatus({
-        isExecuting: true,
-        progress: 0,
-        total: 0,
-      });
+      // Create flow runtime
+      const runtime = createFlowRuntime(nodes, connections);
 
-      // Create a promise-based cache to store calculated node results and prevent redundant calculations
-      const nodeResultCache = new Map<number, Promise<NodeValue>>();
-
-      // Create a map to collect all node results during execution
-      const allNodeResults = new Map<number, NodeValue>();
-
-      // Find end nodes (nodes with no outgoing connections)
-      const endNodes = nodes.filter((node) => {
-        return node.sockets
-          .filter((socket: Socket) => socket.type === "output")
-          .every(
-            (socket: Socket) =>
-              !connections.some((conn) => conn.fromSocket === socket.id)
-          );
-      });
-
-      console.log(`Found ${endNodes.length} end nodes to execute`);
-
-      if (endNodes.length === 0) {
-        alert(
-          "No end nodes found. Your flow needs at least one node with unused outputs."
-        );
-        setExecutionStatus({
-          isExecuting: false,
-          progress: 0,
-          total: 0,
-        });
-        return;
-      }
-
-      // Create a counter to track execution progress
-      let completedNodes = 0;
-
-      // Override the map set method to track progress and collect results
-      const originalSet = nodeResultCache.set.bind(nodeResultCache);
-      nodeResultCache.set = (key: number, value: Promise<NodeValue>) => {
-        // Count the total number of nodes in the execution graph
-        if (nodeResultCache.size === 0) {
-          // First node being executed, estimate total nodes
-          const graph = buildExecutionGraph(nodes, connections);
-          const totalNodes = new Set(graph.flatMap(([from, to]) => [from, to]))
-            .size;
-          setExecutionStatus((prev) => ({
-            ...prev,
-            total: totalNodes,
-          }));
-        }
-
-        // Track when the promise completes to update progress
-        value
-          .then((result) => {
-            completedNodes++;
-            setExecutionStatus((prev) => ({
-              ...prev,
-              progress: completedNodes,
-            }));
-
-            // Store the result for this node
-            allNodeResults.set(key, result);
-          })
-          .catch(() => {
-            // Still count failed nodes in progress
-            completedNodes++;
-            setExecutionStatus((prev) => ({
-              ...prev,
-              progress: completedNodes,
-            }));
+      // Set up execution options
+      const executionOptions: FlowExecutionOptions = {
+        onProgress: (progress, total) => {
+          setExecutionStatus({
+            isExecuting: true,
+            progress,
+            total,
           });
-
-        return originalSet(key, value);
+        },
+        onNodeStart: (nodeId, nodeTitle) => {
+          console.log(`Starting execution of node ${nodeId} (${nodeTitle})`);
+        },
+        onNodeComplete: (nodeId, nodeTitle, _result) => {
+          console.log(`Completed execution of node ${nodeId} (${nodeTitle})`);
+        },
+        onNodeError: (nodeId, nodeTitle, error) => {
+          console.error(`Error in node ${nodeId} (${nodeTitle}): ${error}`);
+        },
+        onComplete: (_results) => {
+          console.log("Flow execution completed", _results);
+          // Update nodes with results from runtime
+          setNodes(runtime.getNodes());
+          
+          // Reset execution status
+          setExecutionStatus({
+            isExecuting: false,
+            progress: 0,
+            total: 0,
+          });
+        },
+        onError: (error) => {
+          console.error("Error during flow execution:", error);
+          alert(`Error during execution: ${error}`);
+          
+          // Reset execution status on error
+          setExecutionStatus({
+            isExecuting: false,
+            progress: 0,
+            total: 0,
+          });
+        },
       };
 
-      // Store updated nodes with results
-      const updatedNodes: NodeType[] = [...nodes];
+      // Execute the flow
+      await runtime.execute(executionOptions);
 
-      // Execute only the end nodes - the dependency tracing will handle executing
-      // all required upstream nodes in the correct order
-      const results = await Promise.all(
-        endNodes.map(async (node) => {
-          try {
-            // Find the node in our updatedNodes array
-            const nodeIndex = updatedNodes.findIndex((n) => n.id === node.id);
-            if (nodeIndex >= 0) {
-              updatedNodes[nodeIndex] = {
-                ...updatedNodes[nodeIndex],
-                processing: true,
-              };
-            }
-
-            // Execute the node and its dependencies
-            const result = await executeNode(
-              node,
-              nodes,
-              connections,
-              nodeResultCache
-            );
-
-            // End node result is handled the same way as before
-            return { nodeId: node.id, title: node.title, result };
-          } catch (error) {
-            console.error(`Error executing node ${node.id}:`, error);
-
-            // Track errors for end nodes as before
-            return {
-              nodeId: node.id,
-              title: node.title,
-              error: error instanceof Error ? error.message : String(error),
-            };
-          }
-        })
-      );
-
-      // Now update all nodes with their results that were processed during execution
-      const finalNodes = nodes.map((node) => {
-        // If this node was executed and has a result
-        if (allNodeResults.has(node.id)) {
-          const result = allNodeResults.get(node.id);
-          const processedResult =
-            result === null
-              ? undefined
-              : typeof result === "boolean" && result === false
-              ? "false" // Convert false to string 'false'
-              : result;
-
-          return {
-            ...node,
-            processing: false,
-            result: processedResult,
-          };
-        }
-        // If this node is an end node with an error (not in allNodeResults)
-        const endNodeWithError = results.find(
-          (r) => r.nodeId === node.id && "error" in r
-        );
-        if (endNodeWithError && "error" in endNodeWithError) {
-          return {
-            ...node,
-            processing: false,
-            result: `Error: ${endNodeWithError.error}`,
-          };
-        }
-
-        return node;
-      });
-
-      // Update all nodes with their results
-      // This causes a re-render with the new results
-      setNodes(finalNodes);
-
-      // Format results for display
-      // const resultText = results
-      //   .map(r => {
-      //     if ('error' in r) {
-      //       return `Node ${r.title} (ID: ${r.nodeId}): Error - ${r.error}`;
-      //     }
-      //     return `Node ${r.title} (ID: ${r.nodeId}): ${JSON.stringify(r.result)}`;
-      //   })
-      //   .join('\n\n');
-
-      // Reset execution status
-      setExecutionStatus({
-        isExecuting: false,
-        progress: 0,
-        total: 0,
-      });
-
-      // alert(`Execution Results:\n\n${resultText}`);
     } catch (error) {
       console.error("Error during graph execution:", error);
 

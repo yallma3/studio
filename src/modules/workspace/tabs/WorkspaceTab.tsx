@@ -10,7 +10,7 @@
    WITHOUT WARRANTY OF ANY KIND, either express or implied.
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 import { WorkspaceData, LLMOption, ConsoleEvent } from "../types/Types";
 import {
@@ -56,6 +56,19 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
 
   const [isConsoleRunning, setIsConsoleRunning] = useState(true);
   const [isConsoleExpanded, setIsConsoleExpanded] = useState(false);
+
+  // Ref for scroll area
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Function to scroll to bottom of console
+  const scrollToBottom = useCallback(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTo({
+        top: scrollAreaRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, []);
 
   // Available LLM options
   const availableLLMs: LLMOption[] = useMemo(
@@ -210,6 +223,16 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   useEffect(() => {
     setEvents(initialEvents);
   }, [initialEvents]);
+
+  // Scroll to bottom when new events are added
+  useEffect(() => {
+    if (events.length > 0) {
+      // Use setTimeout to ensure DOM is updated before scrolling
+      setTimeout(() => {
+        scrollToBottom();
+      }, 0);
+    }
+  }, [events, scrollToBottom]);
 
   // Simulate real-time events
   useEffect(() => {
@@ -613,7 +636,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
           </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col min-h-0">
-          <ScrollArea className="flex-1 w-full">
+          <ScrollArea ref={scrollAreaRef} className="flex-1 w-full">
             <div className="space-y-2 font-mono text-sm">
               {events.length === 0 ? (
                 <div className="text-zinc-500 text-center py-8">
