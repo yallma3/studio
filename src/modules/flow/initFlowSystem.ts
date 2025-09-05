@@ -23,6 +23,10 @@ import {register as  registerOpenAiNode} from "./types/Nodes/OpenAiChatNode.ts"
 import {register as registerGeminiNode} from "./types/Nodes/GeminiChatNode.ts"
 import {register as registerOpenRouterNode} from "./types/Nodes/OpenRouterChatNode.ts"
 import { nodeRegistry } from "./types/NodeRegistry.ts";
+import {register as registerScraperNode} from "./types/Nodes/ArxivScraperNode.ts"
+import {register as registerExtractorNode} from "./types/Nodes/PdfExtractorNode.ts"
+import {register as registerDownloaderNode} from "./types/Nodes/DownloaderNode.ts"
+
 
 export async function initFlowSystem() {
   registerBuiltInNodes();
@@ -40,7 +44,9 @@ export async function initFlowSystem() {
   registerOpenAiNode(nodeRegistry);
   registerGeminiNode(nodeRegistry);
   registerOpenRouterNode(nodeRegistry);
-
+  registerScraperNode(nodeRegistry);
+  registerDownloaderNode(nodeRegistry);
+  registerExtractorNode(nodeRegistry);
 }
 
 export async function loadModule(name: string) {
