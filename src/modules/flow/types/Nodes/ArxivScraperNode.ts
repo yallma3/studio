@@ -215,19 +215,7 @@ import {
       
     } catch (error) {
       console.error('ArXiv API fetch failed:', error);
-      
-      // Fallback to mock data for testing
-      console.log('Returning mock data for testing...');
-      return [
-        {
-          arxivId: "2501.00001",
-          version: 1,
-          title: "Sample AI Paper Title",
-          pdfUrl: "https://arxiv.org/pdf/2501.00001.pdf",
-          submittedDate: "2025-01-01",
-          abstract: "This is a sample abstract for testing purposes."
-        }
-      ];
+      throw error; // Let caller decide how to handle
     }
   }
   

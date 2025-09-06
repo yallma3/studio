@@ -103,13 +103,17 @@ import {
         const maxPages = Number(maxPagesConfig?.paramValue) || 50;
         
         const includeMetadataConfig = n.getConfigParameter?.("Include Metadata");
-        const includeMetadata = Boolean(includeMetadataConfig?.paramValue) ?? true;
+        const includeMetadata = includeMetadataConfig?.paramValue !== undefined 
+          ? Boolean(includeMetadataConfig.paramValue) 
+            : true;
 
         const minWordCountConfig = n.getConfigParameter?.("Min Word Count");
         const minWordCount = Number(minWordCountConfig?.paramValue) || 100;
 
         const cleanTextConfig = n.getConfigParameter?.("Clean Text");
-        const cleanText = Boolean(cleanTextConfig?.paramValue) ?? true;
+        const cleanText = cleanTextConfig?.paramValue !== undefined 
+          ? Boolean(cleanTextConfig.paramValue) 
+          : true;
 
         // Process each successful download
         for (let i = 0; i < successfulDownloads.length; i++) {
