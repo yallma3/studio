@@ -48,6 +48,7 @@ export type NodeValue =
   | string
   | number
   | boolean
+  | string[]
   | Record<string, unknown>
   | null;
 
@@ -82,7 +83,7 @@ export interface BaseNode {
   sockets: Socket[];
   selected?: boolean;
   processing?: boolean;
-  result?: string | number | true | Record<string, unknown>;
+  result?: NodeValue;
   process?: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
   configParameters?: ConfigParameterType[]; // Configuration parameters for the node
   getConfigParameters?: () => Array<ConfigParameterType>;
@@ -126,7 +127,6 @@ export interface AddNode extends BaseNode {
   process: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
 }
 
-
 // Define available node types
 export type NodeType =
   | BaseNode
@@ -134,7 +134,7 @@ export type NodeType =
   | BooleanNode
   | ImageNode
   | GenericNode
-  | AddNode
+  | AddNode;
 
 export type Connection = {
   fromSocket: number;

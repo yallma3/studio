@@ -15,85 +15,77 @@ yaLLMa3 Studio is a visual IDE for building AI agents using a modular, desktop a
 
 ## Current Directory Structure
 
-```
+```text
 studio/
-├── public/                          # Static assets
-├── release/                         # Release artifacts
-├── scripts/                         # Build and deployment scripts
-│   ├── build-macos-both.sh         # macOS universal binary build
-│   └── build-universal.sh          # Universal build script
-├── src/                            # Frontend source code
-│   ├── app/                    # Main application files
-│   │   ├── App.tsx/            # Main application component
-│   │   └── App.css/            # Global styles
-│   ├── Shared/                 # Shared components
-│   │   ├── settings/              # Settings-related components
-│   │   └── components/            # Reusable UI components
-│   ├── i18n/                      # Internationalization
-│   │   ├── locales/              # Translation files
-│   │   │   ├── ar/               # Arabic translations
-│   │   │   └── en/               # English translations
-│   │   ├── i18n.ts              # i18n configuration
-│   │   ├── json.d.ts            # TypeScript definitions
-│   │   ├── rtl.css              # RTL styling
-│   │   └── i18n.md              # i18n documentation
-│   ├── modules/                   # Feature modules (core architecture)
-│   │   ├── agent/               # AI agent management
+├── public/                                  # Static assets
+├── release/                                 # Release artifacts
+├── scripts/                                 # Build and deployment scripts
+│   ├── build-macos-both.sh                  # macOS universal binary build
+│   └── build-universal.sh                   # Universal build script
+├── src/                                     # Frontend source code
+│   ├── app/                                 # Main application files
+│   │   ├── App.tsx                          # Main application component
+│   │   └── App.css                          # Global styles
+│   ├── shared/                              # Shared components
+│   │   ├── settings/                        # Settings-related components
+│   │   └── components/                      # Reusable UI components
+│   ├── i18n/                                # Internationalization
+│   │   ├── locales/                         # Translation files
+│   │   │   ├── ar/                          # Arabic translations
+│   │   │   └── en/                          # English translations
+│   │   ├── i18n.ts                          # i18n configuration
+│   │   ├── json.d.ts                        # TypeScript definitions
+│   │   ├── rtl.css                          # RTL styling
+│   │   └── i18n.md                          # i18n documentation
+│   ├── modules/                             # Feature modules (core architecture)
+│   │   ├── agent/                           # AI agent management
 │   │   │
-│   │   ├── flow/               # Workflow/flow management
-│   │   │   ├── components/      # Flow UI components
-│   │   │   ├── hooks/           # Flow-related React hooks
-│   │   │   ├── types/           # Flow type definitions
-│   │   │   │   ├── Example/     # Example custom node
-│   │   │   │   └── Nodes/       # Node type definitions
-│   │   │   ├── utils/           # Flow utilities
-│   │   │   ├── index.ts         # Module exports
-│   │   │   ├── NodeCanvas.tsx # Flow Canvas component
-│   │   │   ├── NodeCanvas.css # Flow Canvas styles
-│   │   │   ├── initFlowSystem.ts # Flow system initialization
-│   │   │   └── vars.ts          # Flow-specific variables
-│   │   ├── task/               # Workflow/flow management
-│   │   │   ├── TaskCanvas.tsx      # Task Canvas Component
-│   │   │   └── vars.ts          # Task-specific variables
-│   │   └── workspace/            # Workspace management
-│   │       ├── components/      # Workspace UI components
-│   │       ├── tabs/            # Tab-related components
-│   │       ├── types/           # Workspace type definitions
-│   │       ├── utils/           # Workspace utilities
+│   │   ├── flow/                            # Workflow/flow management
+│   │   │   ├── components/                  # Flow UI components
+│   │   │   ├── hooks/                       # Flow-related React hooks
+│   │   │   ├── types/                       # Flow type definitions
+│   │   │   │   ├── Example/                 # Example custom node
+│   │   │   │   └── Nodes/                   # Node type definitions
+│   │   │   ├── utils/                       # Flow utilities
+│   │   │   ├── index.ts                     # Module exports
+│   │   │   ├── NodeCanvas.tsx               # Flow Canvas component
+│   │   │   ├── NodeCanvas.css               # Flow Canvas styles
+│   │   │   ├── initFlowSystem.ts            # Flow system initialization
+│   │   │   └── vars.ts                      # Flow-specific variables
+│   │   ├── task/                            # Workflow/flow management
+│   │   │   ├── TaskCanvas.tsx               # Task Canvas Component
+│   │   │   └── vars.ts                      # Task-specific variables
+│   │   └── workspace/                       # Workspace management
+│   │       ├── components/                  # Workspace UI components
+│   │       ├── tabs/                        # Tab-related components
+│   │       ├── types/                       # Workspace type definitions
+│   │       ├── utils/                       # Workspace utilities
 │   │       ├── WorkspaceCanvas.tsx          # Workspace Canvas component
 │   │       ├── WorkspaceCreationWizard.tsx  # Workspace Creation wizard component
-│   │       ├── WorkspaceHome.tsx           # Workspace Home view
-│   │       └── index.ts         # Module exports
-│   ├── index.css                  # Base styles
-│   ├── main.tsx                   # Application entry point
-│   └── vite-env.d.ts             # Vite type definitions
-├── src-tauri/                     # Tauri backend (Rust)
-│   ├── capabilities/             # Tauri capabilities/permissions
-│   ├── gen/                      # Generated files
-│   ├── icons/                    # Application icons
-│   ├── src/                      # Rust source code
-│   │   ├── lib.rs               # Library entry point
-│   │   └── main.rs              # Application entry point
-│   ├── target/                   # Rust build artifacts
-│   └── Cargo.toml               # Rust dependencies
-├── eslint.config.js              # ESLint configuration
-├── index.html                    # HTML entry point
-├── package.json                  # Node.js dependencies
-├── tailwind.config.js            # TailwindCSS configuration
-├── tsconfig.json                 # TypeScript configuration
-├── tsconfig.app.json            # App-specific TypeScript config
-├── tsconfig.node.json           # Node-specific TypeScript config
-├── vite.config.ts               # Vite build configuration
-└── yarn.lock                    # Yarn lock file
+│   │       ├── WorkspaceHome.tsx            # Workspace Home view
+│   │       └── index.ts                     # Module exports
+│   ├── index.css                            # Base styles
+│   ├── main.tsx                             # Application entry point
+│   └── vite-env.d.ts                        # Vite type definitions
+├── src-tauri/                               # Tauri backend (Rust)
+│   ├── capabilities/                        # Tauri capabilities/permissions
+│   ├── gen/                                 # Generated files
+│   ├── icons/                               # Application icons
+│   ├── src/                                 # Rust source code
+│   │   ├── lib.rs                           # Library entry point
+│   │   └── main.rs                          # Application entry point
+│   ├── target/                              # Rust build artifacts
+│   └── Cargo.toml                           # Rust dependencies
+├── eslint.config.js                         # ESLint configuration
+├── index.html                               # HTML entry point
+├── package.json                             # Node.js dependencies
+├── tailwind.config.js                       # TailwindCSS configuration
+├── tsconfig.json                            # TypeScript configuration
+├── tsconfig.app.json                        # App-specific TypeScript config
+├── tsconfig.node.json                       # Node-specific TypeScript config
+├── vite.config.ts                           # Vite build configuration
+└── yarn.lock                                # Yarn lock file
 ```
-
-## Module Architecture
-
-The application follows a modular architecture with three core modules:
-
-Here's your updated **Module Architecture** section to match the new project structure you've shared:
-
----
 
 ## Module Architecture
 

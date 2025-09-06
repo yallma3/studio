@@ -78,7 +78,8 @@ export function createNClaudeChatNode(
       const prompt = String(promptValue || "");
 
       // Extract model name from node value
-      const modelMatch = n.nodeValue?.toString().trim().toLowerCase().replace(/\s+/g, "-") || "";
+      const modelMatch =
+        n.nodeValue?.toString().trim().toLowerCase().replace(/\s+/g, "-") || "";
       console.log("n.nodeValue", n.nodeValue);
       console.log("modelMatch", modelMatch);
 
@@ -90,14 +91,14 @@ export function createNClaudeChatNode(
       try {
         // Get API key from config parameters
         let CLAUDE_API_KEY = "";
-        if(n.getConfigParameter){
-          CLAUDE_API_KEY = n.getConfigParameter("API Key")?.paramValue as string || "";
-        }
-        else{
+        if (n.getConfigParameter) {
+          CLAUDE_API_KEY =
+            (n.getConfigParameter("API Key")?.paramValue as string) || "";
+        } else {
           throw new Error("API Key not found");
         }
 
-        console.log("CLAUDE_API_KEY", CLAUDE_API_KEY);
+        console.log("CLAUDE_API_KEY", CLAUDE_API_KEY ? "[set]" : "[missing]");
         console.log(`Using model: ${model}`);
         console.log(
           `Executing Chat node ${n.id} with prompt: "${prompt.substring(
@@ -105,32 +106,24 @@ export function createNClaudeChatNode(
             50
           )}..."`
         );
-        const messages = system
-          ? [
-              { role: "user", content: prompt },
-              { role: "system", content: system },
-            ]
-          : [{ role: "user", content: prompt }];
-        const res = await fetch(
-          "https://api.anthropic.com/v1/messages",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "anthropic-version": "2023-06-01",
-              Authorization: `Bearer ${CLAUDE_API_KEY}`,
-            },
-            body: JSON.stringify({
-              model: model,
-              messages: messages,
-              max_tokens: 1000,
-              temperature: 0.7,
-              top_p: 1,
-              frequency_penalty: 0,
-              presence_penalty: 0,
-            }),
-          }
-        );
+        const messages = [{ role: "user", content: prompt }];
+        const body: Record<string, unknown> = {
+          model,
+          messages,
+          max_tokens: 1000,
+          temperature: 0.7,
+          top_p: 1,
+          ...(system ? { system } : {}),
+        };
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01",
+            Authorization: `Bearer ${CLAUDE_API_KEY}`,
+          },
+          body: JSON.stringify(body),
+        });
 
         if (!res.ok) {
           throw new Error(`Chat API returned status ${res.status}`);
@@ -147,7 +140,8 @@ export function createNClaudeChatNode(
           // Socket id 3 is for Response content
           [n.id * 100 + 3]: json.content[0].text,
           // Socket id 4 is for Token count
-          [n.id * 100 + 4]: json.usage?.input_tokens || 0,
+          [n.id * 100 + 4]:
+            (json.usage?.input_tokens ?? 0) + (json.usage?.output_tokens ?? 0),
         };
       } catch (error) {
         console.error("Error in Chat node:", error);

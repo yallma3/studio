@@ -17,51 +17,54 @@ import { generateWorkspacePrompt } from "./runtimeUtils";
 import { loadWorkflowFromFile, WorkflowFile } from "./workflowStorageUtils";
 import { exportFlowRunner } from "../../flow/utils/exportFlowRunner";
 
+export const exportWorkspaceAsJs = async (workspaceData: WorkspaceData) => {
+  const prompt = generateWorkspacePrompt(workspaceData);
+  const usedWorkflows: { [workflowName: string]: string } = {};
 
-
-export const exportWorkspaceAsJs = async (
-  workspaceData : WorkspaceData
-) => {
-const prompt = generateWorkspacePrompt(workspaceData)
-const usedWorkflows: { [workflowName: string]: string } = {};
-
-workspaceData.tasks.forEach((task) => {
-    if (task.workflowId && task.executeWorkflow){
-        usedWorkflows[task.workflowName ?? task.name] = task.workflowId;
+  workspaceData.tasks.forEach((task) => {
+    if (task.workflowId && task.executeWorkflow) {
+      usedWorkflows[task.workflowName ?? task.name] = task.workflowId;
     }
-});
-console.log(workspaceData)
-console.log("Used Workflows", usedWorkflows)
+  });
+  console.log(workspaceData);
+  console.log("Used Workflows", usedWorkflows);
 
-// Load only the used workflows
-const workflowDataMap: { [workflowId: string]: WorkflowFile } = {};
-const workFlowRuntimes: { [workflowId: string]: string } = {};
-for (const [workflowName, workflowId] of Object.entries(usedWorkflows)) {
-  try {
-    const workflowData = await loadWorkflowFromFile(workflowId);
-    console.log("Workflow Data", workflowData)
-    if (workflowData) {
-      workflowDataMap[workflowId] = workflowData;
-      const workflowRuntime = await exportFlowRunner(workflowData.canvasState.nodes, workflowData.canvasState.connections, true);
-      if (workflowRuntime) {
-        workFlowRuntimes[workflowId] = workflowRuntime;
-      }else{
-        console.error(`❌ Failed to get workflow runtime for ${workflowName} (${workflowId})`);
+  // Load only the used workflows
+  const workflowDataMap: { [workflowId: string]: WorkflowFile } = {};
+  const workFlowRuntimes: { [workflowId: string]: string } = {};
+  for (const [workflowName, workflowId] of Object.entries(usedWorkflows)) {
+    try {
+      const workflowData = await loadWorkflowFromFile(workflowId);
+      console.log("Workflow Data", workflowData);
+      if (workflowData) {
+        workflowDataMap[workflowId] = workflowData;
+        const workflowRuntime = await exportFlowRunner(
+          workflowData.canvasState.nodes,
+          workflowData.canvasState.connections,
+          true
+        );
+        if (workflowRuntime) {
+          workFlowRuntimes[workflowId] = workflowRuntime;
+        } else {
+          console.error(
+            `❌ Failed to get workflow runtime for ${workflowName} (${workflowId})`
+          );
+        }
       }
+    } catch (error) {
+      console.error(
+        `❌ Failed to load workflow ${workflowName} (${workflowId}):`,
+        error
+      );
     }
-  } catch (error) {
-    console.error(`❌ Failed to load workflow ${workflowName} (${workflowId}):`, error);
   }
-}
 
-let runtimeString = "";
-for (const workflowId of Object.keys(workFlowRuntimes)) {
-  runtimeString += `
+  let runtimeString = "";
+  for (const workflowId of Object.keys(workFlowRuntimes)) {
+    runtimeString += `
   "${workflowId}": async () => { ${workFlowRuntimes[workflowId]} },
   `;
-}
-
-
+  }
 
   // Generate the JavaScript code with self-executing functionality
   const jsCode = `/*
@@ -598,13 +601,16 @@ class WorkspaceRuntime {
         const executionTime = Date.now() - startTime;
         this.log("success", \`Step \${stepNumber} completed successfully\`);
         
+        const renderedResult = (typeof result === 'object'
+          ? JSON.stringify(result, null, 2)
+          : String(result));
         this.speak(\`✅ Step \${stepNumber} Result:\`, {
           taskName: task.name,
           executorName: executorName,
           executorType: executorType,
           executionTime: executionTime + "ms",
-          result: result,
-          resultLength: result.length + " characters"
+          result: renderedResult,
+          resultLength: renderedResult.length + " characters"
         });
         
         results.push(new StepResult(stepNumber, task.name, executorName, true, result, executionTime));
@@ -739,7 +745,7 @@ if (isVerbose) {
 console.log("");
 
 // Auto-execute with a default prompt
-executeWorkspace(workspaceConfig, \`${prompt}\`, isVerbose)
+executeWorkspace(workspaceConfig, ${JSON.stringify(prompt)}, isVerbose)
   .then(results => {
     console.log("\\n🎉 Workspace execution completed!");
     console.log("📊 Execution Summary:");

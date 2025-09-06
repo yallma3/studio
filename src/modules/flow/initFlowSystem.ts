@@ -22,6 +22,8 @@ import { register as registerJoinNode } from "./types/Nodes/JoinTextNode.ts";
 import {register as  registerOpenAiNode} from "./types/Nodes/OpenAiChatNode.ts"
 import {register as registerGeminiNode} from "./types/Nodes/GeminiChatNode.ts"
 import {register as registerOpenRouterNode} from "./types/Nodes/OpenRouterChatNode.ts"
+import{ register as registerArxivNewPapersNode} from "./types/Nodes/ArXivScraperNode.ts";
+
 import { nodeRegistry } from "./types/NodeRegistry.ts";
 import {register as registerScraperNode} from "./types/Nodes/ArxivScraperNode.ts"
 import {register as registerExtractorNode} from "./types/Nodes/PdfExtractorNode.ts"
@@ -47,6 +49,8 @@ export async function initFlowSystem() {
   registerScraperNode(nodeRegistry);
   registerDownloaderNode(nodeRegistry);
   registerExtractorNode(nodeRegistry);
+  registerArxivNewPapersNode(nodeRegistry);
+
 }
 
 export async function loadModule(name: string) {

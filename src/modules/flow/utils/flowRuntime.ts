@@ -19,7 +19,11 @@ import { buildExecutionGraph } from "./socketUtils";
 export interface FlowExecutionOptions {
   onProgress?: (progress: number, total: number) => void;
   onNodeStart?: (nodeId: number, nodeTitle: string) => void;
-  onNodeComplete?: (nodeId: number, nodeTitle: string, result: NodeValue) => void;
+  onNodeComplete?: (
+    nodeId: number,
+    nodeTitle: string,
+    result: NodeValue
+  ) => void;
   onNodeError?: (nodeId: number, nodeTitle: string, error: string) => void;
   onComplete?: (results: FlowExecutionResult[]) => void;
   onError?: (error: string) => void;
@@ -65,10 +69,22 @@ export class FlowRuntimeImpl implements FlowRuntime {
     };
   }
 
+  toNodeValue(value: unknown): NodeValue {
+    return typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean" ||
+      Array.isArray(value) ||
+      (value && typeof value === "object")
+      ? (value as NodeValue)
+      : null;
+  }
+
   /**
    * Execute the flow with optional progress callbacks
    */
-  async execute(options: FlowExecutionOptions = {}): Promise<FlowExecutionResult[]> {
+  async execute(
+    options: FlowExecutionOptions = {}
+  ): Promise<FlowExecutionResult[]> {
     if (this.status.isExecuting) {
       throw new Error("Flow is already executing");
     }
@@ -81,7 +97,7 @@ export class FlowRuntimeImpl implements FlowRuntime {
     try {
       // Create a promise-based cache to store calculated node results
       const nodeResultCache = new Map<number, Promise<NodeValue>>();
-      
+
       // Create a map to collect all node results during execution
       const allNodeResults = new Map<number, NodeValue>();
 
@@ -89,9 +105,9 @@ export class FlowRuntimeImpl implements FlowRuntime {
       const endNodes = this.findEndNodes();
 
       if (endNodes.length === 0) {
-        const error = "No end nodes found. Your flow needs at least one node with unused outputs.";
+        const error =
+          "No end nodes found. Your flow needs at least one node with unused outputs.";
         this.status.isExecuting = false;
-        options.onError?.(error);
         throw new Error(error);
       }
 
@@ -107,7 +123,8 @@ export class FlowRuntimeImpl implements FlowRuntime {
         if (nodeResultCache.size === 0) {
           // First node being executed, estimate total nodes
           const graph = buildExecutionGraph(this.nodes, this.connections);
-          const totalNodes = new Set(graph.flatMap(([from, to]) => [from, to])).size;
+          const totalNodes = new Set(graph.flatMap(([from, to]) => [from, to]))
+            .size;
           this.status.total = totalNodes;
           options.onProgress?.(this.status.progress, this.status.total);
         }
@@ -116,32 +133,33 @@ export class FlowRuntimeImpl implements FlowRuntime {
         value
           .then((result) => {
             if (this.isCancelled) return;
-            
+
             completedNodes++;
             this.status.progress = completedNodes;
             options.onProgress?.(this.status.progress, this.status.total);
 
             // Store the result for this node
             allNodeResults.set(key, result);
-            
+
             // Find the node for callback
-            const node = this.nodes.find(n => n.id === key);
+            const node = this.nodes.find((n) => n.id === key);
             if (node) {
               options.onNodeComplete?.(node.id, node.title, result);
             }
           })
           .catch((error) => {
             if (this.isCancelled) return;
-            
+
             // Still count failed nodes in progress
             completedNodes++;
             this.status.progress = completedNodes;
             options.onProgress?.(this.status.progress, this.status.total);
-            
+
             // Find the node for error callback
-            const node = this.nodes.find(n => n.id === key);
+            const node = this.nodes.find((n) => n.id === key);
             if (node) {
-              const errorMessage = error instanceof Error ? error.message : String(error);
+              const errorMessage =
+                error instanceof Error ? error.message : String(error);
               options.onNodeError?.(node.id, node.title, errorMessage);
             }
           });
@@ -158,27 +176,33 @@ export class FlowRuntimeImpl implements FlowRuntime {
               nodeId: node.id,
               title: node.title,
               error: "Execution cancelled",
+              result: this.toNodeValue(null),
+              executionTime: 0,
             };
           }
 
           const startTime = Date.now();
-          
+
           try {
             options.onNodeStart?.(node.id, node.title);
-
+            // Create a cancellation promise
+            const cancellationPromise = new Promise((_, reject) => {
+              if (this.isCancelled) {
+                reject(new Error("Execution cancelled"));
+              }
+            });
             // Execute the node and its dependencies
-            const result = await executeNode(
-              node,
-              this.nodes,
-              this.connections,
-              nodeResultCache
-            );
+            const result_cast = await Promise.race([
+              executeNode(node, this.nodes, this.connections, nodeResultCache),
+              cancellationPromise,
+            ]);
 
             const executionTime = Date.now() - startTime;
-
+            const result = this.toNodeValue(result_cast);
             return {
               nodeId: node.id,
               title: node.title,
+              error: "",
               result,
               executionTime,
             };
@@ -190,6 +214,7 @@ export class FlowRuntimeImpl implements FlowRuntime {
               nodeId: node.id,
               title: node.title,
               error: error instanceof Error ? error.message : String(error),
+              result: this.toNodeValue(null),
               executionTime,
             };
           }
@@ -201,12 +226,7 @@ export class FlowRuntimeImpl implements FlowRuntime {
         // If this node was executed and has a result
         if (allNodeResults.has(node.id)) {
           const result = allNodeResults.get(node.id);
-          const processedResult =
-            result === null
-              ? undefined
-              : typeof result === "boolean" && result === false
-              ? "false" // Convert false to string 'false'
-              : result;
+          const processedResult = result === undefined ? null : result;
 
           return {
             ...node,
@@ -239,13 +259,13 @@ export class FlowRuntimeImpl implements FlowRuntime {
 
       options.onComplete?.(results);
       return results;
-
     } catch (error) {
       this.status.isExecuting = false;
       this.status.progress = 0;
       this.status.total = 0;
 
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       options.onError?.(errorMessage);
       throw error;
     }
@@ -291,7 +311,10 @@ export class FlowRuntimeImpl implements FlowRuntime {
 /**
  * Create a flow runtime instance
  */
-export function createFlowRuntime(nodes: NodeType[], connections: Connection[]): FlowRuntime {
+export function createFlowRuntime(
+  nodes: NodeType[],
+  connections: Connection[]
+): FlowRuntime {
   return new FlowRuntimeImpl(nodes, connections);
 }
 
@@ -299,8 +322,8 @@ export function createFlowRuntime(nodes: NodeType[], connections: Connection[]):
  * Execute a flow with a simple interface
  */
 export async function executeFlow(
-  nodes: NodeType[], 
-  connections: Connection[], 
+  nodes: NodeType[],
+  connections: Connection[],
   options?: FlowExecutionOptions
 ): Promise<FlowExecutionResult[]> {
   const runtime = createFlowRuntime(nodes, connections);
@@ -311,8 +334,8 @@ export async function executeFlow(
  * Execute a flow and return updated nodes with results
  */
 export async function executeFlowWithResults(
-  nodes: NodeType[], 
-  connections: Connection[], 
+  nodes: NodeType[],
+  connections: Connection[],
   options?: FlowExecutionOptions
 ): Promise<{ results: FlowExecutionResult[]; updatedNodes: NodeType[] }> {
   const runtime = createFlowRuntime(nodes, connections);
@@ -321,4 +344,4 @@ export async function executeFlowWithResults(
     results,
     updatedNodes: runtime.getNodes(),
   };
-} 
+}

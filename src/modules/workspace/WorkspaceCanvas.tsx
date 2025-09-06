@@ -106,7 +106,12 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   const [events, setEvents] = useState<ConsoleEvent[]>(initEvents);
 
   const addEvent = (newEvent: ConsoleEvent) => {
-    setEvents((prev) => [...prev, newEvent]);
+
+    try {
+      setEvents((prev) => [...prev, newEvent]);
+    } catch (error) {
+      console.error("Failed to add console event:", error);
+    }
   };
 
   // Maintain workspace data in state

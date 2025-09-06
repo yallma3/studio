@@ -92,7 +92,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
     capabilities: "",
     tools: [],
     llmId: workspaceData.mainLLM || "", // Default to workspace's main LLM
-    apiKey: ""
+    apiKey: "",
   });
 
   // Generate a simple ID based on timestamp and random number
@@ -119,7 +119,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
           capabilities: agentToEdit.capabilities,
           tools: [...agentToEdit.tools],
           llmId: agentToEdit.llmId,
-          apiKey: agentToEdit.apiKey
+          apiKey: agentToEdit.apiKey,
         });
       }
     } else {
@@ -132,7 +132,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         capabilities: "",
         tools: [],
         llmId: workspaceData.mainLLM || "",
-        apiKey: ""
+        apiKey: "",
       });
     }
 
@@ -186,7 +186,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         capabilities: agentForm.capabilities,
         tools: agentForm.tools,
         llmId: agentForm.llmId,
-        apiKey: agentForm.apiKey
+        apiKey: agentForm.apiKey,
       };
 
       updatedAgents = [...agents, newAgent];
@@ -551,20 +551,23 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                       )}
                 </p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   {t("workspaces.agentApiKey", "Api Key")}
                 </label>
-                
+
                 <input
-                  type="text"
+                  type="password"
                   className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
                   value={agentForm.apiKey}
                   onChange={(e) =>
-                    setAgentForm({ ...agentForm, role: e.target.value })
+                    setAgentForm({ ...agentForm, apiKey: e.target.value })
                   }
-                  placeholder={t("workspaces.enterRole", "Enter agent Api Key")}
+                  placeholder={t(
+                    "workspaces.enterApiKey",
+                    "Enter agent Api Key"
+                  )}
                 />
               </div>
             </div>
