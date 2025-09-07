@@ -19,16 +19,16 @@ import { register as registerTextNode } from "./types/Nodes/textTemplateNode";
 import { register as registerGroqChatNode } from "./types/Nodes/GroqChatNode.ts";
 import { register as registerClaudeChatNode } from "./types/Nodes/ClaudeChatNode.ts";
 import { register as registerJoinNode } from "./types/Nodes/JoinTextNode.ts";
-import {register as  registerOpenAiNode} from "./types/Nodes/OpenAiChatNode.ts"
-import {register as registerGeminiNode} from "./types/Nodes/GeminiChatNode.ts"
-import {register as registerOpenRouterNode} from "./types/Nodes/OpenRouterChatNode.ts"
-import{ register as registerArxivNewPapersNode} from "./types/Nodes/ArXivScraperNode.ts";
+import { register as registerMcpClientNode } from "./types/Nodes/McpClientNode.ts";
+import { register as registerOpenAiNode } from "./types/Nodes/OpenAiChatNode.ts";
+import { register as registerGeminiNode } from "./types/Nodes/GeminiChatNode.ts";
+import { register as registerOpenRouterNode } from "./types/Nodes/OpenRouterChatNode.ts";
+import { register as registerArxivNewPapersNode } from "./types/Nodes/ArXivScraperNode.ts";
 
 import { nodeRegistry } from "./types/NodeRegistry.ts";
-import {register as registerScraperNode} from "./types/Nodes/ArxivScraperNode.ts"
-import {register as registerExtractorNode} from "./types/Nodes/PdfExtractorNode.ts"
-import {register as registerDownloaderNode} from "./types/Nodes/DownloaderNode.ts"
-
+import { register as registerScraperNode } from "./types/Nodes/ArxivScraperNode.ts";
+import { register as registerExtractorNode } from "./types/Nodes/PdfExtractorNode.ts";
+import { register as registerDownloaderNode } from "./types/Nodes/DownloaderNode.ts";
 
 export async function initFlowSystem() {
   registerBuiltInNodes();
@@ -43,6 +43,7 @@ export async function initFlowSystem() {
   registerGroqChatNode(nodeRegistry);
   registerClaudeChatNode(nodeRegistry);
   registerJoinNode(nodeRegistry);
+  registerMcpClientNode(nodeRegistry);
   registerOpenAiNode(nodeRegistry);
   registerGeminiNode(nodeRegistry);
   registerOpenRouterNode(nodeRegistry);
@@ -50,7 +51,6 @@ export async function initFlowSystem() {
   registerDownloaderNode(nodeRegistry);
   registerExtractorNode(nodeRegistry);
   registerArxivNewPapersNode(nodeRegistry);
-
 }
 
 export async function loadModule(name: string) {
