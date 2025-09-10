@@ -23,7 +23,8 @@ import { register as registerMcpClientNode } from "./types/Nodes/McpClientNode.t
 import { register as registerOpenAiNode } from "./types/Nodes/OpenAiChatNode.ts";
 import { register as registerGeminiNode } from "./types/Nodes/GeminiChatNode.ts";
 import { register as registerOpenRouterNode } from "./types/Nodes/OpenRouterChatNode.ts";
-import { register as registerArxivNewPapersNode } from "./types/Nodes/ArXivScraperNode.ts";
+import { register as registerChunkingNode } from "./types/Nodes/ChunkingNode.ts";
+import { register as registerEmbeddingNode } from "./types/Nodes/EmbeddingNode.ts";
 
 import { nodeRegistry } from "./types/NodeRegistry.ts";
 import { register as registerScraperNode } from "./types/Nodes/ArxivScraperNode.ts";
@@ -50,7 +51,8 @@ export async function initFlowSystem() {
   registerScraperNode(nodeRegistry);
   registerDownloaderNode(nodeRegistry);
   registerExtractorNode(nodeRegistry);
-  registerArxivNewPapersNode(nodeRegistry);
+  registerChunkingNode(nodeRegistry);
+  registerEmbeddingNode(nodeRegistry);
 }
 
 export async function loadModule(name: string) {
