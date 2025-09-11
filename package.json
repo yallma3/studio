@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tauri dev",
+    "dev": "vite && vite_pg=$!; echo $vite_pg; tauri dev ; kill $vite_pg",
     "start": "vite",
     "preview": "vite preview",
     "build": "tsc -b && vite build",

@@ -38,6 +38,17 @@
           "url": "https://console.groq.com/keys"
         }
       ]
+    },
+    {
+      "identifier": "opener:default",
+      "description": "Manage yaLLMa3API process lifecycle",
+      "commands": {
+        "allow": [
+          "spawn_yallma3api",
+          "kill_yallma3api",
+          "get_yallma3api_status"
+        ]
+      }
     }
   ]
 }

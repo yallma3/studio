@@ -23,6 +23,7 @@ import {
 import { WorkspaceData } from "../modules/workspace/types/Types.ts";
 
 import { initFlowSystem } from "../modules/flow/initFlowSystem.ts";
+import { sidecarClient } from "../modules/api/SidecarClient";
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<"home" | "canvas">("home");
@@ -36,6 +37,9 @@ const App: React.FC = () => {
     initializeDefaultDirectories();
     document.documentElement.dir = i18n.language === "ar" ? "rtl" : "ltr";
     document.documentElement.lang = i18n.language;
+
+    // Initialize sidecar client connection
+    sidecarClient.connect();
   }, [i18n.language]);
 
   // Handle creating a new graph, agent, or workspace

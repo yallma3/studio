@@ -81,6 +81,48 @@ npm install
 npm run dev
 ```
 
+## Logging
+
+yaLLMa3 Studio maintains log files to help with troubleshooting and monitoring. The application creates three types of log files:
+
+- **yaLLMa3API.log**: General application logs and API activity
+- **error.log**: Error messages and exceptions
+- **http.log**: HTTP request/response logs
+
+### Log File Locations
+
+Log files are stored in your application's data directory:
+
+#### Linux
+```
+~/.local/share/org.yallma3.studio/logs/
+```
+
+#### macOS
+```
+~/Library/Application Support/org.yallma3.studio/logs/
+```
+
+#### Windows
+```
+C:\Users\[YourUsername]\AppData\Roaming\org.yallma3.studio\logs\
+```
+
+### Log Rotation
+
+Log files are automatically rotated to prevent unlimited growth:
+- **yaLLMa3API.log**: 10MB max, keeps 5 rotated files
+- **error.log**: 5MB max, keeps 10 rotated files
+- **http.log**: 20MB max, keeps 3 rotated files
+
+### Troubleshooting
+
+If you encounter issues:
+1. Check the log files in the locations above
+2. Look for error messages in `error.log`
+3. Check `yaLLMa3API.log` for general application activity
+4. HTTP requests and responses are logged in `http.log`
+
 ## modules
 
 - **Projects**: Create and manage AI development projects

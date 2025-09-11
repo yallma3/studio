@@ -34,3 +34,6 @@ dist
 node_modules/
 .env
 
+**/*/http.log
+**/*/yaLLMa3API.log
+**/*/error.log
