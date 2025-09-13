@@ -133,7 +133,7 @@ export function createNMcpClientNode(
             throw new Error("StreambaleHttp transport not yet implemented");
 
           
-        } else if( transportType == "SSE") {
+        } else if( transportType == "SSE" || transportType == "sse") {
 
           client = new Client({
             name: "streamable-http-client",
