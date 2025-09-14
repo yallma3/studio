@@ -1,4 +1,4 @@
-use std::process::{Child, Command};
+use std::process::Child;
 use std::sync::Mutex;
 use tauri::State;
 use tauri::Manager;
@@ -28,8 +28,8 @@ pub async fn spawn_yallma3api(
     }
 
     // Get the path to the yaLLMa3API executable
-    let sidecar_path = if cfg!(debug_assertions) {
-        // In development, yaLLMa3API is in the project root (parent of src-tauri)
+    let executable_path = if cfg!(debug_assertions) {
+        // In development, use node with the script
         std::env::current_dir()
             .map_err(|e| format!("Failed to get current directory: {}", e))?
             .parent()
@@ -37,48 +37,27 @@ pub async fn spawn_yallma3api(
             .join("yaLLMa3API")
             .join("index.js")
     } else {
-        // In production, try multiple possible locations
-        let mut sidecar_path = None;
+        // In production, find the bundled executable in resources
+        let resource_dir = app_handle
+            .path()
+            .resource_dir()
+            .map_err(|e| format!("Failed to get resource directory: {}", e))?;
 
-        // First, try the resource directory
-        if let Ok(resource_path) = app_handle.path().resource_dir() {
-            let resource_sidecar = resource_path.join("yaLLMa3API").join("index.js");
-            println!("Checking resource path: {:?}", resource_sidecar);
-            if resource_sidecar.exists() {
-                println!("Found yaLLMa3API in resource directory");
-                sidecar_path = Some(resource_sidecar);
-            } else {
-                println!("yaLLMa3API not found in resource directory");
-            }
+        #[cfg(target_os = "linux")]
+        {
+            resource_dir.join("bin").join("index-x86_64-unknown-linux-gnu")
         }
-
-        // If resource directory doesn't work, try AppImage path
-        if sidecar_path.is_none() {
-            let appimage_path = std::path::PathBuf::from("/usr/lib/yaLLMa3 Studio/_up_/yaLLMa3API/index.js");
-            println!("Checking AppImage path: {:?}", appimage_path);
-            if appimage_path.exists() {
-                println!("Found yaLLMa3API in AppImage directory");
-                sidecar_path = Some(appimage_path);
-            } else {
-                println!("yaLLMa3API not found in AppImage directory");
-            }
+        #[cfg(target_os = "windows")]
+        {
+            resource_dir.join("bin").join("index-x86_64-pc-windows-msvc.exe")
         }
-
-        // If still not found, try to get resource directory as fallback
-        if sidecar_path.is_none() {
-            if let Ok(resource_path) = app_handle.path().resource_dir() {
-                sidecar_path = Some(resource_path.join("yaLLMa3API").join("index.js"));
-            }
+        #[cfg(target_os = "macos")]
+        {
+            resource_dir.join("bin").join("index-x86_64-apple-darwin")
         }
-
-        sidecar_path.ok_or_else(|| "Could not find yaLLMa3API/index.js in any expected location".to_string())?
     };
-    println!("Starting yaLLMa3API from path: {:?}", sidecar_path);
 
-    // Check if Node.js is available
-    if let Err(_) = Command::new("node").arg("--version").output() {
-        return Err("Node.js is not available in PATH".to_string());
-    }
+    println!("Using executable: {:?}", executable_path);
 
     // Get app data directory for logs
     let app_data_dir = app_handle
@@ -86,12 +65,21 @@ pub async fn spawn_yallma3api(
         .app_data_dir()
         .map_err(|e| format!("Failed to get app data directory: {}", e))?;
 
-    // Spawn the Node.js process with environment variables
-    let child = Command::new("node")
-        .arg(sidecar_path)
-        .env("YA_API_LOG_DIR", app_data_dir.to_string_lossy().to_string())
-        .spawn()
-        .map_err(|e| format!("Failed to spawn yaLLMa3API: {}", e))?;
+    // Spawn the process
+    let child = if cfg!(debug_assertions) {
+        // In development, spawn node with the script
+        std::process::Command::new("node")
+            .arg(&executable_path)
+            .env("YA_API_LOG_DIR", app_data_dir.to_string_lossy().to_string())
+            .spawn()
+            .map_err(|e| format!("Failed to spawn yaLLMa3API: {}", e))?
+    } else {
+        // In production, spawn the bundled executable directly
+        std::process::Command::new(&executable_path)
+            .env("YA_API_LOG_DIR", app_data_dir.to_string_lossy().to_string())
+            .spawn()
+            .map_err(|e| format!("Failed to spawn yaLLMa3API: {}", e))?
+    };
 
     *process_guard = Some(child);
 

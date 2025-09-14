@@ -15,12 +15,14 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "supertest": "^6.3.3"
+    "supertest": "^6.3.3",
+    "pkg": "^5.8.1"
   },
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
-    "start": "node index.js"
+    "start": "node index.js",
+    "pkg": "pkg index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path ../bin/ --compress GZip"
   },
   "jest": {
     "testEnvironment": "node",
