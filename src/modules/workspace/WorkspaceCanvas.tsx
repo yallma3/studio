@@ -27,6 +27,7 @@ import {
   workspaceFileExists,
   saveWorkspaceState,
 } from "./utils/storageUtils";
+import { sidecarClient, SidecarCommand } from "../api/SidecarClient";
 import { useTranslation } from "react-i18next";
 
 import { WorkspaceData, ConsoleEvent } from "./types/Types";
@@ -138,6 +139,10 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Sidecar connection status
+  const [sidecarStatus, setSidecarStatus] = useState<string>('disconnected');
+
+
   // Check if workspace is imported (doesn't exist locally) and set unsaved flag
   useEffect(() => {
     const checkWorkspaceExists = async () => {
@@ -156,6 +161,34 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
     checkWorkspaceExists();
   }, [workspaceData]);
+
+    // Set up sidecar client command listener and status listener
+    useEffect(() => {
+      const handleSidecarCommand = (command: SidecarCommand) => {
+        if (command.type === 'run_workspace') {
+          // Check if the command is for this workspace or if no specific workspace is specified
+          if (!command.workspaceId || command.workspaceId === workspaceData.id) {
+            console.log('Executing workspace via sidecar command:', command);
+            handleRunWorkspace();
+          }
+        }
+      };
+  
+      const handleStatusChange = (status: string) => {
+        setSidecarStatus(status);
+      };
+  
+      sidecarClient.onCommand(handleSidecarCommand);
+      sidecarClient.onStatusChange(handleStatusChange);
+  
+      // Set initial status
+      setSidecarStatus(sidecarClient.getConnectionStatus());
+  
+      return () => {
+        // Note: We don't remove the listeners as sidecarClient is a singleton
+        // and we want it to persist across component unmounts
+      };
+    }, [workspaceData.id]);
 
   // Handle clicks outside dropdown to close it
   useEffect(() => {
@@ -415,7 +448,22 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               </h1>
             </div>
           </div>
+          
           <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+              <div
+                 className={`w-2 h-2 rounded-full ${
+                   sidecarStatus === 'connected'
+                     ? 'bg-green-500'
+                     : sidecarStatus === 'connecting'
+                     ? 'bg-yellow-500'
+                     : 'bg-red-500'
+                 }`}
+               />
+              <span className="text-zinc-400 text-xs">
+                 API {sidecarStatus === 'connected' ? 'Connected' : sidecarStatus === 'connecting' ? 'Connecting' : 'Disconnected'}
+              </span>
+          </div>
             {hasUnsavedChanges && (
               <div className="text-zinc-500 text-sm font-medium">
                 {t("workspaces.unsavedChanges", "Unsaved changes")}

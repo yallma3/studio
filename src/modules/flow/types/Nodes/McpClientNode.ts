@@ -18,8 +18,7 @@ import {
   NodeExecutionContext,
 } from "../NodeTypes";
 import { NodeRegistry } from "../NodeRegistry";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { McpHttpClient, McpStdioClient } from "../../../api/McpClient";
 
 export interface McpClientNode extends BaseNode {
   nodeType: string;
@@ -64,81 +63,70 @@ export function createNMcpClientNode(
 
       try {
         // Extract MCP server configuration from config parameters
-        let mcpServerUrl = "";
-        let transportType = "sse"; // Default transport type
+        let url = "";
+        let transportType = "http"; // Default transport type
         
         if (n.getConfigParameter) {
-          mcpServerUrl = (n.getConfigParameter("MCP Server URL")?.paramValue as string) || "";
+          url = (n.getConfigParameter("MCP Server URL")?.paramValue as string) || "";
           transportType = (n.getConfigParameter("Transport Type")?.paramValue as string) || "sse";
         }
 
-        if (!mcpServerUrl) {
+        if (!url) {
           throw new Error("MCP Server URL not configured");
         }
 
         console.log(`Executing MCP Client node ${n.id} with input: "${inputValue}"`);
-        console.log(`Connecting to MCP server at: ${mcpServerUrl} using ${transportType} transport`);
+        console.log(`Connecting to MCP server at: ${url} using ${transportType} transport`);
 
-        // Create MCP client based on transport type
-        let client: Client;
-        if (transportType === "stdio") {
-          // For stdio transport, we would need to spawn a process
-          // This is a simplified implementation
-          throw new Error("Stdio transport not yet implemented");
+        let client = null
+                
+
+        if (transportType === "Stdio") {
+          
+          const serverConfig = {
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-puppeteer"]
+          }
+          console.log("Creating STDIO Client")
+          client = new McpStdioClient(serverConfig)
+          console.log("STDIO Client Created")
+
+        } else if (transportType === "StreamableHttp") {     
+          client = new McpHttpClient(url)
         } else {
-          // Default to SSE transport
-          const transport = new SSEClientTransport(new URL(mcpServerUrl));
-          client = new Client({
-            name: "yaLLMa3 MCP Client",
-            version: "1.0.0"
-          });
-          await client.connect(transport);
+          throw new Error("Unsupported Transport Type:" + transportType)
         }
 
-        // Connect to the MCP server
-        // Connection is already established in the constructor
 
-        // Make a request to the MCP server using the appropriate method
-        // For now, we'll use callTool as an example, but this should be configurable
-        const result = await client.callTool({
-          name: "sampling/createMessage",
-          arguments: {
-            messages: [
-              {
-                role: "user",
-                content: {
-                  type: "text",
-                  text: inputValue || ""
-                }
-              }
-            ]
-          }
-        });
 
-        // Close the connection
-        await client.close();
+        if (client) {
+          console.log("listing capabilities")
+          const tools = await client.listTools()
+
+          console.log("Tools:", tools);
+
+          const formattedResponse = JSON.stringify(tools, null, 2);
+
+          
+
+          console.log(
+            `MCP Client node ${n.id} received response:`,
+            formattedResponse
+          );
+  
+
+          return {
+            [n.id * 100 + 2]: formattedResponse,
+          };
+        } else {
+          return "Failed to create Client"
+        }
 
         // Process the response
-        let formattedResponse = "";
-        if (result && typeof result === "object" && "content" in result) {
-          const content = result.content as Array<{ type: string; text?: string }>;
-          formattedResponse = content
-            .filter(item => item.type === "text" && item.text)
-            .map(item => item.text)
-            .join("\n");
-        } else {
-          formattedResponse = JSON.stringify(result, null, 2);
-        }
+        
+       
 
-        console.log(
-          `MCP Client node ${n.id} received response:`,
-          formattedResponse.substring(0, 100) + "..."
-        );
-
-        // Return an object with the output value
-        return {
-          [n.id * 100 + 2]: formattedResponse,
-        };
+       
       } catch (error) {
         console.error("Error in MCP Client node:", error);
         // Return error in the response output
@@ -176,6 +164,7 @@ export function createNMcpClientNode(
         UIConfigurable: true,
         sourceList: [
           { key: "sse", label: "SSE" },
+          { key: "http", label: "StreamableHttp" },
           { key: "stdio", label: "Stdio" }
         ],
         description: "Transport mechanism to use for communication",
