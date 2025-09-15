@@ -18,10 +18,7 @@ import {
   NodeExecutionContext,
 } from "../NodeTypes";
 import { NodeRegistry } from "../NodeRegistry";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-// import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-// import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { McpHttpClient, McpStdioClient } from "../../../api/McpClient";
 
 export interface McpClientNode extends BaseNode {
   nodeType: string;
@@ -81,75 +78,22 @@ export function createNMcpClientNode(
         console.log(`Executing MCP Client node ${n.id} with input: "${inputValue}"`);
         console.log(`Connecting to MCP server at: ${url} using ${transportType} transport`);
 
-        const mcpServerUrl = new URL(url);
-
-        // Create MCP client based on transport type
-        let client: Client|undefined = undefined
-
+        let client = null
+                
 
         if (transportType === "Stdio") {
-          // For stdio transport, we would need to spawn a process
-          // Browser Limitation: Browsers can't execute system commands or spawn processes
-
-
-          // const transport = new StdioClientTransport({
-          //   command: "npx",
-          //   args: [
-          //         "-y",
-          //         "@modelcontextprotocol/server-puppeteer"
-          //       ]
-          // });
-
-          // client = new Client(
-          //   {
-          //     name: "example-client",
-          //     version: "1.0.0"
-          //   }
-          // );
           
-          // await client.connect(transport);
-
-          throw new Error("Stdio transport not yet implemented");
+          const serverConfig = {
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-puppeteer"]
+          }
+          console.log("Creating STDIO Client")
+          client = new McpStdioClient(serverConfig)
+          console.log("STDIO Client Created")
 
         } else if (transportType === "StreamableHttp") {     
-          
-          // Browser Limitation Browsers do not allow full duplex streaming POST connections (they buffer, enforce CORS, etc).
-          // That breaks StreamableHttp, because the handshake relies on keeping a stream open.
-          
-            // client = new Client({
-            //   name: "streamable-http-client",
-            //   version: "1.0.0",
-            // });
-
-            // // Pass string or URL directly — don’t double wrap
-            // const transport = new StreamableHTTPClientTransport(mcpServerUrl);
-
-            // console.log("Connecting...");
-            
-            // await client.connect(transport);
-
-            // console.log("✅ Connected using Streamable HTTP transport");
-
-            throw new Error("StreambaleHttp transport not yet implemented");
-
-          
-        } else if( transportType == "SSE" || transportType == "sse") {
-
-          client = new Client({
-            name: "streamable-http-client",
-            version: "1.0.0",
-          });
-
-          const transport = new SSEClientTransport(mcpServerUrl)
-
-          console.log("Connecting...");
-          
-          await client.connect(transport);
-
-          console.log("✅ Connected using Streamable SSE transport");
-         
+          client = new McpHttpClient(url)
         } else {
-
           throw new Error("Unsupported Transport Type:" + transportType)
         }
 
@@ -170,10 +114,6 @@ export function createNMcpClientNode(
             formattedResponse
           );
   
-          // Return an object with the output value
-         
-        // Close the connection
-          await client.close();
 
           return {
             [n.id * 100 + 2]: formattedResponse,
