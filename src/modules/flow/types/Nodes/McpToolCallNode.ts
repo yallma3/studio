@@ -18,23 +18,23 @@ import {
   NodeExecutionContext,
 } from "../NodeTypes";
 import { NodeRegistry } from "../NodeRegistry";
-import { McpHttpClient, McpStdioClient } from "../../../api/McpClient";
+import { McpHttpClient, McpStdioClient, ToolCall } from "../../../api/McpClient";
 
-export interface McpClientNode extends BaseNode {
+export interface McpToolCallNode extends BaseNode {
   nodeType: string;
   nodeValue?: NodeValue;
   process: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
 }
 
-export function createNMcpClientNode(
+export function createNMcpToolCallNode(
   id: number,
   type: { x: number; y: number }
-): McpClientNode {
+): McpToolCallNode {
   return {
     id,
-    title: "MCP Client",
+    title: "MCP Tool Call",
     nodeValue: "",
-    nodeType: "McpClient",
+    nodeType: "McpToolCall",
     sockets: [
       {
         id: id * 100 + 1,
@@ -49,7 +49,7 @@ export function createNMcpClientNode(
         type: "output",
         nodeId: id,
         dataType: "string",
-      },
+      }
     ],
     x: type.x,
     y: type.y,
@@ -58,40 +58,54 @@ export function createNMcpClientNode(
     selected: false,
     processing: false,
     process: async ({ node, getInputValue }) => {
-      const n = node as McpClientNode;
+      const n = node as McpToolCallNode;
       const inputValue = await getInputValue(n.id * 100 + 1);
 
       try {
         // Extract MCP server configuration from config parameters
         let url = "";
-        let transportType = "http"; // Default transport type
+        let command = ""
+        let args = ""
+        let transportType = "Http"; // Default transport type
+
+        let tool = ""
+        let input = ""
         
         if (n.getConfigParameter) {
           url = (n.getConfigParameter("MCP Server URL")?.paramValue as string) || "";
-          transportType = (n.getConfigParameter("Transport Type")?.paramValue as string) || "sse";
+          command = (n.getConfigParameter("Command")?.paramValue as string) || "";
+          args = (n.getConfigParameter("Args")?.paramValue as string) || "";
+          transportType = (n.getConfigParameter("Transport Type")?.paramValue as string) || "Http";
+
+          tool = (n.getConfigParameter("Tool")?.paramValue as string) || "";
+          input = (n.getConfigParameter("Input")?.paramValue as string) || "";
         }
 
-        if (!url) {
+        if (!url && transportType == "Http") {
           throw new Error("MCP Server URL not configured");
         }
 
-        console.log(`Executing MCP Client node ${n.id} with input: "${inputValue}"`);
+        console.log(`Executing MCP Discovery node ${n.id} with input: "${inputValue}"`);
         console.log(`Connecting to MCP server at: ${url} using ${transportType} transport`);
 
         let client = null
                 
 
         if (transportType === "Stdio") {
-          
+          if(!command){
+            throw "Command Required"
+          }
+          const argsArray = args ? args.split(" ") : [];
+          console.log(argsArray)
           const serverConfig = {
-            command: "npx",
-            args: ["-y", "@modelcontextprotocol/server-puppeteer"]
+            command: command,
+            args: argsArray
           }
           console.log("Creating STDIO Client")
           client = new McpStdioClient(serverConfig)
           console.log("STDIO Client Created")
 
-        } else if (transportType === "StreamableHttp") {     
+        } else if (transportType === "Http") {     
           client = new McpHttpClient(url)
         } else {
           throw new Error("Unsupported Transport Type:" + transportType)
@@ -101,25 +115,36 @@ export function createNMcpClientNode(
 
         if (client) {
           console.log("listing capabilities")
-          const tools = await client.listTools()
+          // To convert the 'input' string into a Record<string, unknown>, expect the input string to be in JSON format.
+          // Suggestion: Write the input string as a JSON object, e.g. '{"param1": "value1", "param2": 42}'
+          // Example:
+          //   input = '{"param1": "value1", "param2": 42}'
+          //   const inputRecord: Record<string, unknown> = JSON.parse(input);
+          let inputRecord: Record<string, unknown> = {};
+          if (input && typeof input === "string") {
+            try {
+              console.log(input)
+              inputRecord = JSON.parse(input);
+            } catch (e) {
+              throw new Error("Input must be a valid JSON string representing an object, e.g. '{\"param1\": \"value1\"}'");
+            }
+          }
 
-          console.log("Tools:", tools);
+          const toolCall: ToolCall = {
+            tool: tool,
+            input: inputRecord
+          }
+          let result = await client.callTool(toolCall)
 
-          const formattedResponse = JSON.stringify(tools, null, 2);
-
-          
-
-          console.log(
-            `MCP Client node ${n.id} received response:`,
-            formattedResponse
-          );
+                    
+          result = JSON.stringify(result, null, 2);
   
 
           return {
-            [n.id * 100 + 2]: formattedResponse,
+            [n.id * 100 + 2]: result
           };
         } else {
-          return "Failed to create Client"
+          return "Failed to create Discovery"
         }
 
         // Process the response
@@ -128,7 +153,7 @@ export function createNMcpClientNode(
 
        
       } catch (error) {
-        console.error("Error in MCP Client node:", error);
+        console.error("Error in MCP Discovery node:", error);
         // Return error in the response output
         return {
           [n.id * 100 + 2]: `Error: ${
@@ -138,6 +163,19 @@ export function createNMcpClientNode(
       }
     },
     configParameters: [
+      {
+        parameterName: "Transport Type",
+        parameterType: "string",
+        defaultValue: "http",
+        valueSource: "UserInput",
+        UIConfigurable: true,
+        sourceList: [
+          { key: "http", label: "Http" },
+          { key: "stdio", label: "Stdio" }
+        ],
+        description: "Transport mechanism to use for communication",
+        isNodeBodyContent: false,
+      },
       {
         parameterName: "MCP Server URL",
         parameterType: "string",
@@ -157,19 +195,42 @@ export function createNMcpClientNode(
         isNodeBodyContent: false,
       },
       {
-        parameterName: "Transport Type",
+        parameterName: "Command",
         parameterType: "string",
-        defaultValue: "sse",
+        defaultValue: "",
         valueSource: "UserInput",
         UIConfigurable: true,
-        sourceList: [
-          { key: "sse", label: "SSE" },
-          { key: "http", label: "StreamableHttp" },
-          { key: "stdio", label: "Stdio" }
-        ],
-        description: "Transport mechanism to use for communication",
+        description: "Command to run MCP server",
         isNodeBodyContent: false,
       },
+      {
+        parameterName: "Args",
+        parameterType: "string",
+        defaultValue: "",
+        valueSource: "UserInput",
+        UIConfigurable: true,
+        description: "Command Args",
+        isNodeBodyContent: false,
+      },
+      {
+        parameterName: "Tool",
+        parameterType: "string",
+        defaultValue: "",
+        valueSource: "UserInput",
+        UIConfigurable: true,
+        description: "Tool to be called",
+        isNodeBodyContent: false,
+      },
+      {
+        parameterName: "Input",
+        parameterType: "string",
+        defaultValue: "",
+        valueSource: "UserInput",
+        UIConfigurable: true,
+        description: "Should be in the following format {\"param1\": \"value1\", \"param2\": 42}",
+        isNodeBodyContent: false,
+      },
+      
     ],
     getConfigParameters: function (): ConfigParameterType[] {
       return this.configParameters || [];
@@ -192,6 +253,6 @@ export function createNMcpClientNode(
 }
 
 export function register(nodeRegistry: NodeRegistry): void {
-  console.log("Registering MCP Client Node");
-  nodeRegistry.registerNodeType("McpClient", createNMcpClientNode);
+  console.log("Registering MCP ToolCall Node");
+  nodeRegistry.registerNodeType("McpToolCall", createNMcpToolCallNode);
 }
