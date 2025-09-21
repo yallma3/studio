@@ -202,7 +202,7 @@ export function createNMcpClientNode(
   };
 }
 
-export function register(nodeRegistry: NodeRegistry): void {
-  console.log("Registering MCP Client Node");
-  nodeRegistry.registerNodeType("McpClient", createNMcpClientNode);
+export function register(nodeRegistry: NodeRegistry, category: string = "MCP"): void {
+  console.log(`Registering MCP Client Node : ${category}`);
+  nodeRegistry.registerNodeType("McpClient", createNMcpClientNode, category);
 }

@@ -232,7 +232,7 @@ export function createNGroqChatNode(
   };
 }
 
-export function register(nodeRegistry: NodeRegistry): void {
-  console.log("Registering Groq Chat Node");
-  nodeRegistry.registerNodeType("GroqChat", createNGroqChatNode);
+export function register(nodeRegistry: NodeRegistry, category: string = "AI"): void {
+  console.log(`Registering Groq Chat Node under category: ${category}`);
+  nodeRegistry.registerNodeType("GroqChat", createNGroqChatNode, category);
 }

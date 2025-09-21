@@ -26,7 +26,7 @@ import {
     process: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
   }
 
-  export function register(nodeRegistry: NodeRegistry): void {
+  export function register(nodeRegistry: NodeRegistry, category: string ="Text"): void {
     function createJoinNode(id: number, type: Position): JoinNode {
       return {
         id,
@@ -132,7 +132,7 @@ import {
         },
       };
     }
-  
-    nodeRegistry.registerNodeType("Join", createJoinNode);
+    console.log(`Registering Join Node under category: ${category}`);
+    nodeRegistry.registerNodeType("Join", createJoinNode, category);
   }
   

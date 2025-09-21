@@ -30,6 +30,11 @@ import { nodeRegistry } from "./types/NodeRegistry.ts";
 import { register as registerScraperNode } from "./types/Nodes/ArxivScraperNode.ts";
 import { register as registerExtractorNode } from "./types/Nodes/PdfExtractorNode.ts";
 import { register as registerDownloaderNode } from "./types/Nodes/DownloaderNode.ts";
+import {register as registerIfElse} from "./types/Nodes/ifElseNode.ts"
+import {register as registerDelay} from "./types/Nodes/DelayNode.ts"
+import {register as registerHash} from "./types/Nodes/HashNode.ts"
+import{register as registerUrl} from "./types/Nodes/UrlRefrenceNode.ts"
+import {register as registerHttpCall} from "./types/Nodes/HttpCallNode.ts"
 
 export async function initFlowSystem() {
   registerBuiltInNodes();
@@ -37,22 +42,35 @@ export async function initFlowSystem() {
   // Additional initialization can go here
   console.log("Flow system initialized");
   console.log("registering custom node");
-  register(nodeRegistry);
+  //register(nodeRegistry);
 
-  registerMathNode(nodeRegistry);
-  registerTextNode(nodeRegistry);
-  registerGroqChatNode(nodeRegistry);
-  registerClaudeChatNode(nodeRegistry);
-  registerJoinNode(nodeRegistry);
-  registerMcpClientNode(nodeRegistry);
-  registerOpenAiNode(nodeRegistry);
-  registerGeminiNode(nodeRegistry);
-  registerOpenRouterNode(nodeRegistry);
-  registerScraperNode(nodeRegistry);
-  registerDownloaderNode(nodeRegistry);
-  registerExtractorNode(nodeRegistry);
-  registerChunkingNode(nodeRegistry);
-  registerEmbeddingNode(nodeRegistry);
+  registerMathNode(nodeRegistry, "Math");
+
+  registerTextNode(nodeRegistry, "Text");
+  registerJoinNode(nodeRegistry, "Text");
+  registerChunkingNode(nodeRegistry,"Text");
+
+  registerGroqChatNode(nodeRegistry, "AI");
+  registerClaudeChatNode(nodeRegistry, "AI");
+  registerOpenAiNode(nodeRegistry, "AI");
+  registerGeminiNode(nodeRegistry, "AI");
+  registerOpenRouterNode(nodeRegistry, "AI");
+
+  registerMcpClientNode(nodeRegistry, "MCP");
+
+  registerEmbeddingNode(nodeRegistry,"Input/Output");
+
+  registerIfElse(nodeRegistry,"Logic")
+  registerDelay(nodeRegistry,"Logic")
+ 
+  registerHash(nodeRegistry,"Data")
+  registerUrl(nodeRegistry,"Data")
+
+  registerHttpCall(nodeRegistry,"Advanced")
+
+  registerScraperNode(nodeRegistry, "Tools");
+  registerDownloaderNode(nodeRegistry, "Tools");
+  registerExtractorNode(nodeRegistry, "Tools");
 }
 
 export async function loadModule(name: string) {

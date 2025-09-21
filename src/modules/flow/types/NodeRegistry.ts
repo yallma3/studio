@@ -19,11 +19,20 @@ export type NodeFactory = (
   position: { x: number; y: number }
 ) => BaseNode;
 
-export class NodeRegistry {
-  private nodeFactories: Record<string, NodeFactory> = {};
+interface NodeDefinition {
+  factory: NodeFactory;
+  category: string;
+}
 
-  registerNodeType(name: string, factory: NodeFactory): void {
-    this.nodeFactories[name] = factory;
+export class NodeRegistry {
+  private nodeFactories: Record<string, NodeDefinition> = {};
+
+  registerNodeType(
+    name: string,
+    factory: NodeFactory,
+    category: string = "Other"
+  ): void {
+    this.nodeFactories[name] = { factory, category };
   }
 
   createNode(
@@ -31,20 +40,30 @@ export class NodeRegistry {
     id: number,
     position: { x: number; y: number }
   ): BaseNode | undefined {
-    const factory = this.nodeFactories[name];
-    if (!factory) {
+    const def = this.nodeFactories[name];
+    if (!def) {
       console.error(`Node type "${name}" not registered.`);
       return undefined;
     }
-    return factory(id, position);
+    return def.factory(id, position);
   }
 
   getFactory(nodeType: string): NodeFactory | undefined {
-    return this.nodeFactories[nodeType];
+    return this.nodeFactories[nodeType]?.factory;
   }
 
-  listNodeTypes(): string[] {
-    return Object.keys(this.nodeFactories);
+  listCategories(): string[] {
+    return [
+      ...new Set(
+        Object.values(this.nodeFactories).map((d) => d.category || "Other")
+      ),
+    ];
+  }
+
+  listNodeTypesByCategory(category: string): string[] {
+    return Object.keys(this.nodeFactories).filter(
+      (name) => this.nodeFactories[name].category === category
+    );
   }
 }
 

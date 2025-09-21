@@ -206,7 +206,7 @@ export function createNGeminiChatNode(
   };
 }
 
-export function register(nodeRegistry: NodeRegistry): void {
-  console.log("Registering Gemini Chat Node");
-  nodeRegistry.registerNodeType("GeminiChat", createNGeminiChatNode);
+export function register(nodeRegistry: NodeRegistry, category: string = "AI"): void {
+  console.log(`Registering Gemini Chat Node under category: ${category}`);
+  nodeRegistry.registerNodeType("GeminiChat", createNGeminiChatNode, category);
 }

@@ -203,8 +203,7 @@ import {
     };
   }
   
-  export function register(nodeRegistry: NodeRegistry): void {
-    console.log("Registering OpenAI Chat Node");
-    nodeRegistry.registerNodeType("OpenAIChat", createNOpenAIChatNode);
+  export function register(nodeRegistry: NodeRegistry, category: string = "AI"): void {
+    console.log(`Registering OpenAI Chat Node under category: ${category}`);
+    nodeRegistry.registerNodeType("OpenAIChat", createNOpenAIChatNode, category);
   }
-  

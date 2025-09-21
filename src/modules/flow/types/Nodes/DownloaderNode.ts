@@ -55,8 +55,8 @@ export function createPDFDownloaderNode(
     ],
     x: type.x,
     y: type.y,
-    width: 320,
-    height: 320,
+    width: 340,
+    height: 260,
     selected: false,
     processing: false,
     process: async ({ node, getInputValue }) => {
@@ -106,6 +106,22 @@ export function createPDFDownloaderNode(
 
       console.log(`🚀 Starting batch download of ${papers.length} PDFs...`);
 
+      async function initializeDownloadsDirectory(): Promise<string> {
+        try {
+          const appDir = await appDataDir();
+          const downloadsPath = await join(appDir, "Downloads", "PDFs");
+      
+          if (!(await exists(downloadsPath))) {
+            await mkdir(downloadsPath, { recursive: true });
+            console.log("Created Downloads/PDFs directory:", downloadsPath);
+          }
+      
+          return downloadsPath;
+        } catch (error) {
+          console.error("Error initializing downloads directory:", error);
+          throw error;
+        }
+      }
       const downloadsPath = await initializeDownloadsDirectory();
 
       const downloadResults = [];
@@ -146,30 +162,19 @@ export function createPDFDownloaderNode(
         }
 
         try {
-          let result_init = null;
           console.log(
             `📥 Downloading PDF ${i + 1}/${papers.length}: ${
               paper.title || paper.arxivId
             }`
           );
-          if (true)
-            result_init = await downloadPDFToDirectory(
-              pdfUrl,
-              targetDir,
-              paper,
-              maxSizeMB
-            );
-          // TODO: settle on which version to call
-          else
-            result_init = await downloadPDFToDirectoryWithDateOrg(
-              pdfUrl,
-              targetDir,
-              paper,
-              maxSizeMB,
-              true
-            );
+          
+          const result = await downloadPDFToDirectory(
+            pdfUrl,
+            targetDir,
+            paper,
+            maxSizeMB
+          );
 
-          const result = result_init;
           const successResult = {
             index: i,
             arxivId: paper.arxivId || `paper_${i}`,
@@ -224,15 +229,6 @@ export function createPDFDownloaderNode(
     },
     configParameters: [
       {
-        parameterName: "Auto Download",
-        parameterType: "boolean",
-        defaultValue: true,
-        valueSource: "UserInput",
-        UIConfigurable: true,
-        description: "Automatically download when data is provided",
-        isNodeBodyContent: false,
-      },
-      {
         parameterName: "Max File Size (MB)",
         parameterType: "number",
         defaultValue: 50,
@@ -259,15 +255,6 @@ export function createPDFDownloaderNode(
         description: "Custom subdirectory name (e.g., 'research/papers')",
         isNodeBodyContent: false,
       },
-      {
-        parameterName: "Organize by Date",
-        parameterType: "boolean",
-        defaultValue: true,
-        valueSource: "UserInput",
-        UIConfigurable: true,
-        description: "Create date-based subdirectories (YYYY-MM-DD)",
-        isNodeBodyContent: false,
-      },
     ],
     getConfigParameters: function (): ConfigParameterType[] {
       return this.configParameters || [];
@@ -286,23 +273,6 @@ export function createPDFDownloaderNode(
       }
     },
   };
-}
-
-async function initializeDownloadsDirectory(): Promise<string> {
-  try {
-    const appDir = await appDataDir();
-    const downloadsPath = await join(appDir, "Downloads", "PDFs");
-
-    if (!(await exists(downloadsPath))) {
-      await mkdir(downloadsPath, { recursive: true });
-      console.log("Created Downloads/PDFs directory:", downloadsPath);
-    }
-
-    return downloadsPath;
-  } catch (error) {
-    console.error("Error initializing downloads directory:", error);
-    throw error;
-  }
 }
 
 function generateCleanFilename(paper: any): string {
@@ -351,26 +321,81 @@ async function downloadPDFToDirectory(
   try {
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
 
-    const corsProxy = "https://api.allorigins.win/raw?url=";
-    const fetchUrl = url.startsWith("http")
-      ? `${corsProxy}${encodeURIComponent(url)}`
-      : url;
-
-    const response = await fetch(fetchUrl, {
-      method: "GET",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        Accept: "application/pdf,*/*",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to download PDF. HTTP ${response.status}: ${response.statusText}`
-      );
+    // Fix ArXiv URLs to use HTTPS
+    let processedUrl = url;
+    if (url.includes('arxiv.org') && url.startsWith('http://')) {
+      processedUrl = url.replace('http://', 'https://');
+      console.log(`🔄 Converting ArXiv URL to HTTPS: ${processedUrl}`);
     }
 
+    // Try multiple download strategies
+    const downloadStrategies = [
+      // Strategy 1: Direct download (works best for ArXiv)
+      async () => {
+        console.log("📡 Attempting direct download...");
+        const response = await fetch(processedUrl, {
+          method: "GET",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/pdf,*/*",
+          },
+        });
+        return response;
+      },
+      // Strategy 2: CORS proxy with allorigins
+      async () => {
+        console.log("📡 Attempting download via CORS proxy (allorigins)...");
+        const corsProxy = "https://api.allorigins.win/raw?url=";
+        const proxyUrl = `${corsProxy}${encodeURIComponent(processedUrl)}`;
+        const response = await fetch(proxyUrl, {
+          method: "GET",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/pdf,*/*",
+          },
+        });
+        return response;
+      },
+      // Strategy 3: Alternative CORS proxy
+      async () => {
+        console.log("📡 Attempting download via alternative CORS proxy...");
+        const corsProxy = "https://corsproxy.io/?";
+        const proxyUrl = `${corsProxy}${encodeURIComponent(processedUrl)}`;
+        const response = await fetch(proxyUrl, {
+          method: "GET",
+          headers: {
+            "Accept": "application/pdf,*/*",
+          },
+        });
+        return response;
+      }
+    ];
+
+    let response: Response | null = null;
+    let lastError: Error | null = null;
+
+    // Try each download strategy
+    for (const strategy of downloadStrategies) {
+      try {
+        response = await strategy();
+        if (response.ok) {
+          console.log("✅ Download successful with current strategy");
+          break;
+        } else {
+          console.log(`⚠️ Strategy failed with status: ${response.status}`);
+          lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      } catch (error) {
+        console.log(`⚠️ Strategy failed with error: ${error}`);
+        lastError = error as Error;
+      }
+    }
+
+    if (!response || !response.ok) {
+      throw lastError || new Error("All download strategies failed");
+    }
+
+    // Check content length before downloading
     const contentLength = response.headers.get("content-length");
     if (contentLength && parseInt(contentLength) > maxSizeBytes) {
       throw new Error(
@@ -380,7 +405,12 @@ async function downloadPDFToDirectory(
       );
     }
 
+    // Download the file
     const arrayBuffer = await response.arrayBuffer();
+
+    if (arrayBuffer.byteLength === 0) {
+      throw new Error("Downloaded file is empty");
+    }
 
     if (arrayBuffer.byteLength > maxSizeBytes) {
       throw new Error(
@@ -392,16 +422,20 @@ async function downloadPDFToDirectory(
 
     const uint8Array = new Uint8Array(arrayBuffer);
 
+    // Verify PDF header
     const pdfHeader = new TextDecoder().decode(uint8Array.slice(0, 4));
     if (!pdfHeader.startsWith("%PDF")) {
-      throw new Error(
-        "Downloaded file is not a valid PDF - missing PDF header"
-      );
+      // Sometimes the response might be HTML error page
+      const textStart = new TextDecoder().decode(uint8Array.slice(0, 100));
+      if (textStart.toLowerCase().includes("html")) {
+        throw new Error("Received HTML instead of PDF - likely an error page");
+      }
+      throw new Error("Downloaded file is not a valid PDF - missing PDF header");
     }
 
+    // Generate unique filename and save
     const baseFilename = generateCleanFilename(paper);
     const filename = await getUniqueFilename(targetDir, baseFilename);
-
     const filePath = await join(targetDir, filename);
 
     await writeFile(filePath, uint8Array);
@@ -413,69 +447,25 @@ async function downloadPDFToDirectory(
     };
   } catch (error) {
     console.error("PDF download failed:", error);
-
-    if (error instanceof Error && error.message.includes("fetch")) {
-      console.log("Trying direct download...");
-      try {
-        const directResponse = await fetch(url);
-        if (directResponse.ok) {
-          const arrayBuffer = await directResponse.arrayBuffer();
-
-          // Quick size check
-          if (arrayBuffer.byteLength > maxSizeMB * 1024 * 1024) {
-            throw new Error(
-              `PDF too large: ${Math.round(
-                arrayBuffer.byteLength / 1024 / 1024
-              )}MB`
-            );
-          }
-
-          const uint8Array = new Uint8Array(arrayBuffer);
-          const baseFilename = generateCleanFilename(paper);
-          const filename = await getUniqueFilename(targetDir, baseFilename);
-          const filePath = await join(targetDir, filename);
-
-          await writeFile(filePath, uint8Array);
-
-          return {
-            filePath: filePath,
-            fileSize: Math.round(arrayBuffer.byteLength / 1024),
-            filename: filename,
-          };
-        }
-      } catch (directError) {
-        console.error("Direct download also failed:", directError);
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+        throw new Error("Network error - check your internet connection or try again later");
+      }
+      if (error.message.includes("CORS")) {
+        throw new Error("CORS error - the server doesn't allow direct downloads");
+      }
+      if (error.message.includes("timeout")) {
+        throw new Error("Download timeout - the server took too long to respond");
       }
     }
-
+    
     throw error;
   }
 }
 
-// Enhanced version with date-based organization
-async function downloadPDFToDirectoryWithDateOrg(
-  url: string,
-  baseDir: string,
-  paper: any,
-  maxSizeMB: number = 50,
-  organizeByDate: boolean = true
-) {
-  let targetDir = baseDir;
-
-  if (organizeByDate) {
-    const today = new Date();
-    const dateFolder = today.toISOString().split("T")[0];
-    targetDir = await join(baseDir, dateFolder);
-
-    if (!(await exists(targetDir))) {
-      await mkdir(targetDir, { recursive: true });
-    }
-  }
-
-  return await downloadPDFToDirectory(url, targetDir, paper, maxSizeMB);
-}
-
-export function register(nodeRegistry: NodeRegistry): void {
-  console.log("Registering PDF Batch Downloader Node with Directory Storage");
-  nodeRegistry.registerNodeType("PDFDownloader", createPDFDownloaderNode);
+export function register(nodeRegistry: NodeRegistry, category: string = "Tools"): void {
+  console.log(`Registering PDF Batch Downloader Node under category: ${category}`);
+  nodeRegistry.registerNodeType("PDFDownloader", createPDFDownloaderNode, category);
 }

@@ -17,7 +17,7 @@ export interface MathExpressionNode extends BaseNode {
   nodeType: "MathExpression";
 }
 
-export function register(nodeRegistry: NodeRegistry): void {
+export function register(nodeRegistry: NodeRegistry, category: string = "Math"): void {
   function createMathExpressionNode(
     id: number,
     position: Position,
@@ -88,5 +88,6 @@ export function register(nodeRegistry: NodeRegistry): void {
       },
     };
   }
-  nodeRegistry.registerNodeType("MathExpression", createMathExpressionNode);
+  console.log(`Registering Math Node under category: ${category}`);
+  nodeRegistry.registerNodeType("MathExpression", createMathExpressionNode,category);
 }

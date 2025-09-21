@@ -206,7 +206,7 @@ export function createNOpenRouterChatNode(
   };
 }
 
-export function register(nodeRegistry: NodeRegistry): void {
-  console.log("Registering OpenRouter Chat Node");
-  nodeRegistry.registerNodeType("OpenRouterChat", createNOpenRouterChatNode);
+export function register(nodeRegistry: NodeRegistry, category: string = "AI"): void {
+  console.log(`Registering OpenRouter Chat Node under category: ${category}`);
+  nodeRegistry.registerNodeType("OpenRouterChat", createNOpenRouterChatNode, category);
 }

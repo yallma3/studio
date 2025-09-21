@@ -254,7 +254,7 @@ export function createEmbeddingNode(
   };
 }
 
-export function register(nodeRegistry: NodeRegistry): void {
-  console.log("Registering Embedding Node");
-  nodeRegistry.registerNodeType("Embedding", createEmbeddingNode);
+export function register(nodeRegistry: NodeRegistry, category: string = "Input/Output"): void {
+  console.log(`Registering Embedding Node: ${category}`);
+  nodeRegistry.registerNodeType("Embedding", createEmbeddingNode, category);
 }

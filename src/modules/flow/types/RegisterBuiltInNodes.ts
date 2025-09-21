@@ -20,8 +20,8 @@ import {
 } from "./NodeTypes";
 
 export function registerBuiltInNodes(): void {
-  nodeRegistry.registerNodeType("Number", createNumberNode);
-  nodeRegistry.registerNodeType("Boolean", createBooleanNode);
-  nodeRegistry.registerNodeType("Image", createImageNode);
-  nodeRegistry.registerNodeType("Add", createAddNode);
+  nodeRegistry.registerNodeType("Number", createNumberNode, "Data");
+  nodeRegistry.registerNodeType("Boolean", createBooleanNode, "Data");
+  nodeRegistry.registerNodeType("Image", createImageNode, "Data");
+  nodeRegistry.registerNodeType("Add", createAddNode, "Math");
 }

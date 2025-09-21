@@ -60,7 +60,7 @@ const chunkByTokens = (
   return chunks;
 };
 
-export function register(nodeRegistry: NodeRegistry): void {
+export function register(nodeRegistry: NodeRegistry,category: string = "Text"): void {
   function createChunkingNode(id: number, type: Position): ChunkingNode {
     return {
       id,
@@ -180,6 +180,6 @@ export function register(nodeRegistry: NodeRegistry): void {
       },
     };
   }
-
-  nodeRegistry.registerNodeType("Chunking", createChunkingNode);
+  console.log(`Registering Chunking Node under category: ${category}`);
+  nodeRegistry.registerNodeType("Chunking", createChunkingNode,category);
 }

@@ -48,7 +48,7 @@ const processTextTemplate = async (
   return result;
 };
 
-export function register(nodeRegistry: NodeRegistry): void {
+export function register(nodeRegistry: NodeRegistry, category: string = "Text"): void {
   function createTextNode(id: number, type: Position): TextNode {
     return {
       id,
@@ -130,6 +130,6 @@ export function register(nodeRegistry: NodeRegistry): void {
       },
     };
   }
-
-  nodeRegistry.registerNodeType("Text", createTextNode);
+  console.log(`Registering Text Node under category: ${category}`);
+  nodeRegistry.registerNodeType("Text", createTextNode, category);
 }

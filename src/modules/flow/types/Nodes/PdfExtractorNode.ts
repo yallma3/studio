@@ -55,8 +55,8 @@ import {
       ],
       x: type.x,
       y: type.y,
-      width: 360,
-      height: 280,
+      width: 340,
+      height: 260,
       selected: false,
       processing: false,
       process: async ({ node, getInputValue }) => {
@@ -605,12 +605,11 @@ import {
     return results;
   }
   
-  export function register(nodeRegistry: NodeRegistry): void {
-    console.log("Registering PDF Text Extractor Node with File System Support");
-    nodeRegistry.registerNodeType("PDFTextExtractor", createPDFTextExtractorNode);
+  export function register(nodeRegistry: NodeRegistry, category: string = "Tools"): void {
+    console.log(`Registering PDF Text Extractor Node under category: ${category}`);
+    nodeRegistry.registerNodeType("PDFTextExtractor", createPDFTextExtractorNode, category);
   }
 
-  // Export utility functions for external use
   export { 
     extractTextFromPDFFile, 
     extractTextFromPDFFileWithRange,

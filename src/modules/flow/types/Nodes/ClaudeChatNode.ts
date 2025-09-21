@@ -212,7 +212,7 @@ export function createNClaudeChatNode(
   };
 }
 
-export function register(nodeRegistry: NodeRegistry): void {
-  console.log("Registering Claude Chat Node");
-  nodeRegistry.registerNodeType("ClaudeChat", createNClaudeChatNode);
+export function register(nodeRegistry: NodeRegistry, category: string = "AI"): void {
+  console.log(`Registering Claude Chat Node under category: ${category}`);
+  nodeRegistry.registerNodeType("ClaudeChat", createNClaudeChatNode, category);
 }
