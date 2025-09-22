@@ -60,10 +60,11 @@ import {
   
         const inputValue = await getInputValue(n.id * 100 + 1);
   
-        // check config parameter for delay time
+       // Resolve delay from config; fall back to default (1000ms); clamp to >= 0
         const delayParam = n.getConfigParameter?.("Delay (ms)");
-        const delayMs = Number(delayParam?.paramValue ?? 0);
-         n.nodeValue = `${delayMs} ms`
+        const raw = delayParam?.paramValue ?? delayParam?.defaultValue ?? 1000;
+        const delayMs = Number.isFinite(Number(raw)) ? Math.max(0, Number(raw)) : 1000;
+        n.nodeValue = `${delayMs} ms`;
 
         if (delayMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, delayMs));

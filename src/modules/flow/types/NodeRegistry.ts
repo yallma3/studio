@@ -20,10 +20,9 @@ export type NodeFactory = (
 ) => BaseNode;
 
 interface NodeDefinition {
-  factory: NodeFactory;
-  category: string;
+  readonly factory: NodeFactory;
+  readonly category: string;
 }
-
 export class NodeRegistry {
   private nodeFactories: Record<string, NodeDefinition> = {};
 
