@@ -100,7 +100,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
             className="text-[#FFC72C] font-mono text-sm bg-[#FFC72C11] p-2 rounded text-left m-2.5"
             data-testid="text-value"
           >
-            {String(node.nodeValue)}
+            {String(node.nodeValue).length > 150 ? String(node.nodeValue).slice(0, 150) + '...' : String(node.nodeValue)}
           </div>
         );
       case "Number":
