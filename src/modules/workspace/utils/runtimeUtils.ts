@@ -264,7 +264,7 @@ export class GroqChatRunner implements ChatRunner {
   ) {}
 
   async run(prompt: string, systemPrompt: string = ""): Promise<string | null> {
-    this.node = this.nodeRegistry.createNode("GroqChat", 0, { x: 0, y: 0 });
+    // this.node = this.nodeRegistry.createNode("GroqChat", 0, { x: 0, y: 0 });
 
     if (!this.node) {
       console.error("❌ Failed to create GroqChat Node.");

@@ -5,6 +5,7 @@ export interface SidecarCommand {
     | "stop_workspace"
     | "run_workflow"
     | "workflow_result"
+    | "workflow_json"
     | "message"
     | "ping"
     | "pong";

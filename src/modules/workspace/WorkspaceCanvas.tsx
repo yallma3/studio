@@ -36,7 +36,7 @@ import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
 import { getWorkflow } from "./utils/runtimeUtils";
 import { exportWorkspaceAsJs } from "./utils/exportWorkspace";
-import { createFlowRuntime } from "../flow/utils/flowRuntime";
+import { createFlowRuntime, createJson } from "../flow/utils/flowRuntime";
 
 // Toast notification component
 interface ToastProps {
@@ -183,15 +183,25 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       if (command.type == "run_workflow") {
         console.log("Running Workflow", command.data);
         if (typeof command.data == "string") {
-          const workflowResutl = await runWorkflow(command.data);
-          const message: SidecarCommand = {
-            id: command.id,
-            type: "workflow_result",
-            workspaceId: workspaceData.id,
-            data: { data: workflowResutl },
-            timestamp: new Date().toISOString(),
-          };
-          sidecarClient.sendMessage(message);
+          console.log();
+          const workflowData = await getWorkflow(command.data);
+          if (workflowData?.canvasState) {
+            const workflow = createJson(
+              workflowData,
+              workflowData?.canvasState.nodes,
+              workflowData?.canvasState.connections
+            );
+            const workflowString = JSON.stringify(workflow, null, 2);
+            console.log("STRINNNNNNNGGGGG:", workflowString);
+            const message: SidecarCommand = {
+              id: command.id,
+              type: "workflow_json",
+              workspaceId: workspaceData.id,
+              data: { data: workflowString },
+              timestamp: new Date().toISOString(),
+            };
+            sidecarClient.sendMessage(message);
+          }
         }
       }
 
@@ -345,7 +355,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     exportWorkspaceAsJs(workspaceData);
   };
 
-  // Handle running workspace (placeholder for future implementation)
   const handleRunWorkspace = async () => {
     if (!workspaceData) return;
 
@@ -358,93 +367,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     };
 
     sidecarClient.sendMessage(message);
-
-    // Main workspace LLM
-    // const runner = new GroqChatRunner(
-    //   nodeRegistry,
-    //   workspaceData.apiKey,
-    //   (event: ConsoleEvent) => console.log(event),
-    // );
-
-    // const result = await runner.run("", generateWorkspacePrompt(workspaceData))
-
-    // if (result) {
-    //   const parsed = parseLLMResponse(result);
-
-    //   // Consosle Events for Project Plan
-    //   if (parsed) {
-    //     console.log("✅ Parsed result:", parsed);
-
-    //     addEvent({
-    //       id: crypto.randomUUID(),
-    //       type: "success",
-    //       message: `Project Plan Generated`,
-    //       timestamp: Date.now(),
-    //     });
-
-    //   }else{
-    //     console.log("⚠️ No parsed result");
-    //     addEvent({
-    //       id: crypto.randomUUID(), // Generate a unique ID for the event
-    //       type: "error",
-    //       message: `Error generating project plan`,
-    //       timestamp: Date.now(),
-    //     });
-    //   }
-
-    //   // // Run steps sequentially using the reusable function
-    //   // if (parsed?.steps && parsed.steps.length > 0) {
-
-    //   //   // Tasks are executed sequentially ( For now ) will be replaced with Tasks graph
-    //   //   // Task graph of tasks that are executed in parallel or sequentially
-    //   //   // will be implemented in the future
-    //   //   const sequentialSteps = convertToSequentialSteps(parsed);
-
-    //   //   const results = await executeTasksSequentially({
-    //   //     nodeRegistry,
-    //   //     workspaceData: workspaceData,
-    //   //     steps: sequentialSteps,
-    //   //     onStepStart: (step, stepNumber) => {
-    //   //       addEvent({
-    //   //         id: crypto.randomUUID(), // Generate a unique ID for the event
-    //   //         type: "info",
-    //   //         message: `🚀 Starting step ${stepNumber}: ${step.description}`,
-    //   //         timestamp: Date.now(),
-    //   //       });
-    //   //     },
-    //   //     onStepComplete: (result) => {
-    //   //       addEvent({
-    //   //         id: crypto.randomUUID(), // Generate a unique ID for the event
-    //   //         type: "success",
-    //   //         message: `✅ Step ${result.stepNumber} completed successfully`,
-    //   //         timestamp: Date.now(),
-    //   //       });
-    //   //     },
-    //   //     onError: (error, stepNumber) => {
-    //   //       addEvent({
-    //   //         id: crypto.randomUUID(), // Generate a unique ID for the event
-    //   //         type: "error",
-    //   //         message: `❌ Step ${stepNumber} failed: ${error}`,
-    //   //         timestamp: Date.now(),
-    //   //       });
-    //   //     },
-    //   //     onComplete: (results) => {
-    //   //       const successfulSteps = results.filter(r => r.success).length;
-    //   //       addEvent({
-    //   //         id: crypto.randomUUID(), // Generate a unique ID for the event
-    //   //         type: "success",
-    //   //         message: `🎉 Execution completed: ${successfulSteps}/${results.length} steps successful`,
-    //   //         timestamp: Date.now(),
-    //   //       });
-    //   //     }
-    //   //   });
-
-    //   //   console.log("📊 Execution Summary:", results);
-    //   // } else {
-    //   //   console.log("⚠️ No steps found in parsed result");
-    //   // }
-
-    // }
   };
 
   // Handle updating workspace data - only update state, don't save to file

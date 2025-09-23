@@ -13,7 +13,12 @@
 
 import { join, appDataDir } from "@tauri-apps/api/path";
 
-import { NodeType, Connection, GraphState } from "../types/NodeTypes.ts";
+import {
+  NodeType,
+  Connection,
+  GraphState,
+  BaseNode,
+} from "../types/NodeTypes.ts";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import {
   readTextFile,
@@ -25,7 +30,7 @@ import {
 export interface CanvasState {
   graphId: string;
   graphName: string | null;
-  nodes: NodeType[];
+  nodes: BaseNode[];
   connections: Connection[];
   nextNodeId: number;
 }

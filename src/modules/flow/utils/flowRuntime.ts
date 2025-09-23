@@ -368,7 +368,6 @@ export const createJson = (
       nodes,
       connections,
     };
-    console.log(JSON.stringify(workflowJson, null, 2));
     return workflowJson;
   } catch (error) {
     console.error("Error exporting graph as JSON:", error);
