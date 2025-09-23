@@ -4,7 +4,6 @@ import { BaseNode } from "../../flow/types/NodeTypes";
 import { AgentRuntime } from "../../agent/AgentRuntime";
 import { loadWorkflowFromFile, WorkflowFile } from "./workflowStorageUtils";
 import { createFlowRuntime } from "../../flow/utils/flowRuntime";
-import { reattachNodeProcessors } from "../../flow/utils/storageUtils";
 import {
   ExecutionStep,
   StepExecutionResult,
@@ -136,10 +135,6 @@ export async function executeTasksSequentially(
         const workflowData = await getWorkflow(workflow.id);
 
         if (workflowData) {
-          const reattachedNodes = reattachNodeProcessors(
-            workflowData.canvasState.nodes
-          );
-          workflowData.canvasState.nodes = reattachedNodes;
           console.log(
             "🔄 Running workflow:",
             "Nodes",
@@ -269,7 +264,7 @@ export class GroqChatRunner implements ChatRunner {
   ) {}
 
   async run(prompt: string, systemPrompt: string = ""): Promise<string | null> {
-    this.node = this.nodeRegistry.createNode("GroqChat", 0, { x: 0, y: 0 });
+    // this.node = this.nodeRegistry.createNode("GroqChat", 0, { x: 0, y: 0 });
 
     if (!this.node) {
       console.error("❌ Failed to create GroqChat Node.");

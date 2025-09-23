@@ -73,6 +73,7 @@ export type ConfigParameterType = {
 
 export interface BaseNode {
   id: number;
+  category: string;
   title: string;
   nodeType: string;
   nodeValue?: NodeValue;
@@ -142,256 +143,94 @@ export type Connection = {
   label?: string; // Optional label like "context", "trigger", etc.
 };
 
-export const createNumberNode = (
+export function createNode(
   id: number,
-  type: { x: number; y: number }
-): NumberNode => ({
-  id,
-  title: "Number",
-  nodeValue: 0,
-  nodeType: "Number",
-  sockets: [
-    {
-      id: id * 100 + 2,
-      title: "Output",
-      type: "output",
-      nodeId: id,
-      dataType: "number",
-    },
-  ],
-  x: type.x,
-  y: type.y,
-  width: 240,
-  height: 180,
-  selected: false,
-  processing: false,
-  process: async ({ node }) => {
-    const n = node as NumberNode;
-    return n.nodeValue;
-  },
-  configParameters: [
-    {
-      parameterName: "Number Output",
-      parameterType: "number",
-      defaultValue: 0,
-      valueSource: "UserInput",
-      UIConfigurable: true,
-      description: "Constant number to output",
-      isNodeBodyContent: true,
-    },
-  ],
-  getConfigParameters: function () {
-    return this.configParameters || [];
-  },
-  getConfigParameter(parameterName) {
-    const parameter = (this.configParameters ?? []).find(
-      (param) => param.parameterName === parameterName
-    );
-    return parameter;
-  },
-  setConfigParameter(parameterName, value) {
-    const parameter = (this.configParameters ?? []).find(
-      (param) => param.parameterName === parameterName
-    );
-    if (parameter) {
-      parameter.paramValue = value;
-    }
-  },
-});
+  position: Position,
+  node: BaseNode,
+  duplicate: boolean = false
+): BaseNode {
+  const sockets: Socket[] = node.sockets.map((socket, idx) => ({
+    ...socket,
+    id: id * 100 + (idx + 1),
+    nodeId: id,
+  }));
+  let configParam = null;
+  if (!duplicate) {
+    configParam = node.configParameters?.map((param) => ({
+      ...param,
+      paramValue: param.defaultValue,
+    }));
+  } else {
+    configParam = node.configParameters?.map((param) => ({ ...param }));
+  }
 
-export const createBooleanNode = (
-  id: number,
-  type: { x: number; y: number }
-): BooleanNode => ({
-  id,
-  title: "Boolean",
-  nodeValue: false,
-  nodeType: "Boolean",
-  sockets: [
-    {
-      id: id * 100 + 1,
-      title: "Output",
-      type: "output",
-      nodeId: id,
-      dataType: "boolean",
-    },
-  ],
-  x: type.x,
-  y: type.y,
-  width: 240,
-  height: 180,
-  selected: false,
-  processing: false,
-  process: async ({ node }) => {
-    const n = node as BooleanNode;
-    return n.nodeValue;
-  },
-  configParameters: [
-    {
-      parameterName: "Boolean Output",
-      parameterType: "boolean",
-      defaultValue: false,
-      valueSource: "UserInput",
-      UIConfigurable: true,
-      description: "Constant boolean to output",
-      isNodeBodyContent: true,
-    },
-  ],
-  getConfigParameters: function () {
-    return this.configParameters || [];
-  },
-  getConfigParameter(parameterName) {
-    const parameter = (this.configParameters ?? []).find(
-      (param) => param.parameterName === parameterName
-    );
-    return parameter;
-  },
-  setConfigParameter(parameterName, value) {
-    const parameter = (this.configParameters ?? []).find(
-      (param) => param.parameterName === parameterName
-    );
-    if (parameter) {
-      parameter.paramValue = value;
-    }
-  },
-});
+  return {
+    id,
+    category: node.category,
+    title: node.title,
+    nodeValue: node.nodeValue,
+    nodeType: node.nodeType,
+    sockets: sockets,
+    x: position.x,
+    y: position.y,
+    width: node.width,
+    height: node.height,
+    selected: false,
+    processing: false,
 
-export const createImageNode = (
-  id: number,
-  type: { x: number; y: number }
-): ImageNode => ({
-  id,
-  title: "Image",
-  nodeValue: "", // URL or base64 string
-  nodeType: "Image",
-  sockets: [
-    {
-      id: id * 100 + 1,
-      title: "Source",
-      type: "input",
-      nodeId: id,
-      dataType: "string",
+    configParameters: configParam as ConfigParameterType[] | undefined,
+    getConfigParameters: function (): ConfigParameterType[] {
+      return this.configParameters ?? [];
     },
-    {
-      id: id * 100 + 2,
-      title: "Output",
-      type: "output",
-      nodeId: id,
-      dataType: "string",
+    getConfigParameter(parameterName: string) {
+      const parameter = (this.configParameters ?? []).find(
+        (param) => param.parameterName === parameterName
+      );
+      return parameter;
     },
-  ],
-  x: type.x,
-  y: type.y,
-  width: 280,
-  height: 240, // Taller to display image preview
-  selected: false,
-  processing: false,
-  process: async ({ node, getInputValue }) => {
-    const n = node as ImageNode;
-    // If there's an input source, use that, otherwise use the node's value
-    const sourceValue = await getInputValue(n.id * 100 + 1);
-    return sourceValue !== undefined ? sourceValue : n.nodeValue;
-  },
-  configParameters: [
-    {
-      parameterName: "Image Output",
-      parameterType: "string",
-      defaultValue: "",
-      valueSource: "UserInput",
-      UIConfigurable: true,
-      description: "Initial image URL or base64 string to output",
-      isNodeBodyContent: true,
+    setConfigParameter(parameterName, value) {
+      const parameter = (this.configParameters ?? []).find(
+        (param) => param.parameterName === parameterName
+      );
+      if (parameter) {
+        parameter.paramValue = value;
+      }
     },
-  ],
-  getConfigParameters: function () {
-    return this.configParameters || [];
-  },
-  getConfigParameter(parameterName) {
-    const parameter = (this.configParameters ?? []).find(
-      (param) => param.parameterName === parameterName
-    );
-    return parameter;
-  },
-  setConfigParameter(parameterName, value) {
-    const parameter = (this.configParameters ?? []).find(
-      (param) => param.parameterName === parameterName
-    );
-    if (parameter) {
-      parameter.paramValue = value;
-    }
-  },
-});
+  };
+}
 
-// Add node for mathematical addition
-export const createAddNode = (
-  id: number,
-  type: { x: number; y: number }
-): AddNode => ({
-  id,
-  title: "Add",
-  nodeValue: 0,
-  nodeType: "Add",
-  sockets: [
-    {
-      id: id * 100 + 1,
-      title: "Input A",
-      type: "input",
-      nodeId: id,
-      dataType: "number",
-    },
-    {
-      id: id * 100 + 2,
-      title: "Input B",
-      type: "input",
-      nodeId: id,
-      dataType: "number",
-    },
-    {
-      id: id * 100 + 3,
-      title: "Result",
-      type: "output",
-      nodeId: id,
-      dataType: "number",
-    },
-  ],
-  x: type.x,
-  y: type.y,
-  width: 240,
-  height: 180,
-  selected: false,
-  processing: false,
-  process: async ({ node, getInputValue }) => {
-    const n = node as AddNode;
-    const a = Number((await getInputValue(n.id * 100 + 1)) || 0);
-    const b = Number((await getInputValue(n.id * 100 + 2)) || 0);
-    return a + b;
-  },
-  configParameters: [
-    {
-      parameterName: "Add Output",
-      parameterType: "number",
-      defaultValue: false,
-      valueSource: "UserInput",
-      UIConfigurable: true,
-      description: "Default Number output",
-      isNodeBodyContent: true,
-    },
-  ],
-  getConfigParameters: function () {
-    return this.configParameters || [];
-  },
-  getConfigParameter(parameterName) {
-    const parameter = (this.configParameters ?? []).find(
-      (param) => param.parameterName === parameterName
-    );
-    return parameter;
-  },
-  setConfigParameter(parameterName, value) {
-    const parameter = (this.configParameters ?? []).find(
-      (param) => param.parameterName === parameterName
-    );
-    if (parameter) {
+export const getConfigParameters = (node: BaseNode): ConfigParameterType[] => {
+  return node.configParameters || [];
+};
+
+export const getConfigParameter = (node: BaseNode, parameterName: string) => {
+  const parameter = (node.configParameters ?? []).find(
+    (param) => param.parameterName === parameterName
+  );
+  return parameter;
+};
+
+export const setConfigParameter = (
+  node: BaseNode,
+  parameterName: string,
+  value: unknown
+) => {
+  const parameter = (node.configParameters ?? []).find(
+    (param) => param.parameterName === parameterName
+  );
+  if (parameter) {
+    // Only assign value if it matches the allowed types
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean" ||
+      typeof value === "undefined"
+    ) {
       parameter.paramValue = value;
+    } else {
+      throw new Error(
+        `Invalid type for paramValue: ${typeof value}. Must be string, number, boolean, or undefined.`
+      );
     }
-  },
-});
+  }
+};

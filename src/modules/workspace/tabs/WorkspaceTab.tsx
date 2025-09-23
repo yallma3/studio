@@ -10,7 +10,13 @@
    WITHOUT WARRANTY OF ANY KIND, either express or implied.
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 
 import { WorkspaceData, LLMOption, ConsoleEvent } from "../types/Types";
 import {
@@ -44,12 +50,14 @@ interface WorkspaceTabProps {
   workspaceData: WorkspaceData;
   onUpdateWorkspace?: (updatedData: Partial<WorkspaceData>) => Promise<void>;
   events: ConsoleEvent[];
+  onClearEvents?: () => void;
 }
 
 const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   workspaceData,
   onUpdateWorkspace: onUpdateWorkspace,
   events: initialEvents,
+  onClearEvents,
 }) => {
   // Console state
   const [events, setEvents] = useState<ConsoleEvent[]>([]);
@@ -65,7 +73,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTo({
         top: scrollAreaRef.current.scrollHeight,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     }
   }, []);
@@ -74,69 +82,48 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   const availableLLMs: LLMOption[] = useMemo(
     () => [
       {
-        id: "gpt-4",
-        name: "GPT-4",
-        provider: "OpenAI",
-        tokenLimit: 8192,
+        provider: "openai",
+        model: "gpt-4.1-nano",
       },
       {
-        id: "gpt-3.5-turbo",
-        name: "GPT-3.5 Turbo",
-        provider: "OpenAI",
-        tokenLimit: 4096,
+        provider: "openai",
+        model: "gpt-3.5-turbo",
       },
       {
-        id: "claude-3-opus",
-        name: "Claude 3 Opus",
-        provider: "Anthropic",
-        tokenLimit: 200000,
+        provider: "openrouter",
+        model: "deepseek/deepseek-chat-v3.1:free",
       },
       {
-        id: "claude-3-sonnet",
-        name: "Claude 3 Sonnet",
-        provider: "Anthropic",
-        tokenLimit: 100000,
+        provider: "claude",
+        model: "claude-3-opus-latest",
       },
       {
-        id: "gemini-pro",
-        name: "Gemini Pro",
-        provider: "Google",
-        tokenLimit: 32768,
+        provider: "gemini",
+        model: "gemini-2.0-flash",
       },
       {
-        id: "llama-3-70b",
-        name: "Llama 3 (70B)",
-        provider: "Meta",
-        tokenLimit: 8192,
+        provider: "gemini",
+        model: "gemini-2.5-flash",
       },
       {
-        id: "mixtral-8x7b",
-        name: "Mixtral 8x7B",
-        provider: "Groq",
-        tokenLimit: 32768,
+        provider: "gemini",
+        model: "gemini-2.5-flash-lite",
       },
       {
-        id: "llama-2-70b",
-        name: "Llama 2 (70B)",
-        provider: "Groq",
-        tokenLimit: 4096,
+        provider: "groq",
+        model: "llama-3.1-8b-instant",
+      },
+      {
+        provider: "groq",
+        model: "mixtral-8x7b",
+      },
+      {
+        provider: "groq",
+        model: "llama-2-70b",
       },
     ],
     []
   );
-
-  // Helper function to determine provider from LLM ID
-  const getProviderFromLLM = useCallback(
-    (llmId: string): string | null => {
-      if (!llmId) return null;
-      const llm = availableLLMs.find((llm) => llm.id === llmId);
-      return llm ? llm.provider : null;
-    },
-    [availableLLMs]
-  );
-
-  // Get unique providers from available LLMs
-  const llmProviders = [...new Set(availableLLMs.map((llm) => llm.provider))];
 
   // State for editing mode
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -145,16 +132,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   const [formValues, setFormValues] = useState({
     name: workspaceData.name || "",
     description: workspaceData.description || "",
-    mainLLM: workspaceData.mainLLM || "",
+    mainLLM: workspaceData.mainLLM || { provider: "groq", model: "" },
     apiKey: workspaceData.apiKey || "",
     useSavedCredentials: workspaceData.useSavedCredentials || false,
   });
-
-  // State for selected provider
-  const [selectedProvider, setSelectedProvider] = useState<string>(
-    // Try to determine the provider from the mainLLM
-    getProviderFromLLM(workspaceData.mainLLM) || "Groq"
-  );
 
   // Handle input changes
   const handleInputChange = (
@@ -187,12 +168,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     setFormValues({
       name: workspaceData.name || "",
       description: workspaceData.description || "",
-      mainLLM: workspaceData.mainLLM || "",
+      mainLLM: workspaceData.mainLLM || { provider: "groq", model: "" },
       apiKey: workspaceData.apiKey || "",
       useSavedCredentials: workspaceData.useSavedCredentials || false,
     });
-    // Reset provider selection
-    setSelectedProvider(getProviderFromLLM(workspaceData.mainLLM) || "Groq");
     setIsEditing(false);
   };
 
@@ -201,24 +180,11 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     setFormValues({
       name: workspaceData.name || "",
       description: workspaceData.description || "",
-      mainLLM: workspaceData.mainLLM || "",
+      mainLLM: workspaceData.mainLLM || { provider: "groq", model: "" },
       apiKey: workspaceData.apiKey || "",
       useSavedCredentials: workspaceData.useSavedCredentials || false,
     });
-    setSelectedProvider(getProviderFromLLM(workspaceData.mainLLM) || "Groq");
-  }, [workspaceData, getProviderFromLLM]);
-
-  // Update selected provider when mainLLM changes via Select component
-  useEffect(() => {
-    if (formValues.mainLLM) {
-      const selectedLLM = availableLLMs.find(
-        (llm) => llm.id === formValues.mainLLM
-      );
-      if (selectedLLM && selectedLLM.provider !== selectedProvider) {
-        setSelectedProvider(selectedLLM.provider);
-      }
-    }
-  }, [formValues.mainLLM, availableLLMs, selectedProvider]);
+  }, [workspaceData]);
 
   useEffect(() => {
     setEvents(initialEvents);
@@ -262,6 +228,9 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
 
   const clearEvents = () => {
     setEvents([]);
+    if (onClearEvents) {
+      onClearEvents();
+    }
   };
 
   const formatTimestamp = (timestamp: number) => {
@@ -396,58 +365,40 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                   <Brain className="h-4 w-4 text-zinc-500" />
                   {isEditing ? (
                     <div className="flex-1">
-                      <div className="flex gap-3">
-                        <div className="flex-1">
-                          <Select
-                            id="provider"
-                            value={selectedProvider}
-                            onChange={(value) => setSelectedProvider(value)}
-                            options={llmProviders.map((provider) => ({
-                              value: provider,
-                              label: provider,
-                            }))}
-                            placeholder="Select a provider..."
-                            label="Select Provider"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <Select
-                            id="model"
-                            value={formValues.mainLLM || ""}
-                            onChange={(value) =>
-                              setFormValues((prev) => ({
-                                ...prev,
-                                mainLLM: value,
-                              }))
-                            }
-                            options={[
-                              {
-                                value: "",
-                                label: "Select a model...",
-                                disabled: true,
-                              },
-                              ...availableLLMs
-                                .filter(
-                                  (llm) =>
-                                    !selectedProvider ||
-                                    llm.provider === selectedProvider
-                                )
-                                .map((llm) => ({
-                                  value: llm.id,
-                                  label: `${
-                                    llm.name
-                                  } - ${llm.tokenLimit.toLocaleString()} tokens`,
-                                })),
-                            ]}
-                            disabled={!selectedProvider}
-                            label="Select Model"
-                          />
-                        </div>
-                      </div>
+                      <Select
+                        id="model"
+                        value={
+                          formValues.mainLLM
+                            ? `${formValues.mainLLM.provider}:${formValues.mainLLM.model}`
+                            : ""
+                        }
+                        onChange={(value) => {
+                          const [provider, model] = value.split(":");
+                          setFormValues((prev) => ({
+                            ...prev,
+                            mainLLM: {
+                              provider: provider as LLMOption["provider"],
+                              model: model,
+                            },
+                          }));
+                        }}
+                        options={[
+                          {
+                            value: "",
+                            label: "Select a model...",
+                            disabled: true,
+                          },
+                          ...availableLLMs.map((llm) => ({
+                            value: `${llm.provider}:${llm.model}`,
+                            label: `${llm.model} (${llm.provider})`,
+                          })),
+                        ]}
+                        label="Select Model"
+                      />
                     </div>
                   ) : (
                     <span className="text-sm text-[#FFC72C] font-medium">
-                      {workspaceData.mainLLM || "gpt-3.5-turbo"}
+                      {workspaceData.mainLLM?.model || "gpt-3.5-turbo"}
                     </span>
                   )}
                 </div>
@@ -475,7 +426,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
               </div>
 
               {/* API Key Section - Only show when editing */}
-              {isEditing && formValues.mainLLM && (
+              {isEditing && formValues.mainLLM?.model && (
                 <>
                   <div className="col-span-2">
                     <label className="text-sm text-zinc-400 block mb-2">
@@ -646,7 +597,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 events.map((event) => (
                   <div
                     key={event.id}
-                    className="flex items-start gap-3 p-2 rounded hover:bg-zinc-800/50"
+                    className="flex items-center gap-3 p-2 rounded hover:bg-zinc-800/50"
                   >
                     <span className="text-zinc-500 text-xs mt-0.5 min-w-[60px]">
                       {formatTimestamp(event.timestamp)}

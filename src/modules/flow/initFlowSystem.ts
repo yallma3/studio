@@ -11,48 +11,38 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import { registerBuiltInNodes } from "./types/RegisterBuiltInNodes.ts";
-// @ts-expect-error Missing type declarations for custom node module
-import { register } from "./types/Example/customNode.js";
-import { register as registerMathNode } from "./types/Nodes/mathExpressionNode";
-import { register as registerTextNode } from "./types/Nodes/textTemplateNode";
-import { register as registerGroqChatNode } from "./types/Nodes/GroqChatNode.ts";
-import { register as registerClaudeChatNode } from "./types/Nodes/ClaudeChatNode.ts";
-import { register as registerJoinNode } from "./types/Nodes/JoinTextNode.ts";
-import { register as registerMcpClientNode } from "./types/Nodes/McpClientNode.ts";
-import { register as registerOpenAiNode } from "./types/Nodes/OpenAiChatNode.ts";
-import { register as registerGeminiNode } from "./types/Nodes/GeminiChatNode.ts";
-import { register as registerOpenRouterNode } from "./types/Nodes/OpenRouterChatNode.ts";
-import { register as registerChunkingNode } from "./types/Nodes/ChunkingNode.ts";
-import { register as registerEmbeddingNode } from "./types/Nodes/EmbeddingNode.ts";
-
 import { nodeRegistry } from "./types/NodeRegistry.ts";
-import { register as registerScraperNode } from "./types/Nodes/ArxivScraperNode.ts";
-import { register as registerExtractorNode } from "./types/Nodes/PdfExtractorNode.ts";
-import { register as registerDownloaderNode } from "./types/Nodes/DownloaderNode.ts";
 
 export async function initFlowSystem() {
-  registerBuiltInNodes();
+  try {
+    const baseUrl = import.meta.env.VITE_CORE_URL ?? "http://localhost:3001";
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(`${baseUrl}/workflow/nodes`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
 
-  // Additional initialization can go here
-  console.log("Flow system initialized");
-  console.log("registering custom node");
-  register(nodeRegistry);
-
-  registerMathNode(nodeRegistry);
-  registerTextNode(nodeRegistry);
-  registerGroqChatNode(nodeRegistry);
-  registerClaudeChatNode(nodeRegistry);
-  registerJoinNode(nodeRegistry);
-  registerMcpClientNode(nodeRegistry);
-  registerOpenAiNode(nodeRegistry);
-  registerGeminiNode(nodeRegistry);
-  registerOpenRouterNode(nodeRegistry);
-  registerScraperNode(nodeRegistry);
-  registerDownloaderNode(nodeRegistry);
-  registerExtractorNode(nodeRegistry);
-  registerChunkingNode(nodeRegistry);
-  registerEmbeddingNode(nodeRegistry);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch nodes: ${response.status} ${response.statusText}`
+      );
+    }
+    const res = await response.json();
+    // Register each node from the fetched nodes array with the nodeRegistry
+    if (res?.data) {
+      if (Array.isArray(res.data.nodes)) {
+        for (const node of res.data.nodes) {
+          nodeRegistry.registerNode(node);
+        }
+      }
+      if (Array.isArray(res.data?.categories)) {
+        nodeRegistry.registerCategories(res.data.categories);
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching workflow nodes:", error);
+  }
 }
 
 export async function loadModule(name: string) {

@@ -51,11 +51,15 @@ export interface Task {
   workflowName?: string; // Name of the workflow for display purposes
 }
 
+// export interface LLMOption {
+//   id: string;
+//   name: string;
+//   provider: string;
+//   tokenLimit: number;
+// }
 export interface LLMOption {
-  id: string;
-  name: string;
-  provider: string;
-  tokenLimit: number;
+  provider: "groq" | "openrouter" | "openai" | "gemini" | "claude"
+  model: string
 }
 
 export interface WorkspaceData {
@@ -66,7 +70,7 @@ export interface WorkspaceData {
   name: string;
   description: string;
   // Step 2: LLM Selection
-  mainLLM: string;
+  mainLLM: LLMOption;
   apiKey: string;
   useSavedCredentials: boolean;
 

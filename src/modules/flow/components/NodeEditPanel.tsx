@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect, MouseEvent, useRef } from "react";
 import {
+  BaseNode,
   ConfigParameterType,
   NodeType,
   NodeValue,
@@ -20,11 +21,16 @@ import {
 } from "../types/NodeTypes";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import {
+  getConfigParameters,
+  getConfigParameter,
+  setConfigParameter,
+} from "../types/NodeTypes";
 
 interface NodeEditPanelProps {
-  node: NodeType | null;
+  node: BaseNode | null;
   onClose: () => void;
-  onSave: (updatedNode: Partial<NodeType>) => void;
+  onSave: (updatedNode: Partial<BaseNode>) => void;
 }
 
 const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
@@ -46,6 +52,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     if (node) {
       setTitle(node.title);
       setValue(node.nodeValue);
+
       // Trigger slide-in animation after component mounts
       requestAnimationFrame(() => {
         setIsVisible(true);
@@ -54,14 +61,17 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
   }, [node]);
 
   useEffect(() => {
-    const initialValues = node?.getConfigParameters?.().reduce((acc, param) => {
+    if (!node) {
+      setFormValues({});
+      return;
+    }
+    const initialValues = getConfigParameters(node).reduce((acc, param) => {
       acc[param.parameterName] =
         param.paramValue !== undefined ? param.paramValue : param.defaultValue;
       return acc;
     }, {} as { [key: string]: string | number | boolean });
-
-    setFormValues(initialValues || {});
-  }, []);
+    setFormValues(initialValues);
+  }, [node]);
 
   // Add global click listener to close panel when clicking outside
   useEffect(() => {
@@ -95,7 +105,6 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     }, 300); // Match this duration with the CSS transition
   };
 
-
   const getValueLabel = (param: ConfigParameterType) => {
     if (!node) return t("nodeEdit.valueLabels.default");
 
@@ -122,19 +131,28 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
         HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
       >
     ) => {
+      let newValue: unknown;
+      if (param.parameterType === "number") {
+        newValue = Number((e.target as HTMLInputElement).value);
+      } else if (param.parameterType === "boolean") {
+        newValue = (e.target as HTMLInputElement).checked;
+      } else {
+        newValue = (e.target as HTMLInputElement).value;
+      }
+
       setFormValues((prev) => ({
         ...prev,
-        [param.parameterName]:
-          param.parameterType === "number"
-            ? Number(e.target.value)
-            : e.target.value,
+        [param.parameterName]: newValue as string | number | boolean,
       }));
-      node?.setConfigParameter?.(param.parameterName, e.target.value);
+      if (node) {
+        setConfigParameter(node, param.parameterName, newValue);
+      }
+
       if (param.isNodeBodyContent) {
-        setValue(e.target.value);
+        setValue(newValue as unknown as NodeValue);
         onSave({
           title,
-          nodeValue: e.target.value,
+          nodeValue: newValue as unknown as NodeValue,
         });
       }
     };
@@ -151,7 +169,9 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
                 onChange={handleChange}
               >
                 {param.sourceList.map((option) => (
-                  <option key={option.key}>{option.label}</option>
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -194,10 +214,10 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
                 id={param.parameterName}
                 type="checkbox"
                 className="mr-2 accent-[#FFC72C]"
-                checked={nodeValue === true}
+                checked={Boolean(formValues[param.parameterName])}
                 onChange={handleChange}
               />
-              {nodeValue === true ? "TRUE" : "FALSE"}
+              {formValues[param.parameterName] ? "TRUE" : "FALSE"}
             </label>
           </div>
         );
@@ -267,8 +287,9 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
         </div>
 
         <div className="space-y-2">
-          {node.getConfigParameters &&
-            node.getConfigParameters().map((param) => {
+          {node &&
+            getConfigParameters(node) &&
+            getConfigParameters(node).map((param) => {
               if (param.UIConfigurable) {
                 return (
                   <div key={param.parameterName} className="space-y-2">

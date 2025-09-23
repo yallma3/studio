@@ -19,7 +19,7 @@ import React, {
   useCallback,
 } from "react";
 import { NodeComponent } from "./components/NodeComponent";
-import { NodeType } from "./types/NodeTypes";
+import { BaseNode, NodeType } from "./types/NodeTypes";
 import CanvasContextMenu from "./components/CanvasContextMenu";
 import NodeContextMenu from "./components/NodeContextMenu";
 import NodeEditPanel from "./components/NodeEditPanel";
@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { exportFlowRunner } from "./utils/exportFlowRunner";
 import { useTranslation } from "react-i18next";
-import { createFlowRuntime, FlowExecutionOptions } from "./utils/flowRuntime";
+import { createJson } from "./utils/flowRuntime";
 
 // Import utilities
 import { screenToCanvas } from "./utils/canvasTransforms";
@@ -45,10 +45,7 @@ import {
   getNodeBySocketId,
   getSocketPosition,
 } from "./utils/socketUtils";
-import {
-  saveCanvasState,
-  CanvasState,
-} from "./utils/storageUtils";
+import { saveCanvasState, CanvasState } from "./utils/storageUtils";
 import { generateConnectionPath } from "./utils/connectionUtils";
 import { duplicateNode } from "./utils/nodeOperations";
 // Import hooks
@@ -62,6 +59,8 @@ import { ResultDialog } from "./components/ResultDialog";
 import { WorkflowFile } from "../workspace/utils/workflowStorageUtils";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
+
+import { sidecarClient, SidecarCommand } from "../api/SidecarClient";
 
 // Toast notification component
 interface ToastProps {
@@ -640,7 +639,7 @@ const NodeCanvas: React.FC<{
         graphName: graph.graphName,
         nodes,
         connections,
-        nextNodeId: nextNodeId.current
+        nextNodeId: nextNodeId.current,
       };
 
       let exportData: WorkflowFile;
@@ -650,27 +649,29 @@ const NodeCanvas: React.FC<{
         exportData = {
           ...workflowMeta,
           canvasState: canvasState,
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
         };
       } else {
         // Fallback: convert CanvasState to basic WorkflowFile
         exportData = {
           id: canvasState.graphId,
-          name: canvasState.graphName || 'Exported Workflow',
-          description: 'Workflow exported from canvas',
+          name: canvasState.graphName || "Exported Workflow",
+          description: "Workflow exported from canvas",
           createdAt: Date.now(),
           updatedAt: Date.now(),
-          canvasState: canvasState
+          canvasState: canvasState,
         };
       }
 
       // Open save dialog
       const filePath = await save({
-        filters: [{
-          name: 'JSON',
-          extensions: ['json']
-        }],
-        defaultPath: `${exportData.name || 'workflow'}.json`
+        filters: [
+          {
+            name: "JSON",
+            extensions: ["json"],
+          },
+        ],
+        defaultPath: `${exportData.name || "workflow"}.json`,
       });
 
       if (!filePath) return;
@@ -726,19 +727,85 @@ const NodeCanvas: React.FC<{
   }, [toast, pendingToast]);
 
   // Show toast notification
-  const showToast = (message: string, type: "success" | "error") => {
-    if (toast && !toast.isClosing) {
-      // If a toast is currently shown, close it and queue the new one
-      setToast((prev) => (prev ? { ...prev, isClosing: true } : null));
-      setPendingToast({ message, type });
-    } else if (!toast) {
-      // If no toast is shown, show it immediately
-      setToast({ visible: true, message, type, isClosing: false });
-    } else {
-      // Toast is in closing state, queue the new one
-      setPendingToast({ message, type });
-    }
-  };
+  const showToast = useCallback(
+    (message: string, type: "success" | "error") => {
+      if (toast && !toast.isClosing) {
+        // If a toast is currently shown, close it and queue the new one
+        setToast((prev) => (prev ? { ...prev, isClosing: true } : null));
+        setPendingToast({ message, type });
+      } else if (!toast) {
+        // If no toast is shown, show it immediately
+        setToast({ visible: true, message, type, isClosing: false });
+      } else {
+        // Toast is in closing state, queue the new one
+        setPendingToast({ message, type });
+      }
+    },
+    [toast]
+  );
+
+  // Add sidecar command handler for workflow execution results
+  useEffect(() => {
+    const handleSidecarCommand = async (command: SidecarCommand) => {
+      if (
+        command.type === "workflow_result" &&
+        command.id == workflowMeta?.id
+      ) {
+        const results =
+          command.data &&
+          typeof command.data === "object" &&
+          "results" in command.data
+            ? (command.data as { results: Record<string, unknown> }).results
+            : undefined;
+        if (results) {
+          // results is an object where keys are node IDs (as string or number)
+          // We want to assign the result to the corresponding node in our nodes state
+          setNodes((prevNodes) =>
+            prevNodes.map((node) => {
+              // Node IDs in results may be string keys, so coerce to string for lookup
+              const result = results[String(node.id)];
+              // Only update if result is defined (could be any value, including null/empty string)
+              if (typeof result !== "undefined") {
+                return { ...node, result: result as typeof node.result };
+              }
+              return node;
+            })
+          );
+        }
+
+        // Update execution status to show completion
+        setExecutionStatus({
+          isExecuting: false,
+          progress: 0,
+          total: 0,
+        });
+
+        showToast(t("canvas.executionComplete"), "success");
+      }
+
+      if (command.type === "message") {
+        if (command.data && typeof command.data === "string") {
+          console.log("Sidecar message:", command.data);
+          // You could show this as a toast notification or add to an events list
+        }
+      }
+
+      if (command.type === "ping") {
+        console.log("Ping command:", command);
+      }
+
+      if (command.type === "pong") {
+        console.log("Pong command:", command);
+      }
+    };
+
+    sidecarClient.onCommand(handleSidecarCommand);
+
+    return () => {
+      // Note: We don't remove the listener as sidecarClient is a singleton
+      // and we want it to persist across component unmounts
+    };
+  }, [t, showToast]);
 
   // Hide toast notification
   const hideToast = () => {
@@ -799,73 +866,87 @@ const NodeCanvas: React.FC<{
   // Execute the flow
   const executeFlow = async () => {
     if (executionStatus.isExecuting) return;
-
-    try {
-      // Create flow runtime
-      const runtime = createFlowRuntime(nodes, connections);
-
-      // Set up execution options
-      const executionOptions: FlowExecutionOptions = {
-        onProgress: (progress, total) => {
-          setExecutionStatus({
-            isExecuting: true,
-            progress,
-            total,
-          });
-        },
-        onNodeStart: (nodeId, nodeTitle) => {
-          console.log(`Starting execution of node ${nodeId} (${nodeTitle})`);
-        },
-        onNodeComplete: (nodeId, nodeTitle, _result) => {
-          console.log(`Completed execution of node ${nodeId} (${nodeTitle})`);
-        },
-        onNodeError: (nodeId, nodeTitle, error) => {
-          console.error(`Error in node ${nodeId} (${nodeTitle}): ${error}`);
-        },
-        onComplete: (_results) => {
-          console.log("Flow execution completed", _results);
-          // Update nodes with results from runtime
-          setNodes(runtime.getNodes());
-          
-          // Reset execution status
-          setExecutionStatus({
-            isExecuting: false,
-            progress: 0,
-            total: 0,
-          });
-        },
-        onError: (error) => {
-          console.error("Error during flow execution:", error);
-          alert(`Error during execution: ${error}`);
-          
-          // Reset execution status on error
-          setExecutionStatus({
-            isExecuting: false,
-            progress: 0,
-            total: 0,
-          });
-        },
-      };
-
-      // Execute the flow
-      await runtime.execute(executionOptions);
-
-    } catch (error) {
-      console.error("Error during graph execution:", error);
-
-      // Reset execution status on error
+    if (graph && workflowMeta) {
+      // Set execution status to show it's starting
       setExecutionStatus({
-        isExecuting: false,
+        isExecuting: true,
         progress: 0,
-        total: 0,
+        total: 1,
       });
-
-      alert(
-        `Error during execution: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
+      const json = createJson(workflowMeta, nodes, connections);
+      const message: SidecarCommand = {
+        id: crypto.randomUUID(),
+        type: "run_workflow",
+        data: JSON.stringify(json),
+        timestamp: new Date().toISOString(),
+      };
+      sidecarClient.sendMessage(message);
     }
+    // try {
+    //   // Create flow runtime
+    //   const runtime = createFlowRuntime(nodes, connections);
+
+    //   // Set up execution options
+    //   const executionOptions: FlowExecutionOptions = {
+    //     onProgress: (progress, total) => {
+    //       setExecutionStatus({
+    //         isExecuting: true,
+    //         progress,
+    //         total,
+    //       });
+    //     },
+    //     onNodeStart: (nodeId, nodeTitle) => {
+    //       console.log(`Starting execution of node ${nodeId} (${nodeTitle})`);
+    //     },
+    //     onNodeComplete: (nodeId, nodeTitle, _result) => {
+    //       console.log(`Completed execution of node ${nodeId} (${nodeTitle})`);
+    //     },
+    //     onNodeError: (nodeId, nodeTitle, error) => {
+    //       console.error(`Error in node ${nodeId} (${nodeTitle}): ${error}`);
+    //     },
+    //     onComplete: (_results) => {
+    //       console.log("Flow execution completed", _results);
+    //       // Update nodes with results from runtime
+    //       setNodes(runtime.getNodes());
+
+    //       // Reset execution status
+    //       setExecutionStatus({
+    //         isExecuting: false,
+    //         progress: 0,
+    //         total: 0,
+    //       });
+    //     },
+    //     onError: (error) => {
+    //       console.error("Error during flow execution:", error);
+    //       alert(`Error during execution: ${error}`);
+
+    //       // Reset execution status on error
+    //       setExecutionStatus({
+    //         isExecuting: false,
+    //         progress: 0,
+    //         total: 0,
+    //       });
+    //     },
+    //   };
+
+    //   // Execute the flow
+    //   await runtime.execute(executionOptions);
+    // } catch (error) {
+    //   console.error("Error during graph execution:", error);
+
+    //   // Reset execution status on error
+    //   setExecutionStatus({
+    //     isExecuting: false,
+    //     progress: 0,
+    //     total: 0,
+    //   });
+
+    //   alert(
+    //     `Error during execution: ${
+    //       error instanceof Error ? error.message : String(error)
+    //     }`
+    //   );
+    // }
   };
 
   return (
@@ -930,7 +1011,7 @@ const NodeCanvas: React.FC<{
                   ...graph,
                   nodes,
                   connections,
-                  nextNodeId: nextNodeId.current
+                  nextNodeId: nextNodeId.current,
                 };
                 onReturnToHome(updatedCanvasState);
               } else {
@@ -1113,6 +1194,10 @@ const NodeCanvas: React.FC<{
             width: "100%",
             height: "100%",
             position: "absolute",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+            MozUserSelect: "none",
+            msUserSelect: "none",
           }}
         >
           {nodes.map((node) => (
@@ -1201,11 +1286,12 @@ const NodeCanvas: React.FC<{
         <NodeEditPanel
           node={editingNode}
           onClose={handleCloseEditPanel}
-          onSave={(updatedNode: Partial<NodeType>) => {
+          onSave={(updatedNode: Partial<BaseNode>) => {
+            console.log("UPDATED NODE:", updatedNode);
             //setIsPanelClosing(true);
             setTimeout(() => {
-              setNodes(
-                nodes.map((node) =>
+              setNodes((prev) =>
+                prev.map((node) =>
                   node.id === editingNode?.id
                     ? { ...node, ...updatedNode }
                     : node
