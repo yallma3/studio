@@ -34,11 +34,9 @@ import { WorkspaceData, ConsoleEvent } from "./types/Types";
 
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
-//get access to singltone nodeRegistry
-import { nodeRegistry } from "../flow/types/NodeRegistry";
-import { GroqChatRunner, parseLLMResponse, executeTasksSequentially, convertToSequentialSteps, generateWorkspacePrompt } from "./utils/runtimeUtils";
+import { getWorkflow } from "./utils/runtimeUtils";
 import { exportWorkspaceAsJs } from "./utils/exportWorkspace";
-
+import { createFlowRuntime } from "../flow/utils/flowRuntime";
 
 // Toast notification component
 interface ToastProps {
@@ -107,7 +105,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   const [events, setEvents] = useState<ConsoleEvent[]>(initEvents);
 
   const addEvent = (newEvent: ConsoleEvent) => {
-
     try {
       setEvents((prev) => [...prev, newEvent]);
     } catch (error) {
@@ -140,8 +137,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Sidecar connection status
-  const [sidecarStatus, setSidecarStatus] = useState<string>('disconnected');
-
+  const [sidecarStatus, setSidecarStatus] = useState<string>("disconnected");
 
   // Check if workspace is imported (doesn't exist locally) and set unsaved flag
   useEffect(() => {
@@ -162,33 +158,93 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     checkWorkspaceExists();
   }, [workspaceData]);
 
-    // Set up sidecar client command listener and status listener
-    useEffect(() => {
-      const handleSidecarCommand = (command: SidecarCommand) => {
-        if (command.type === 'run_workspace') {
-          // Check if the command is for this workspace or if no specific workspace is specified
-          if (!command.workspaceId || command.workspaceId === workspaceData.id) {
-            console.log('Executing workspace via sidecar command:', command);
-            handleRunWorkspace();
-          }
+  // Set up sidecar client command listener and status listener
+  useEffect(() => {
+    const handleSidecarCommand = async (command: SidecarCommand) => {
+      console.log("DEBUG handleSidecarCommand received:", command);
+      if (command.type === "run_workspace") {
+        // Check if the command is for this workspace or if no specific workspace is specified
+        if (!command.workspaceId || command.workspaceId === workspaceData.id) {
+          console.log("Executing workspace via sidecar command:", command);
+          handleRunWorkspace();
         }
-      };
-  
-      const handleStatusChange = (status: string) => {
-        setSidecarStatus(status);
-      };
-  
-      sidecarClient.onCommand(handleSidecarCommand);
-      sidecarClient.onStatusChange(handleStatusChange);
-  
-      // Set initial status
-      setSidecarStatus(sidecarClient.getConnectionStatus());
-  
-      return () => {
-        // Note: We don't remove the listeners as sidecarClient is a singleton
-        // and we want it to persist across component unmounts
-      };
-    }, [workspaceData.id]);
+      }
+
+      if (command.type == "message") {
+        if (command.data && typeof command.data == "string") {
+          addEvent({
+            id: crypto.randomUUID(),
+            type: "info",
+            message: command.data,
+            timestamp: Date.now(),
+          });
+        }
+      }
+      if (command.type == "run_workflow") {
+        console.log("Running Workflow", command.data);
+        if (typeof command.data == "string") {
+          const workflowResutl = await runWorkflow(command.data);
+          const message: SidecarCommand = {
+            id: command.id,
+            type: "workflow_result",
+            workspaceId: workspaceData.id,
+            data: { data: workflowResutl },
+            timestamp: new Date().toISOString(),
+          };
+          sidecarClient.sendMessage(message);
+        }
+      }
+
+      if (command.type === "ping") {
+        console.log("Ping command:", command);
+      }
+      if (command.type === "pong") {
+        console.log("Pong command:", command);
+      }
+    };
+
+    const handleStatusChange = (status: string) => {
+      setSidecarStatus(status);
+    };
+
+    const runWorkflow = async (workflowId: string) => {
+      let workflowResult = "";
+      const workflowData = await getWorkflow(workflowId);
+
+      if (workflowData) {
+        console.log(
+          "🔄 Running workflow:",
+          "Nodes",
+          workflowData.canvasState.nodes,
+          "Connections",
+          workflowData.canvasState.connections
+        );
+        const runtime = createFlowRuntime(
+          workflowData.canvasState.nodes,
+          workflowData.canvasState.connections
+        );
+        const results = await runtime.execute();
+        workflowResult = results[0].result?.toString() || "";
+        console.log("🔄 Workflow results:", workflowResult);
+      } else {
+        console.error("❌ Failed to load workflow nodes and connections");
+        workflowResult = "Failed to load workflow nodes and connections";
+      }
+
+      return workflowResult;
+    };
+
+    sidecarClient.onCommand(handleSidecarCommand);
+    sidecarClient.onStatusChange(handleStatusChange);
+
+    // Set initial status
+    setSidecarStatus(sidecarClient.getConnectionStatus());
+
+    return () => {
+      // Note: We don't remove the listeners as sidecarClient is a singleton
+      // and we want it to persist across component unmounts
+    };
+  }, [workspaceData.id]);
 
   // Handle clicks outside dropdown to close it
   useEffect(() => {
@@ -285,115 +341,110 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   };
 
   const handleExportWorkspace = async () => {
-   console.log("Exporting workspace...");
-   exportWorkspaceAsJs(workspaceData)
+    console.log("Exporting workspace...");
+    exportWorkspaceAsJs(workspaceData);
   };
 
- 
   // Handle running workspace (placeholder for future implementation)
   const handleRunWorkspace = async () => {
-
     if (!workspaceData) return;
-    // Post a new ConsoleEvent to the events in WorkspaceTab component
-    addEvent({
-      id: crypto.randomUUID(), // Generate a unique ID for the event
-      type: "info",
-      message: t("workspaces.runStarted", "Running workspace..."),
-      timestamp: Date.now(),
-    });
 
+    const message: SidecarCommand = {
+      id: crypto.randomUUID(),
+      type: "run_workspace",
+      workspaceId: workspaceData.id,
+      data: JSON.stringify(workspaceData),
+      timestamp: new Date().toISOString(),
+    };
 
+    sidecarClient.sendMessage(message);
 
     // Main workspace LLM
-    const runner = new GroqChatRunner(
-      nodeRegistry,
-      workspaceData.apiKey,
-      (event: ConsoleEvent) => console.log(event),
-    );
+    // const runner = new GroqChatRunner(
+    //   nodeRegistry,
+    //   workspaceData.apiKey,
+    //   (event: ConsoleEvent) => console.log(event),
+    // );
 
+    // const result = await runner.run("", generateWorkspacePrompt(workspaceData))
 
-    const result = await runner.run("", generateWorkspacePrompt(workspaceData))
-    
-    if (result) {
-      const parsed = parseLLMResponse(result);
+    // if (result) {
+    //   const parsed = parseLLMResponse(result);
 
-      // Consosle Events for Project Plan
-      if (parsed) {
-        console.log("✅ Parsed result:", parsed);
+    //   // Consosle Events for Project Plan
+    //   if (parsed) {
+    //     console.log("✅ Parsed result:", parsed);
 
-        addEvent({
-          id: crypto.randomUUID(),
-          type: "success",
-          message: `Project Plan Generated`,
-          timestamp: Date.now(),
-        });
+    //     addEvent({
+    //       id: crypto.randomUUID(),
+    //       type: "success",
+    //       message: `Project Plan Generated`,
+    //       timestamp: Date.now(),
+    //     });
 
-      }else{
-        console.log("⚠️ No parsed result");
-        addEvent({
-          id: crypto.randomUUID(), // Generate a unique ID for the event
-          type: "error",
-          message: `Error generating project plan`,
-          timestamp: Date.now(),
-        });
-      }
+    //   }else{
+    //     console.log("⚠️ No parsed result");
+    //     addEvent({
+    //       id: crypto.randomUUID(), // Generate a unique ID for the event
+    //       type: "error",
+    //       message: `Error generating project plan`,
+    //       timestamp: Date.now(),
+    //     });
+    //   }
 
-      // Run steps sequentially using the reusable function
-      if (parsed?.steps && parsed.steps.length > 0) {
+    //   // // Run steps sequentially using the reusable function
+    //   // if (parsed?.steps && parsed.steps.length > 0) {
 
-        // Tasks are executed sequentially ( For now ) will be replaced with Tasks graph
-        // Task graph of tasks that are executed in parallel or sequentially
-        // will be implemented in the future
-        const sequentialSteps = convertToSequentialSteps(parsed);
-        
-        
-        const results = await executeTasksSequentially({
-          nodeRegistry,
-          workspaceData: workspaceData,
-          steps: sequentialSteps,
-          onStepStart: (step, stepNumber) => {
-            addEvent({
-              id: crypto.randomUUID(), // Generate a unique ID for the event
-              type: "info",
-              message: `🚀 Starting step ${stepNumber}: ${step.description}`,
-              timestamp: Date.now(),
-            });
-          },
-          onStepComplete: (result) => {
-            addEvent({
-              id: crypto.randomUUID(), // Generate a unique ID for the event
-              type: "success",
-              message: `✅ Step ${result.stepNumber} completed successfully`,
-              timestamp: Date.now(),
-            });
-          },
-          onError: (error, stepNumber) => {
-            addEvent({
-              id: crypto.randomUUID(), // Generate a unique ID for the event
-              type: "error",
-              message: `❌ Step ${stepNumber} failed: ${error}`,
-              timestamp: Date.now(),
-            });
-          },
-          onComplete: (results) => {
-            const successfulSteps = results.filter(r => r.success).length;
-            addEvent({
-              id: crypto.randomUUID(), // Generate a unique ID for the event
-              type: "success",
-              message: `🎉 Execution completed: ${successfulSteps}/${results.length} steps successful`,
-              timestamp: Date.now(),
-            });
-          }
-        });
-        
-        console.log("📊 Execution Summary:", results);
-      } else {
-        console.log("⚠️ No steps found in parsed result");
-      }
-      
-     
-    }
+    //   //   // Tasks are executed sequentially ( For now ) will be replaced with Tasks graph
+    //   //   // Task graph of tasks that are executed in parallel or sequentially
+    //   //   // will be implemented in the future
+    //   //   const sequentialSteps = convertToSequentialSteps(parsed);
 
+    //   //   const results = await executeTasksSequentially({
+    //   //     nodeRegistry,
+    //   //     workspaceData: workspaceData,
+    //   //     steps: sequentialSteps,
+    //   //     onStepStart: (step, stepNumber) => {
+    //   //       addEvent({
+    //   //         id: crypto.randomUUID(), // Generate a unique ID for the event
+    //   //         type: "info",
+    //   //         message: `🚀 Starting step ${stepNumber}: ${step.description}`,
+    //   //         timestamp: Date.now(),
+    //   //       });
+    //   //     },
+    //   //     onStepComplete: (result) => {
+    //   //       addEvent({
+    //   //         id: crypto.randomUUID(), // Generate a unique ID for the event
+    //   //         type: "success",
+    //   //         message: `✅ Step ${result.stepNumber} completed successfully`,
+    //   //         timestamp: Date.now(),
+    //   //       });
+    //   //     },
+    //   //     onError: (error, stepNumber) => {
+    //   //       addEvent({
+    //   //         id: crypto.randomUUID(), // Generate a unique ID for the event
+    //   //         type: "error",
+    //   //         message: `❌ Step ${stepNumber} failed: ${error}`,
+    //   //         timestamp: Date.now(),
+    //   //       });
+    //   //     },
+    //   //     onComplete: (results) => {
+    //   //       const successfulSteps = results.filter(r => r.success).length;
+    //   //       addEvent({
+    //   //         id: crypto.randomUUID(), // Generate a unique ID for the event
+    //   //         type: "success",
+    //   //         message: `🎉 Execution completed: ${successfulSteps}/${results.length} steps successful`,
+    //   //         timestamp: Date.now(),
+    //   //       });
+    //   //     }
+    //   //   });
+
+    //   //   console.log("📊 Execution Summary:", results);
+    //   // } else {
+    //   //   console.log("⚠️ No steps found in parsed result");
+    //   // }
+
+    // }
   };
 
   // Handle updating workspace data - only update state, don't save to file
@@ -426,7 +477,13 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     setHasUnsavedChanges(true);
   };
 
- 
+  const PingWsConnection = () => {
+    sidecarClient.sendMessage({
+      id: "ping-1", // unique id for tracking
+      type: "ping",
+      data: { timestamp: new Date().toISOString() },
+    });
+  };
 
   return (
     <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
@@ -441,6 +498,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </button>
+
             <div>
               <h1 className="text-xl font-semibold text-white">
                 {workspaceData.name ||
@@ -448,22 +506,35 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               </h1>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                className="text-zinc-400 hover:text-white p-2 rounded flex items-center text-xs cursor-pointer"
+                onClick={PingWsConnection}
+              >
+                Ping
+              </button>
               <div
-                 className={`w-2 h-2 rounded-full ${
-                   sidecarStatus === 'connected'
-                     ? 'bg-green-500'
-                     : sidecarStatus === 'connecting'
-                     ? 'bg-yellow-500'
-                     : 'bg-red-500'
-                 }`}
-               />
+                className={`w-2 h-2 rounded-full ${
+                  sidecarStatus === "connected"
+                    ? "bg-green-500"
+                    : sidecarStatus === "connecting"
+                    ? "bg-yellow-500"
+                    : "bg-red-500"
+                }`}
+              />
+
               <span className="text-zinc-400 text-xs">
-                 API {sidecarStatus === 'connected' ? 'Connected' : sidecarStatus === 'connecting' ? 'Connecting' : 'Disconnected'}
+                API{" "}
+                {sidecarStatus === "connected"
+                  ? "Connected"
+                  : sidecarStatus === "connecting"
+                  ? "Connecting"
+                  : "Disconnected"}
               </span>
-          </div>
+            </div>
+
             {hasUnsavedChanges && (
               <div className="text-zinc-500 text-sm font-medium">
                 {t("workspaces.unsavedChanges", "Unsaved changes")}
@@ -557,6 +628,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               workspaceData={workspaceData}
               onUpdateWorkspace={handleUpdateWorkspace}
               events={events}
+              onClearEvents={() => setEvents([])}
             />
           )}
           {activeTab === "tasks" && (

@@ -11,11 +11,12 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import { useState, useEffect, useRef } from 'react';
-import {  NodeType } from '../types/NodeTypes';
-import { screenToCanvas } from '../utils/canvasTransforms';
-import { CanvasTransform } from './useCanvasTransform';
-import { nodeRegistry } from '../types/NodeRegistry';
+import { useState, useEffect, useRef } from "react";
+import { NodeType } from "../types/NodeTypes";
+import { screenToCanvas } from "../utils/canvasTransforms";
+import { CanvasTransform } from "./useCanvasTransform";
+import { nodeRegistry } from "../types/NodeRegistry";
+import { createNode } from "../types/NodeTypes";
 
 // Context menu state interface
 export interface ContextMenuState {
@@ -41,34 +42,34 @@ export const useContextMenu = (
     visible: false,
     x: 0,
     y: 0,
-    subMenu: null
+    subMenu: null,
   });
-  
+
   // Store canvas position for adding nodes
   const contextMenuCanvasPosition = useRef({ x: 0, y: 0 });
-  
+
   // Add click listener to close context menu when clicking outside
   useEffect(() => {
     const handleGlobalClick = () => {
       if (contextMenu.visible) {
-        setContextMenu(prev => ({ ...prev, visible: false, subMenu: null }));
+        setContextMenu((prev) => ({ ...prev, visible: false, subMenu: null }));
       }
     };
-    
-    window.addEventListener('click', handleGlobalClick);
-    
+
+    window.addEventListener("click", handleGlobalClick);
+
     return () => {
-      window.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener("click", handleGlobalClick);
     };
   }, [contextMenu.visible]);
-  
+
   // Handle right-click context menu on canvas
   const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     // Store the canvas position for node creation
     const canvasPos = screenToCanvas(e.clientX, e.clientY, transform);
     contextMenuCanvasPosition.current = canvasPos;
-    
+
     // Show context menu at mouse position for canvas options
     setContextMenu({
       visible: true,
@@ -77,54 +78,65 @@ export const useContextMenu = (
       subMenu: null,
     });
   };
-  
+
   // Handle node-specific context menu
-  const handleNodeContextMenu = (e: React.MouseEvent<HTMLDivElement>, nodeId: number) => {
+  const handleNodeContextMenu = (
+    e: React.MouseEvent<HTMLDivElement>,
+    nodeId: number
+  ) => {
     e.preventDefault();
     // Select the right-clicked node if not already selected
-    setNodes(nodes => nodes.map(n => ({ ...n, selected: n.id === nodeId })));
+    setNodes((nodes) =>
+      nodes.map((n) => ({ ...n, selected: n.id === nodeId }))
+    );
     setSelectedNodeIds([nodeId]);
-    
+
     // Show context menu at mouse position with node-specific options
     setContextMenu({
       visible: true,
       x: e.clientX,
       y: e.clientY,
       subMenu: null,
-      targetNodeId: nodeId
+      targetNodeId: nodeId,
     });
   };
-  
+
   // Handle adding a node from the context menu
-  const handleAddNodeFromContextMenu = (nodeType: string, e: React.MouseEvent) => {
+  const handleAddNodeFromContextMenu = (
+    nodeType: string,
+    e: React.MouseEvent
+  ) => {
     e.stopPropagation(); // Prevent the menu from closing immediately
-    
+
     // Get the next unique node ID
     const id = nextNodeId.current++;
-    
-    // Create the node at the stored canvas position
-    const newNode = nodeRegistry.createNode(
-      nodeType,
-      id, 
-      contextMenuCanvasPosition.current,
-    );
-    
-    // Add the new node and select it
-    if (newNode) {
-      setNodes(prev => [...prev, { ...newNode, selected: true } as NodeType]);
-      setSelectedNodeIds([id]);
+    const node = nodeRegistry.getNode(nodeType);
+    if (node) {
+      // Create the node at the stored canvas position
+      // Use the last stored canvas position (from right-click) for node creation
+      const pos = contextMenuCanvasPosition.current || { x: 0, y: 0 };
+      const newNode = createNode(id, pos, node);
+
+      // Add the new node and select it
+      if (newNode) {
+        setNodes((prev) => [
+          ...prev,
+          { ...newNode, selected: true } as NodeType,
+        ]);
+        setSelectedNodeIds([id]);
+      }
     }
-    
+
     // Close context menu
-    setContextMenu(prev => ({ ...prev, visible: false, subMenu: null }));
+    setContextMenu((prev) => ({ ...prev, visible: false, subMenu: null }));
   };
-  
+
   return {
     contextMenu,
     setContextMenu,
     contextMenuCanvasPosition,
     handleContextMenu,
     handleNodeContextMenu,
-    handleAddNodeFromContextMenu
+    handleAddNodeFromContextMenu,
   };
-}; 
+};

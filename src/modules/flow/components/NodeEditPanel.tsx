@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect, MouseEvent, useRef } from "react";
 import {
+  BaseNode,
   ConfigParameterType,
   NodeType,
   NodeValue,
@@ -20,11 +21,16 @@ import {
 } from "../types/NodeTypes";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import {
+  getConfigParameters,
+  getConfigParameter,
+  setConfigParameter,
+} from "../types/NodeTypes";
 
 interface NodeEditPanelProps {
-  node: NodeType | null;
+  node: BaseNode | null;
   onClose: () => void;
-  onSave: (updatedNode: Partial<NodeType>) => void;
+  onSave: (updatedNode: Partial<BaseNode>) => void;
 }
 
 const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
@@ -46,6 +52,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     if (node) {
       setTitle(node.title);
       setValue(node.nodeValue);
+
       // Trigger slide-in animation after component mounts
       requestAnimationFrame(() => {
         setIsVisible(true);
@@ -54,13 +61,17 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
   }, [node]);
 
   useEffect(() => {
-    const initialValues = node?.getConfigParameters?.().reduce((acc, param) => {
-      acc[param.parameterName] =
-        param.paramValue !== undefined ? param.paramValue : param.defaultValue;
-      return acc;
-    }, {} as { [key: string]: string | number | boolean });
+    if (node) {
+      const initialValues = getConfigParameters(node).reduce((acc, param) => {
+        acc[param.parameterName] =
+          param.paramValue !== undefined
+            ? param.paramValue
+            : param.defaultValue;
+        return acc;
+      }, {} as { [key: string]: string | number | boolean });
 
-    setFormValues(initialValues || {});
+      setFormValues(initialValues || {});
+    }
   }, []);
 
   // Add global click listener to close panel when clicking outside
@@ -95,7 +106,6 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     }, 300); // Match this duration with the CSS transition
   };
 
-
   const getValueLabel = (param: ConfigParameterType) => {
     if (!node) return t("nodeEdit.valueLabels.default");
 
@@ -129,7 +139,9 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
             ? Number(e.target.value)
             : e.target.value,
       }));
-      node?.setConfigParameter?.(param.parameterName, e.target.value);
+      if (node) {
+        setConfigParameter(node, param.parameterName, e.target.value);
+      }
       if (param.isNodeBodyContent) {
         setValue(e.target.value);
         onSave({
@@ -267,8 +279,9 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
         </div>
 
         <div className="space-y-2">
-          {node.getConfigParameters &&
-            node.getConfigParameters().map((param) => {
+          {node &&
+            getConfigParameters(node) &&
+            getConfigParameters(node).map((param) => {
               if (param.UIConfigurable) {
                 return (
                   <div key={param.parameterName} className="space-y-2">

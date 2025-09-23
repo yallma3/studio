@@ -11,9 +11,17 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import { NodeType, Connection, NodeValue, Socket } from "../types/NodeTypes";
+import {
+  NodeType,
+  Connection,
+  NodeValue,
+  Socket,
+  BaseNode,
+} from "../types/NodeTypes";
 import { executeNode } from "../types/NodeProcessor";
 import { buildExecutionGraph } from "./socketUtils";
+import { WorkflowFile } from "../../workspace/utils/workflowStorageUtils";
+import { describe } from "node:test";
 
 // Types for the runtime
 export interface FlowExecutionOptions {
@@ -345,3 +353,24 @@ export async function executeFlowWithResults(
     updatedNodes: runtime.getNodes(),
   };
 }
+
+export const createJson = (
+  workflowMeta: WorkflowFile,
+  nodes: BaseNode[],
+  connections: Connection[]
+) => {
+  try {
+    // Create updated canvas state
+    const workflowJson = {
+      id: workflowMeta.id,
+      name: workflowMeta.name,
+      description: workflowMeta.description,
+      nodes,
+      connections,
+    };
+    console.log(JSON.stringify(workflowJson, null, 2));
+    return workflowJson;
+  } catch (error) {
+    console.error("Error exporting graph as JSON:", error);
+  }
+};

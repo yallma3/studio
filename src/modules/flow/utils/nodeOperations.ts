@@ -11,7 +11,7 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import { NodeType } from "../types/NodeTypes";
+import { createNode, NodeType } from "../types/NodeTypes";
 import { nodeRegistry } from "../types/NodeRegistry";
 
 /**
@@ -28,7 +28,7 @@ export const duplicateNode = (
   };
 
   // Create a new node based on the original
-  const newNode = nodeRegistry.createNode(node.nodeType, newId, offsetPosition);
+  const newNode = createNode(newId, offsetPosition, node, true);
   if (newNode) {
     // Preserve custom title
     newNode.title = node.title;
