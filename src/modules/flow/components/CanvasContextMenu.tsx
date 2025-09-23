@@ -12,7 +12,7 @@
 */
 import React, { useEffect, useRef, useState } from "react";
 import { Plus, Settings, Trash2, ChevronRight } from "lucide-react";
-import { nodeRegistry } from "../types/NodeRegistry.ts";
+import { nodeRegistry } from "../types/NodeRegistry";
 
 interface ContextMenuPosition {
   visible: boolean;
@@ -24,7 +24,10 @@ interface ContextMenuPosition {
 interface CanvasContextMenuProps {
   contextMenu: ContextMenuPosition;
   // kept signature the same as your original; for keyboard Enter we cast the event
-  onAddNode: (nodeType: string, e: React.MouseEvent) => void;
+  onAddNode: (
+    nodeType: string,
+    e?: React.MouseEvent | React.KeyboardEvent | null
+  ) => void;
   onContextMenuAction: (action: string, e: React.MouseEvent) => void;
 }
 
@@ -39,6 +42,15 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   const hoverTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  //Clear hover timer on unmount to avoid late state updates.
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) {
+        window.clearTimeout(hoverTimerRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (contextMenu.visible) {
       // focus the input when menu opens
@@ -50,6 +62,34 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
       setSubmenuPath([]);
     }
   }, [contextMenu.visible]);
+  // Build a flat list of all node types (with category)
+  const allNodes = nodeRegistry.listNodeDetails();
+
+  // When there's a query, compute matches (startsWith first, then includes)
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const matches = normalizedQuery
+    ? allNodes
+        .map((n) => {
+          const name = n.nodeType.toLowerCase();
+          const starts = name.startsWith(normalizedQuery) ? 0 : 1;
+          return { ...n, score: starts, nameLower: name };
+        })
+        .filter((n) => n.nameLower.includes(normalizedQuery))
+        .sort((a, b) => {
+          if (a.score !== b.score) return a.score - b.score;
+          return a.nodeType.localeCompare(b.nodeType);
+        })
+    : [];
+
+  // Keep keyboard selection in range
+  useEffect(() => {
+    setSelectedIndex((prev) => {
+      if (matches.length === 0) return 0;
+      if (prev < 0) return 0;
+      if (prev >= matches.length) return matches.length - 1;
+      return prev;
+    });
+  }, [matches.length]);
 
   if (!contextMenu.visible) return null;
 
@@ -136,36 +176,6 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     }, 150);
   };
 
-  // Build a flat list of all node types (with category)
-  const allNodes = nodeRegistry.listNodeDetails();
-
-  // When there's a query, compute matches (startsWith first, then includes)
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  const matches = normalizedQuery
-    ? allNodes
-        .map((n) => {
-          const name = n.nodeType.toLowerCase();
-          const starts = name.startsWith(normalizedQuery) ? 0 : 1;
-          return { ...n, score: starts, nameLower: name };
-        })
-        .filter((n) => n.nameLower.includes(normalizedQuery))
-        .sort((a, b) => {
-          if (a.score !== b.score) return a.score - b.score;
-          return a.nodeType.localeCompare(b.nodeType);
-        })
-    : [];
-
-  // Keep keyboard selection in range
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useEffect(() => {
-    setSelectedIndex((prev) => {
-      if (matches.length === 0) return 0;
-      if (prev < 0) return 0;
-      if (prev >= matches.length) return matches.length - 1;
-      return prev;
-    });
-  }, [matches.length]);
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -177,10 +187,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
       e.preventDefault();
       if (matches[selectedIndex]) {
         // onAddNode expects a MouseEvent in your signature; pass a dummy object casted to satisfy the type.
-        onAddNode(
-          matches[selectedIndex].nodeType,
-          {} as unknown as React.MouseEvent
-        );
+        onAddNode(matches[selectedIndex].nodeType, undefined);
       }
     } else if (e.key === "Escape") {
       // clear search (you can also close menu externally)
@@ -259,6 +266,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         }}
         onKeyDown={handleKeyDown}
         placeholder="Search..."
+        aria-label="Search nodes"
         style={inputStyle}
         onClick={(e) => e.stopPropagation()}
       />

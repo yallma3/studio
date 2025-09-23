@@ -747,12 +747,10 @@ const NodeCanvas: React.FC<{
   // Add sidecar command handler for workflow execution results
   useEffect(() => {
     const handleSidecarCommand = async (command: SidecarCommand) => {
-      console.log("COMMAND:", command);
       if (
         command.type === "workflow_result" &&
         command.id == workflowMeta?.id
       ) {
-        console.log("Received workflow result:", command.data);
         const results =
           command.data &&
           typeof command.data === "object" &&
@@ -1292,8 +1290,8 @@ const NodeCanvas: React.FC<{
             console.log("UPDATED NODE:", updatedNode);
             //setIsPanelClosing(true);
             setTimeout(() => {
-              setNodes(
-                nodes.map((node) =>
+              setNodes((prev) =>
+                prev.map((node) =>
                   node.id === editingNode?.id
                     ? { ...node, ...updatedNode }
                     : node

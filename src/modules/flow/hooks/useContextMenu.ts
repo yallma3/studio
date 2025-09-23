@@ -104,9 +104,9 @@ export const useContextMenu = (
   // Handle adding a node from the context menu
   const handleAddNodeFromContextMenu = (
     nodeType: string,
-    e: React.MouseEvent
+    e?: React.MouseEvent | React.KeyboardEvent | null
   ) => {
-    e.stopPropagation(); // Prevent the menu from closing immediately
+    e?.stopPropagation?.(); // Prevent the menu from closing immediately
 
     // Get the next unique node ID
     const id = nextNodeId.current++;

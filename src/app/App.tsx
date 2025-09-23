@@ -33,7 +33,7 @@ const App: React.FC = () => {
 
   // Setup language direction based on current language and initialize directories
   useEffect(() => {
-    console.log("Initializing System")
+    console.log("Initializing System");
     initFlowSystem();
     initializeDefaultDirectories();
     sidecarClient.connect();
@@ -42,15 +42,9 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.dir = i18n.language === "ar" ? "rtl" : "ltr";
     document.documentElement.lang = i18n.language;
-  }, [i18n.language])
-
-  //  // Initialize sidecar client connection
-  //  useEffect(() => {
-  //   sidecarClient.connect();
-  // }, []);
+  }, [i18n.language]);
 
   // Handle creating a new graph, agent, or workspace
-
   // Handle opening a graph/agent/workspace from file system
   const handleLoadFromFile = async () => {
     try {

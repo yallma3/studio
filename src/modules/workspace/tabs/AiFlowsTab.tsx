@@ -537,7 +537,13 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
       );
 
       // Add to current workflows
-      const updatedWorkflows = [...workflows, ...workflowsToImport];
+      const merged = [...workflows, ...workflowsToImport];
+      const seen = new Set<string>();
+      const updatedWorkflows = merged.filter((w) => {
+        if (seen.has(w.id)) return false;
+        seen.add(w.id);
+        return true;
+      });
       setWorkflows(updatedWorkflows);
 
       // Update workspace data
@@ -590,7 +596,6 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
   };
 
   const handleEditFlow = (workflow: WorkflowFile) => {
-    console.log(workflow);
     setSelectedWorkflow(workflow.canvasState);
     setSelectedWorkflowMeta(workflow);
     setShowCanvas(true);
@@ -614,8 +619,6 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
       // Update workspace data
       await updateWorkspaceWorkflows(updatedWorkflows);
 
-      // Close confirmation dialog and reset state
-      setShowDeleteConfirm(null);
       setDeleteCompletely(false);
     } catch (error) {
       console.error("Error deleting workflow:", error);

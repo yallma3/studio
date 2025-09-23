@@ -24,10 +24,11 @@ export class NodeRegistry {
   private categories: string[] = [];
 
   registerNode(node: BaseNode) {
-    this.nodes[node.nodeType] = node;
+    this.nodes[node.nodeType] = Object.freeze({ ...node });
   }
   registerCategories(categories: string[]) {
-    this.categories = categories;
+    const set = new Set([...this.categories, ...categories]);
+    this.categories = Array.from(set);
   }
 
   getNode(nodeType: string): BaseNode | undefined {

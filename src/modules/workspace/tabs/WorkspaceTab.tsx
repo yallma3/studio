@@ -377,11 +377,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                           setFormValues((prev) => ({
                             ...prev,
                             mainLLM: {
-                              provider: provider as
-                                | "groq"
-                                | "openrouter"
-                                | "openai"
-                                | "gemini",
+                              provider: provider as LLMOption["provider"],
                               model: model,
                             },
                           }));

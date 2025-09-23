@@ -15,7 +15,14 @@ import { nodeRegistry } from "./types/NodeRegistry.ts";
 
 export async function initFlowSystem() {
   try {
-    const response = await fetch("http://localhost:3001/workflow/nodes");
+    const baseUrl = import.meta.env.VITE_CORE_URL ?? "http://localhost:3001";
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(`${baseUrl}/workflow/nodes`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       throw new Error(
         `Failed to fetch nodes: ${response.status} ${response.statusText}`
@@ -23,12 +30,16 @@ export async function initFlowSystem() {
     }
     const res = await response.json();
     // Register each node from the fetched nodes array with the nodeRegistry
-    if (Array.isArray(res.data.nodes)) {
-      for (const node of res.data.nodes) {
-        nodeRegistry.registerNode(node);
+    if (res?.data) {
+      if (Array.isArray(res.data.nodes)) {
+        for (const node of res.data.nodes) {
+          nodeRegistry.registerNode(node);
+        }
+      }
+      if (Array.isArray(res.data?.categories)) {
+        nodeRegistry.registerCategories(res.data.categories);
       }
     }
-    nodeRegistry.registerCategories(res.data.categories);
   } catch (error) {
     console.error("Error fetching workflow nodes:", error);
   }

@@ -61,18 +61,17 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
   }, [node]);
 
   useEffect(() => {
-    if (node) {
-      const initialValues = getConfigParameters(node).reduce((acc, param) => {
-        acc[param.parameterName] =
-          param.paramValue !== undefined
-            ? param.paramValue
-            : param.defaultValue;
-        return acc;
-      }, {} as { [key: string]: string | number | boolean });
-
-      setFormValues(initialValues || {});
+    if (!node) {
+      setFormValues({});
+      return;
     }
-  }, []);
+    const initialValues = getConfigParameters(node).reduce((acc, param) => {
+      acc[param.parameterName] =
+        param.paramValue !== undefined ? param.paramValue : param.defaultValue;
+      return acc;
+    }, {} as { [key: string]: string | number | boolean });
+    setFormValues(initialValues);
+  }, [node]);
 
   // Add global click listener to close panel when clicking outside
   useEffect(() => {
@@ -132,21 +131,28 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
         HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
       >
     ) => {
+      let newValue: unknown;
+      if (param.parameterType === "number") {
+        newValue = Number((e.target as HTMLInputElement).value);
+      } else if (param.parameterType === "boolean") {
+        newValue = (e.target as HTMLInputElement).checked;
+      } else {
+        newValue = (e.target as HTMLInputElement).value;
+      }
+
       setFormValues((prev) => ({
         ...prev,
-        [param.parameterName]:
-          param.parameterType === "number"
-            ? Number(e.target.value)
-            : e.target.value,
+        [param.parameterName]: newValue as string | number | boolean,
       }));
       if (node) {
-        setConfigParameter(node, param.parameterName, e.target.value);
+        setConfigParameter(node, param.parameterName, newValue);
       }
+
       if (param.isNodeBodyContent) {
-        setValue(e.target.value);
+        setValue(newValue as unknown as NodeValue);
         onSave({
           title,
-          nodeValue: e.target.value,
+          nodeValue: newValue as unknown as NodeValue,
         });
       }
     };
@@ -163,7 +169,9 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
                 onChange={handleChange}
               >
                 {param.sourceList.map((option) => (
-                  <option key={option.key}>{option.label}</option>
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -206,10 +214,10 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
                 id={param.parameterName}
                 type="checkbox"
                 className="mr-2 accent-[#FFC72C]"
-                checked={nodeValue === true}
+                checked={Boolean(formValues[param.parameterName])}
                 onChange={handleChange}
               />
-              {nodeValue === true ? "TRUE" : "FALSE"}
+              {formValues[param.parameterName] ? "TRUE" : "FALSE"}
             </label>
           </div>
         );

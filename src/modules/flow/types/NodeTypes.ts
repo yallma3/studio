@@ -149,15 +149,11 @@ export function createNode(
   node: BaseNode,
   duplicate: boolean = false
 ): BaseNode {
-  const sockets: Socket[] = [];
-  node.sockets.map((socket, idx) => {
-    const mappedSocket: Socket = {
-      ...socket,
-      id: id * 100 + (idx + 1),
-      nodeId: id,
-    };
-    sockets.push(mappedSocket);
-  });
+  const sockets: Socket[] = node.sockets.map((socket, idx) => ({
+    ...socket,
+    id: id * 100 + (idx + 1),
+    nodeId: id,
+  }));
   let configParam = null;
   if (!duplicate) {
     configParam = node.configParameters?.map((param) => ({
@@ -165,7 +161,7 @@ export function createNode(
       paramValue: param.defaultValue,
     }));
   } else {
-    configParam = node.configParameters;
+    configParam = node.configParameters?.map((param) => ({ ...param }));
   }
 
   return {

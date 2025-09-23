@@ -21,7 +21,6 @@ import {
 import { executeNode } from "../types/NodeProcessor";
 import { buildExecutionGraph } from "./socketUtils";
 import { WorkflowFile } from "../../workspace/utils/workflowStorageUtils";
-import { describe } from "node:test";
 
 // Types for the runtime
 export interface FlowExecutionOptions {
@@ -358,7 +357,13 @@ export const createJson = (
   workflowMeta: WorkflowFile,
   nodes: BaseNode[],
   connections: Connection[]
-) => {
+): {
+  id: string;
+  name: string;
+  description: string;
+  nodes: BaseNode[];
+  connections: Connection[];
+} | null => {
   try {
     // Create updated canvas state
     const workflowJson = {
@@ -371,5 +376,6 @@ export const createJson = (
     return workflowJson;
   } catch (error) {
     console.error("Error exporting graph as JSON:", error);
+    return null;
   }
 };

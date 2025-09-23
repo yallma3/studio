@@ -43,6 +43,9 @@ export const ResultDialog: React.FC<ResultDialogProps> = ({
   return (
     <div
       className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="result-dialog-title"
       onClick={(e) => {
         e.stopPropagation();
         onClose();
@@ -53,7 +56,10 @@ export const ResultDialog: React.FC<ResultDialogProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 bg-gradient-to-r from-[#111] to-[#FFC72C22] border-b border-[#FFC72C]/30">
-          <h3 className="text-[#FFC72C] font-bold flex gap-2 items-center">
+          <h3
+            id="result-dialog-title"
+            className="text-[#FFC72C] font-bold flex gap-2 items-center"
+          >
             <FileText size={16} />
             {node.title} Result
           </h3>

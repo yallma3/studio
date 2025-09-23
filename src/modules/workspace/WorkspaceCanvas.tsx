@@ -161,87 +161,83 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   // Set up sidecar client command listener and status listener
   useEffect(() => {
     const handleSidecarCommand = async (command: SidecarCommand) => {
-      console.log("DEBUG handleSidecarCommand received:", command);
-      if (command.type === "run_workspace") {
-        // Check if the command is for this workspace or if no specific workspace is specified
-        if (!command.workspaceId || command.workspaceId === workspaceData.id) {
-          console.log("Executing workspace via sidecar command:", command);
-          handleRunWorkspace();
-        }
-      }
-
-      if (command.type == "message") {
-        if (command.data && typeof command.data == "string") {
-          addEvent({
-            id: crypto.randomUUID(),
-            type: "info",
-            message: command.data,
-            timestamp: Date.now(),
-          });
-        }
-      }
-      if (command.type == "run_workflow") {
-        console.log("Running Workflow", command.data);
-        if (typeof command.data == "string") {
-          console.log();
-          const workflowData = await getWorkflow(command.data);
-          if (workflowData?.canvasState) {
-            const workflow = createJson(
-              workflowData,
-              workflowData?.canvasState.nodes,
-              workflowData?.canvasState.connections
-            );
-            const workflowString = JSON.stringify(workflow, null, 2);
-            console.log("STRINNNNNNNGGGGG:", workflowString);
-            const message: SidecarCommand = {
-              id: command.id,
-              type: "workflow_json",
-              workspaceId: workspaceData.id,
-              data: { data: workflowString },
-              timestamp: new Date().toISOString(),
-            };
-            sidecarClient.sendMessage(message);
+      try {
+        if (command.type === "run_workspace") {
+          // Check if the command is for this workspace or if no specific workspace is specified
+          if (
+            !command.workspaceId ||
+            command.workspaceId === workspaceData.id
+          ) {
+            handleRunWorkspace();
           }
         }
-      }
 
-      if (command.type === "ping") {
-        console.log("Ping command:", command);
-      }
-      if (command.type === "pong") {
-        console.log("Pong command:", command);
+        if (command.type == "message") {
+          if (command.data && typeof command.data == "string") {
+            addEvent({
+              id: crypto.randomUUID(),
+              type: "info",
+              message: command.data,
+              timestamp: Date.now(),
+            });
+          }
+        }
+        if (command.type == "run_workflow") {
+          console.log("Running Workflow", command.data);
+          if (typeof command.data == "string") {
+            const workflowData = await getWorkflow(command.data);
+            if (workflowData?.canvasState) {
+              const workflow = createJson(
+                workflowData,
+                workflowData?.canvasState.nodes,
+                workflowData?.canvasState.connections
+              );
+              const workflowString = JSON.stringify(workflow, null, 2);
+
+              const message: SidecarCommand = {
+                id: command.id,
+                type: "workflow_json",
+                workspaceId: workspaceData.id,
+                data: { data: workflowString },
+                timestamp: new Date().toISOString(),
+              };
+              sidecarClient.sendMessage(message);
+            }
+          } else {
+            console.error(
+              "Workflow not found or invalid canvas state:",
+              command.data
+            );
+            addEvent({
+              id: crypto.randomUUID(),
+              type: "error",
+              message: `Failed to load workflow: ${command.data}`,
+              timestamp: Date.now(),
+            });
+          }
+        }
+
+        if (command.type === "ping") {
+          console.log("Ping command:", command);
+        }
+        if (command.type === "pong") {
+          console.log("Pong command:", command);
+        }
+      } catch (error) {
+        console.error("Error handling sidecar command:", error);
+        addEvent({
+          id: crypto.randomUUID(),
+          type: "error",
+          message: `Command handler error: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+          timestamp: Date.now(),
+        });
       }
     };
 
     const handleStatusChange = (status: string) => {
       setSidecarStatus(status);
-    };
-
-    const runWorkflow = async (workflowId: string) => {
-      let workflowResult = "";
-      const workflowData = await getWorkflow(workflowId);
-
-      if (workflowData) {
-        console.log(
-          "🔄 Running workflow:",
-          "Nodes",
-          workflowData.canvasState.nodes,
-          "Connections",
-          workflowData.canvasState.connections
-        );
-        const runtime = createFlowRuntime(
-          workflowData.canvasState.nodes,
-          workflowData.canvasState.connections
-        );
-        const results = await runtime.execute();
-        workflowResult = results[0].result?.toString() || "";
-        console.log("🔄 Workflow results:", workflowResult);
-      } else {
-        console.error("❌ Failed to load workflow nodes and connections");
-        workflowResult = "Failed to load workflow nodes and connections";
-      }
-
-      return workflowResult;
     };
 
     sidecarClient.onCommand(handleSidecarCommand);
@@ -399,14 +395,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     setHasUnsavedChanges(true);
   };
 
-  const PingWsConnection = () => {
-    sidecarClient.sendMessage({
-      id: "ping-1", // unique id for tracking
-      type: "ping",
-      data: { timestamp: new Date().toISOString() },
-    });
-  };
-
   return (
     <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
       {/* Header */}
@@ -431,12 +419,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <button
-                className="text-zinc-400 hover:text-white p-2 rounded flex items-center text-xs cursor-pointer"
-                onClick={PingWsConnection}
-              >
-                Ping
-              </button>
               <div
                 className={`w-2 h-2 rounded-full ${
                   sidecarStatus === "connected"

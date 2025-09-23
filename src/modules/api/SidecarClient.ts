@@ -26,6 +26,7 @@ export class SidecarClient {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectInterval = 3000;
+  private shouldReconnect = true;
   private connectionStatus:
     | "disconnected"
     | "connecting"
@@ -44,6 +45,7 @@ export class SidecarClient {
 
     this.connectionStatus = "connecting";
     this.notifyStatusChange();
+    this.shouldReconnect = true;
 
     try {
       this.ws = new WebSocket(this.wsUrl);
@@ -68,7 +70,9 @@ export class SidecarClient {
         console.log("Disconnected from sidecar WebSocket");
         this.connectionStatus = "disconnected";
         this.notifyStatusChange();
-        this.attemptReconnect();
+        if (this.shouldReconnect) {
+          this.attemptReconnect();
+        }
       };
 
       this.ws.onerror = (error) => {
@@ -85,6 +89,7 @@ export class SidecarClient {
   }
 
   disconnect(): void {
+    this.shouldReconnect = false;
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -118,7 +123,7 @@ export class SidecarClient {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
-      console.warn("Cannot send response: WebSocket not connected");
+      console.warn("Cannot send message: WebSocket not connected");
     }
   }
 
