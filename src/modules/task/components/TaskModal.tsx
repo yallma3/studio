@@ -27,7 +27,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
     title: "",
     description: "",
     expectedOutput: "",
-    type: "auto",
+    type: "agentic",
     executorId: null as string | null,
     sockets: [] as TaskSocket[],
   });
@@ -50,7 +50,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
           title: "",
           description: "",
           expectedOutput: "",
-          type: "auto",
+          type: "agentic",
           executorId: null,
           sockets: [],
         });
