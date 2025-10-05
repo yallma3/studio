@@ -36,7 +36,7 @@ import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
 import { getWorkflow } from "./utils/runtimeUtils";
 import { exportWorkspaceAsJs } from "./utils/exportWorkspace";
-import { createFlowRuntime, createJson } from "../flow/utils/flowRuntime";
+import { createJson } from "../flow/utils/flowRuntime";
 
 // Toast notification component
 interface ToastProps {
@@ -138,6 +138,21 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
   // Sidecar connection status
   const [sidecarStatus, setSidecarStatus] = useState<string>("disconnected");
+
+  // Expose a stable run handler used by effects and UI controls
+  const handleRunWorkspace = React.useCallback(async () => {
+    if (!workspaceData) return;
+
+    const message: SidecarCommand = {
+      id: crypto.randomUUID(),
+      type: "run_workspace",
+      workspaceId: workspaceData.id,
+      data: JSON.stringify(workspaceData),
+      timestamp: new Date().toISOString(),
+    };
+
+    sidecarClient.sendMessage(message);
+  }, [workspaceData]);
 
   // Check if workspace is imported (doesn't exist locally) and set unsaved flag
   useEffect(() => {
@@ -250,7 +265,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       // Note: We don't remove the listeners as sidecarClient is a singleton
       // and we want it to persist across component unmounts
     };
-  }, [workspaceData.id]);
+  }, [workspaceData.id, handleRunWorkspace]);
 
   // Handle clicks outside dropdown to close it
   useEffect(() => {
@@ -349,20 +364,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   const handleExportWorkspace = async () => {
     console.log("Exporting workspace...");
     exportWorkspaceAsJs(workspaceData);
-  };
-
-  const handleRunWorkspace = async () => {
-    if (!workspaceData) return;
-
-    const message: SidecarCommand = {
-      id: crypto.randomUUID(),
-      type: "run_workspace",
-      workspaceId: workspaceData.id,
-      data: JSON.stringify(workspaceData),
-      timestamp: new Date().toISOString(),
-    };
-
-    sidecarClient.sendMessage(message);
   };
 
   // Handle updating workspace data - only update state, don't save to file
@@ -501,10 +502,10 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                 label: t("workspaces.workspace", "Workspace"),
               },
               { key: "tasks", label: t("workspaces.tasks", "Tasks") },
-              { key: "agents", label: t("workspaces.agents", "Agents") },
+              { key: "agents", label: t("workspaces.agents", "Sub Agents") },
               {
                 key: "aiflows",
-                label: t("workspaces.aiFlows", "AI Workflows"),
+                label: t("workspaces.aiFlows", "Tools & AI Workflows"),
               },
             ].map((tab) => (
               <button
@@ -539,6 +540,9 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
             <TasksTab
               workspaceData={workspaceData}
               onTabChanges={handleTabChanges}
+              onChange={({ tasks, connections }) =>
+                handleUpdateWorkspace({ tasks, connections })
+              }
             />
           )}
           {activeTab === "agents" && (

@@ -100,7 +100,8 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
             className="text-[#FFC72C] font-mono text-sm bg-[#FFC72C11] p-2 rounded text-left m-2.5"
             data-testid="text-value"
           >
-            {String(node.nodeValue).length > 150 ? String(node.nodeValue).slice(0, 150) + '...' : String(node.nodeValue)}
+            {String(node.nodeValue).slice(0, 80)}
+            {String(node.nodeValue).length > 80 ? "..." : ""}
           </div>
         );
       case "Number":
@@ -164,8 +165,8 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
             data-testid="text-value"
           >
             {typeof node.nodeValue === "object"
-              ? JSON.stringify(node.nodeValue, null, 2)
-              : String(node.nodeValue)}
+              ? JSON.stringify(node.nodeValue, null, 2).slice(0, 100)
+              : String(node.nodeValue).slice(0, 100)}
           </div>
         );
     }

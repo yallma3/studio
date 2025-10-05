@@ -11,7 +11,8 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import { NodeRegistry } from '../../flow/types/NodeRegistry';
+import { NodeRegistry } from "../../flow/types/NodeRegistry";
+import { Task, TaskConnection } from "../../task/types/types";
 
 // Interfaces for workspace data structure
 export interface Agent {
@@ -23,7 +24,7 @@ export interface Agent {
   capabilities: string;
   tools: ToolConfig[];
   llmId: string; // ID of the LLM to use for this agent
-  apiKey: string,
+  apiKey: string;
   variables?: Record<string, string>; // Variables for templating in background and other fields
 }
 
@@ -40,17 +41,6 @@ export interface Workflow {
   description: string;
 }
 
-export interface Task {
-  id: string;
-  name: string;
-  description: string;
-  expectedOutput: string;
-  assignedAgent: string | null; // ID of the assigned agent or null for auto-assign
-  executeWorkflow: boolean;
-  workflowId: string | null; // ID of the workflow to execute if executeWorkflow is true
-  workflowName?: string; // Name of the workflow for display purposes
-}
-
 // export interface LLMOption {
 //   id: string;
 //   name: string;
@@ -58,8 +48,8 @@ export interface Task {
 //   tokenLimit: number;
 // }
 export interface LLMOption {
-  provider: "groq" | "openrouter" | "openai" | "gemini" | "claude"
-  model: string
+  provider: "groq" | "openrouter" | "openai" | "gemini" | "claude";
+  model: string;
 }
 
 export interface WorkspaceData {
@@ -76,6 +66,7 @@ export interface WorkspaceData {
 
   // Step 3: Tasks
   tasks: Task[];
+  connections: TaskConnection[];
 
   // Step 4: Agents
   agents: Agent[];
@@ -92,9 +83,7 @@ export interface ConsoleEvent {
   details?: string;
 }
 
-
 export type ExecutionStepType = "agentic" | "workflow";
-
 
 export interface ExecutionStep {
   step: number;
