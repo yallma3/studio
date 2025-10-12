@@ -6,9 +6,11 @@ export interface SidecarCommand {
     | "run_workflow"
     | "workflow_result"
     | "workflow_json"
+    | "console_input"
     | "message"
     | "ping"
-    | "pong";
+    | "pong"
+    | "workflow_output";
   workspaceId?: string;
   data?: unknown;
   timestamp?: string;
@@ -34,6 +36,8 @@ export class SidecarClient {
     | "error" = "disconnected";
   private statusCallbacks: ((status: string) => void)[] = [];
   private commandCallbacks: ((command: SidecarCommand) => void)[] = [];
+
+  private consoleEventCallbacks: ((event: any) => void)[] = [];
 
   constructor(private wsUrl: string = "ws://localhost:3001") {}
 
@@ -117,6 +121,9 @@ export class SidecarClient {
   private handleCommand(command: SidecarCommand): void {
     console.log("Received command from sidecar:", command);
     this.commandCallbacks.forEach((callback) => callback(command));
+  if (command.type === "workflow_output" && command.data) {
+      this.consoleEventCallbacks.forEach((cb) => cb(command.data));
+    }
   }
 
   sendMessage(message: SidecarCommand): void {
@@ -142,7 +149,10 @@ export class SidecarClient {
   onCommand(callback: (command: SidecarCommand) => void): void {
     this.commandCallbacks.push(callback);
   }
-
+  
+ onConsoleEvent(callback: (event: any) => void): void {
+    this.consoleEventCallbacks.push(callback);
+  }
   getConnectionStatus(): string {
     return this.connectionStatus;
   }

@@ -51,6 +51,8 @@ interface WorkspaceTabProps {
   onUpdateWorkspace?: (updatedData: Partial<WorkspaceData>) => Promise<void>;
   events: ConsoleEvent[];
   onClearEvents?: () => void;
+  onAddEvent?: (event: ConsoleEvent) => void;
+  onSendConsoleInput?: (event: ConsoleEvent) => void;
 }
 
 const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
@@ -58,10 +60,12 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   onUpdateWorkspace: onUpdateWorkspace,
   events: initialEvents,
   onClearEvents,
+  onAddEvent,
+  onSendConsoleInput,
 }) => {
   // Console state
   const [events, setEvents] = useState<ConsoleEvent[]>([]);
-
+  const [consoleInput, setConsoleInput] = useState('');
   const [isConsoleRunning, setIsConsoleRunning] = useState(true);
   const [isConsoleExpanded, setIsConsoleExpanded] = useState(false);
 
@@ -173,6 +177,36 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
       useSavedCredentials: workspaceData.useSavedCredentials || false,
     });
     setIsEditing(false);
+  };
+  //Handle console input submission via WebSocket
+  const handleConsoleInput = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (consoleInput.trim()) {
+      const newEvent: ConsoleEvent = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        timestamp: Date.now(),
+        type: 'info',
+        message: consoleInput,
+        details: 'User input'
+      };
+      
+      console.log('Sending console input via WebSocket:', newEvent);
+      
+      // Send via WebSocket if callback is provided
+      if (onSendConsoleInput) {
+        onSendConsoleInput(newEvent);
+      } else {
+        // Fallback to local add if no WebSocket callback
+        console.warn('No WebSocket callback provided, adding locally only');
+        if (onAddEvent) {
+          onAddEvent(newEvent);
+        } else {
+          setEvents(prev => [...prev, newEvent]);
+        }
+      }
+      
+      setConsoleInput('');
+    }
   };
 
   // Sync form values when workspace data changes
@@ -587,7 +621,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
           </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col min-h-0">
-          <ScrollArea ref={scrollAreaRef} className="flex-1 w-full">
+          <ScrollArea ref={scrollAreaRef} className="flex-1 w-full mb-3">
             <div className="space-y-2 font-mono text-sm">
               {events.length === 0 ? (
                 <div className="text-zinc-500 text-center py-8">
@@ -597,22 +631,22 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 events.map((event) => (
                   <div
                     key={event.id}
-                    className="flex items-center gap-3 p-2 rounded hover:bg-zinc-800/50"
+                    className="flex items-start gap-3 p-2 rounded hover:bg-zinc-800/50"
                   >
-                    <span className="text-zinc-500 text-xs mt-0.5 min-w-[60px]">
+                    <span className="text-zinc-500 text-xs mt-0.5 min-w-[60px] flex-shrink-0">
                       {formatTimestamp(event.timestamp)}
                     </span>
                     <span
-                      className={`text-xs font-medium min-w-[60px] ${getEventColor(
+                      className={`text-xs font-medium min-w-[60px] flex-shrink-0 ${getEventColor(
                         event.type
                       )}`}
                     >
                       [{event.type.toUpperCase()}]
                     </span>
-                    <div className="flex-1">
-                      <div className="text-white">{event.message}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white break-words">{event.message}</div>
                       {event.details && (
-                        <div className="text-zinc-400 text-xs mt-1">
+                         <div className="text-zinc-400 text-xs mt-1 break-words">
                           {event.details}
                         </div>
                       )}
@@ -622,6 +656,24 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
               )}
             </div>
           </ScrollArea>
+           {/* Console Input Form */}
+          <form onSubmit={handleConsoleInput} className="flex gap-2 border-t border-zinc-800 pt-3">
+            <input
+              type="text"
+              value={consoleInput}
+              onChange={(e) => setConsoleInput(e.target.value)}
+              placeholder="Please enter your input:"
+              className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C] text-sm"
+              disabled={!isConsoleRunning}
+            />
+            <button 
+              type="submit"
+              className="bg-[#FFC72C] hover:bg-[#E6B428] text-black px-4 py-2 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!isConsoleRunning || !consoleInput.trim()}
+            >
+              Send
+            </button>
+          </form>
         </CardContent>
       </Card>
     </div>
