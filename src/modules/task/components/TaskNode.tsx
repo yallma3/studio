@@ -284,7 +284,7 @@ const TaskNode: React.FC<TaskNodeProps> = ({
             <h4 className="text-xs font-medium text-[#FFC72C]/80 mb-1">
               Expected Output:
             </h4>
-            <p className="text-sm text-[#FFC72C] font-mono bg-[#FFC72C11] p-2 rounded border border-[#FFC72C33]">
+            <p className="text-sm text-[#FFC72C] font-mono bg-[#FFC72C11] p-2 rounded border border-[#FFC72C33] line-clamp-1">
               {task.expectedOutput.slice(0, 75)}
               {task.expectedOutput.length > 75 ? "..." : ""}
             </p>

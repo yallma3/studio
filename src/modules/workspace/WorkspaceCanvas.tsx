@@ -341,6 +341,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         updatedAt: Date.now(),
       };
 
+      console.log("STATE:", updatedWorkspace);
+
       // Update state
       setWorkspaceData(updatedWorkspace);
 
