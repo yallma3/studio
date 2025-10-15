@@ -11,10 +11,14 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { WorkspaceData, Agent, LLMOption } from "../types/Types";
 import { X, Plus, Trash2, Edit } from "lucide-react";
+import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
+import Select from "../../../shared/components/ui/select";
+import ToolSelectionPopup from "../../../shared/components/ToolSelectionPopup";
+import { Tool } from "../types/Types";
 
 interface AgentsTabProps {
   workspaceData: WorkspaceData;
@@ -30,60 +34,20 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
   const [agents, setAgents] = useState<Agent[]>(workspaceData.agents || []);
   const [showAgentDialog, setShowAgentDialog] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
+  const [agentToEdit, setAgentToEdit] = useState<Agent>();
   const [showToolsPopUp, setShowToolsPopUp] = useState(false);
-  const [toolPickerStep, setToolPickerStep] = useState<"root" | "workflow">(
-    "root"
-  );
-  const toolsButtonRef = useRef<HTMLButtonElement | null>(null);
-  const toolsPopoverRef = useRef<HTMLDivElement | null>(null);
 
-  // Available LLM options
-  const availableLLMs: LLMOption[] = useMemo(
-    () => [
-      {
-        provider: "openai",
-        model: "gpt-4.1-nano",
-      },
-      {
-        provider: "openai",
-        model: "gpt-3.5-turbo",
-      },
-      {
-        provider: "openrouter",
-        model: "deepseek/deepseek-chat-v3.1:free",
-      },
-      {
-        provider: "claude",
-        model: "claude-3-opus-latest",
-      },
-      {
-        provider: "gemini",
-        model: "gemini-2.0-flash",
-      },
-      {
-        provider: "gemini",
-        model: "gemini-2.5-flash",
-      },
-      {
-        provider: "gemini",
-        model: "gemini-2.5-flash-lite",
-      },
-      {
-        provider: "groq",
-        model: "llama-3.1-8b-instant",
-      },
-      {
-        provider: "groq",
-        model: "mixtral-8x7b",
-      },
-      {
-        provider: "groq",
-        model: "llama-2-70b",
-      },
-    ],
-    []
-  );
+  // Create available tools from workflows
+  const availableTools = useMemo(() => {
+    const workflowTools: Tool[] =
+      workspaceData.workflows?.map((workflow) => ({
+        type: "workflow" as const,
+        name: workflow.name,
+        description: workflow.description + "-- WorkflowId: " + workflow.id,
+      })) || [];
+
+    return workflowTools;
+  }, [workspaceData.workflows]);
 
   const [agentForm, setAgentForm] = useState<Omit<Agent, "id">>({
     name: "",
@@ -96,6 +60,29 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
     apiKey: "",
   });
 
+  // LLM providers/models derived from AvailableLLMs
+  const llmProviders = Object.keys(AvailableLLMs) as LLMOption["provider"][];
+
+  // State for selected provider
+  const [selectedProvider, setSelectedProvider] =
+    useState<LLMOption["provider"]>("Groq");
+  // remove unused selectedModel state
+
+  const [llmOptions, setLLMOptions] = useState<LLMModel[]>(
+    AvailableLLMs["Groq"]
+  );
+
+  useEffect(() => {
+    setLLMOptions(AvailableLLMs[selectedProvider]);
+  }, [selectedProvider]);
+
+  // State for form values
+  useEffect(() => {
+    if (isEditing) {
+      setSelectedProvider(agentToEdit?.llm.provider as LLMOption["provider"]);
+    }
+  }, [isEditing, agentToEdit]);
+
   // Generate a simple ID based on timestamp and random number
   const generateId = (): string => {
     return `agent-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
@@ -103,26 +90,23 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
 
   const handleShowAgentDialog = (
     isEdit: boolean = false,
-    agentId: string | null = null
+    agent: Agent | null = null
   ) => {
-    setIsEditing(isEdit);
-    setCurrentAgentId(agentId);
-
-    if (isEdit && agentId) {
+    if (isEdit && agent) {
       // Find the agent to edit
-      const agentToEdit = agents.find((agent) => agent.id === agentId);
-      if (agentToEdit) {
-        setAgentForm({
-          name: agentToEdit.name,
-          role: agentToEdit.role,
-          objective: agentToEdit.objective,
-          background: agentToEdit.background,
-          capabilities: agentToEdit.capabilities,
-          tools: [...agentToEdit.tools],
-          llm: agentToEdit.llm,
-          apiKey: agentToEdit.apiKey,
-        });
-      }
+      setIsEditing(isEdit);
+      setAgentToEdit(agent);
+
+      setAgentForm({
+        name: agent.name,
+        role: agent.role,
+        objective: agent.objective,
+        background: agent.background,
+        capabilities: agent.capabilities,
+        tools: [...agent.tools],
+        llm: agent.llm,
+        apiKey: agent.apiKey,
+      });
     } else {
       // Reset form for new agent
       setAgentForm({
@@ -159,10 +143,10 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
 
     let updatedAgents;
 
-    if (isEditing && currentAgentId) {
+    if (isEditing && agentToEdit) {
       // Update existing agent
       updatedAgents = agents.map((agent) => {
-        if (agent.id === currentAgentId) {
+        if (agent.id === agentToEdit.id) {
           return {
             ...agent,
             name: agentForm.name,
@@ -172,6 +156,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
             capabilities: agentForm.capabilities,
             tools: agentForm.tools,
             llm: agentForm.llm,
+            apiKey: agentForm.apiKey,
           };
         }
         return agent;
@@ -205,86 +190,16 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
     setShowAgentDialog(false);
   };
 
-  const handleAddWorkflowTool = (workflowId: string) => {
-    const workflow = workspaceData.workflows.find((w) => w.id === workflowId);
-    if (!workflow) return;
-    let toolName = workflow.name
-      .toLowerCase()
-      .replace(/\s+/g, "_") // replace spaces with underscores
-      .replace(/[^a-z0-9_\-.:]/g, "") // remove invalid characters
-      .replace(/^[^a-z_]+/, ""); // ensure it starts with a letter or underscore
-
-    toolName = toolName.slice(0, 64); // enforce max length 64
-
-    if (agentForm.tools.some((t) => t.name === workflow.name)) {
-      setShowToolsPopUp(false);
-      setToolPickerStep("root");
+  const handleAddTool = (tool: Tool) => {
+    if (agentForm.tools.some((t) => t.name === tool.name)) {
       return;
     }
+
     setAgentForm({
       ...agentForm,
-      tools: [
-        ...agentForm.tools,
-        {
-          type: "workflow",
-          name: toolName,
-          description: workflow.description + " -- workflowId: " + workflow.id,
-        },
-      ],
+      tools: [...agentForm.tools, tool],
     });
-    setShowToolsPopUp(false);
-    setToolPickerStep("root");
   };
-
-  const handleAddMcpTool = () => {
-    const toolName = "MCP";
-    if (agentForm.tools.some((t) => t.name === toolName)) {
-      setShowToolsPopUp(false);
-      setToolPickerStep("root");
-      return;
-    }
-    setAgentForm({
-      ...agentForm,
-      tools: [
-        ...agentForm.tools,
-        {
-          type: "mcp",
-          name: toolName,
-          description: "",
-        },
-      ],
-    });
-    setShowToolsPopUp(false);
-    setToolPickerStep("root");
-  };
-
-  useEffect(() => {
-    if (!showToolsPopUp) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        toolsPopoverRef.current &&
-        !toolsPopoverRef.current.contains(target) &&
-        toolsButtonRef.current &&
-        !toolsButtonRef.current.contains(target)
-      ) {
-        setShowToolsPopUp(false);
-        setToolPickerStep("root");
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setShowToolsPopUp(false);
-        setToolPickerStep("root");
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [showToolsPopUp]);
 
   return (
     <div className="space-y-6">
@@ -356,7 +271,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                     <div className="flex gap-1 ml-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <button
                         className="flex items-center justify-center w-8 h-8 text-[#FFC72C] hover:text-[#FFD65C] hover:bg-[#FFC72C]/10 rounded-lg transition-all duration-200"
-                        onClick={() => handleShowAgentDialog(true, agent.id)}
+                        onClick={() => handleShowAgentDialog(true, agent)}
                         title="Edit agent"
                       >
                         <Edit size={14} />
@@ -395,12 +310,8 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                         <path d="M21 12c.552 0 1-.448 1-1V5c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1" />
                         <path d="M3 19h18" />
                       </svg>
-                      {agent.llm
-                        ? `${
-                            availableLLMs.find(
-                              (llm) => llm.model === agent.llm.model
-                            )?.model || agent.llm
-                          }`
+                      {agent.llm?.model
+                        ? agent.llm.model.name
                         : `Workspace Default`}
                     </span>
                   </div>
@@ -512,7 +423,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
               </div>
             </div>
 
-            <div className="space-y-4 p-6">
+            <div className="space-y-6 p-6">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   {t("workspaces.agentName", "Agent Name")} *
@@ -547,7 +458,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                 />
               </div>
 
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   {t("workspaces.objective", "Objective")}
                 </label>
@@ -562,7 +473,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                     "Enter agent objective"
                   )}
                 />
-              </div>
+              </div> */}
 
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
@@ -597,129 +508,55 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                   )}
                 />
               </div> */}
-              <div className="flex items-center justify-between gap-2 ">
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  {t("workspaces.tools", "Tools")}
-                </label>
-                <div className="relative">
-                  <button
-                    ref={toolsButtonRef}
-                    onClick={() => {
-                      setToolPickerStep("root");
-                      setShowToolsPopUp((prev) => !prev);
-                    }}
-                    className=" px-2 py-1 text-xs bg-[#FFC72C] hover:bg-[#E6B428] text-black rounded-md transition-colors flex items-center gap-1"
-                  >
-                    <Plus size={16} />
-                    {t("workspaces.addTool", "Add Tool")}
-                  </button>
 
-                  {showToolsPopUp && (
-                    <div
-                      ref={toolsPopoverRef}
-                      className="absolute z-50 top-full right-0 mt-2 w-56 bg-[#111] border border-zinc-700 rounded-md shadow-lg overflow-hidden"
-                    >
-                      {toolPickerStep === "root" && (
-                        <div className="py-1">
-                          <button
-                            className="w-full text-left px-3 py-2 text-sm text-white hover:bg-zinc-800"
-                            onClick={() => setToolPickerStep("workflow")}
-                          >
-                            Workflow
-                          </button>
-                          <button
-                            className="w-full text-left px-3 py-2 text-sm text-white hover:bg-zinc-800"
-                            onClick={handleAddMcpTool}
-                          >
-                            MCP
-                          </button>
-                        </div>
-                      )}
-                      {toolPickerStep === "workflow" && (
-                        <div className="max-h-60 overflow-y-auto">
-                          {workspaceData.workflows &&
-                          workspaceData.workflows.length > 0 ? (
-                            workspaceData.workflows.map((workflow) => (
-                              <button
-                                key={workflow.id}
-                                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-zinc-800"
-                                onClick={() =>
-                                  handleAddWorkflowTool(workflow.id)
-                                }
-                                title={workflow.description}
-                              >
-                                {workflow.name}
-                              </button>
-                            ))
-                          ) : (
-                            <div className="px-3 py-2 text-sm text-zinc-400">
-                              {t(
-                                "workspaces.noWorkflows",
-                                "No workflows available"
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              {agentForm.tools.length > 0 && (
-                <div>
-                  {agentForm.tools.map((tool) => (
-                    <div key={tool.name} className="flex items-center gap-2">
-                      <span className="text-sm text-zinc-300">{tool.name}</span>
-                      <button
-                        className="text-sm text-zinc-300 hover:text-zinc-200 cursor-pointer hover:bg-zinc-800 rounded-md px-2 py-1"
-                        onClick={() =>
-                          setAgentForm({
-                            ...agentForm,
-                            tools: agentForm.tools.filter(
-                              (t) => t.name !== tool.name
-                            ),
-                          })
-                        }
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   {t("workspaces.agentLLM", "Language Model")}
                 </label>
-                <select
-                  className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                  value={agentForm.llm.model}
-                  onChange={(e) =>
-                    setAgentForm({
-                      ...agentForm,
-                      llm: {
-                        provider: e.target.value as LLMOption["provider"],
-                        model: e.target.value,
-                      },
-                    })
-                  }
-                >
-                  <option value="" disabled>
-                    {t(
-                      "workspaces.selectModelPlaceholder",
-                      "Select a model..."
-                    )}
-                  </option>
-                  {availableLLMs.map((llm) => (
-                    <option key={llm.model} value={llm.model}>
-                      {llm.model} ({llm.provider})
-                      {workspaceData.mainLLM.model === llm.model
-                        ? " (Workspace Default)"
-                        : ""}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-zinc-400 mt-1">
+                <div className="grid grid-cols-5 gap-4">
+                  <div className="col-span-2">
+                    <Select
+                      id="agent-llm-provider"
+                      value={selectedProvider}
+                      onChange={(value: string) => {
+                        setSelectedProvider(value as LLMOption["provider"]);
+                      }}
+                      options={llmProviders.map((provider) => {
+                        return { value: provider, label: provider };
+                      })}
+                      label={t("workspaces.selectProvider", "Provider")}
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <Select
+                      id="agent-llm-model"
+                      value={agentForm.llm.model?.id || ""}
+                      onChange={(value: string) => {
+                        const option = llmOptions.find((m) => m.id == value);
+                        if (!option) return;
+                        setAgentForm({
+                          ...agentForm,
+                          llm: {
+                            provider: selectedProvider,
+                            model: option,
+                          },
+                        });
+                      }}
+                      options={[
+                        {
+                          value: "",
+                          label: "Select a model...",
+                          disabled: true,
+                        },
+                        ...llmOptions.map((m) => {
+                          return { value: m.id, label: m.name };
+                        }),
+                      ]}
+                      label={t("workspaces.selectModel", "Model")}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-zinc-400 mt-2">
                   {agentForm.llm.model
                     ? t(
                         "workspaces.customLLMSelected",
@@ -728,9 +565,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                     : t(
                         "workspaces.usingWorkspaceLLM",
                         `Using workspace's main LLM: ${
-                          availableLLMs.find(
-                            (llm) => llm.model === workspaceData.mainLLM.model
-                          )?.model || "None selected"
+                          workspaceData.mainLLM.model || "None selected"
                         }`
                       )}
                 </p>
@@ -754,6 +589,54 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                   )}
                 />
               </div>
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">
+                    {t("workspaces.tools", "Tools")}
+                  </label>
+                  <button
+                    onClick={() => setShowToolsPopUp(true)}
+                    className="px-2 py-1 text-xs bg-[#FFC72C] hover:bg-[#E6B428] text-black rounded-md transition-colors flex items-center gap-1"
+                  >
+                    <Plus size={16} />
+                    {t("workspaces.addTool", "Add Tool")}
+                  </button>
+                </div>
+                {agentForm.tools.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {agentForm.tools.map((tool) => (
+                      <div
+                        key={tool.name}
+                        className="flex items-center gap-1 bg-zinc-800/30 rounded-md px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-700/50 transition-colors"
+                      >
+                        <span>{tool.name}</span>
+                        <button
+                          className="text-zinc-500 hover:text-red-400 cursor-pointer rounded-sm p-0.5"
+                          onClick={() =>
+                            setAgentForm({
+                              ...agentForm,
+                              tools: agentForm.tools.filter(
+                                (t) => t.name !== tool.name
+                              ),
+                            })
+                          }
+                          title="Remove tool"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {agentForm.tools.length === 0 && (
+                  <p className="text-sm text-zinc-400">
+                    {t(
+                      "workspaces.noToolsSelected",
+                      "No tools selected - Press the plus button to add tools"
+                    )}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 mt-6 sticky bottom-0 pt-2 bg-[#1d1d1d] border-t border-zinc-800 p-6">
@@ -774,6 +657,16 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
           </div>
         </div>
       )}
+
+      {/* Tool Selection Popup */}
+      <ToolSelectionPopup
+        isOpen={showToolsPopUp}
+        onClose={() => setShowToolsPopUp(false)}
+        onAddTool={handleAddTool}
+        availableTools={availableTools}
+        existingTools={agentForm.tools}
+        editingTool={null}
+      />
     </div>
   );
 };

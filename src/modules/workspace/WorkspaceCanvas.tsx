@@ -186,6 +186,14 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
             handleRunWorkspace();
           }
         }
+        if (command.type === "console_input") {
+          console.log("Received console input event:", command.data);
+          if (command.data && typeof command.data === "object") {
+            const event = command.data as ConsoleEvent;
+            // Add to console display
+            addEvent(event);
+          }
+        }
 
         if (command.type == "message") {
           if (command.data && typeof command.data == "string") {
@@ -258,6 +266,10 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     sidecarClient.onCommand(handleSidecarCommand);
     sidecarClient.onStatusChange(handleStatusChange);
 
+    sidecarClient.onConsoleEvent((event: ConsoleEvent) => {
+      console.log("Received workflow output event:", event);
+      addEvent(event);
+    });
     // Set initial status
     setSidecarStatus(sidecarClient.getConnectionStatus());
 
@@ -536,6 +548,18 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               onUpdateWorkspace={handleUpdateWorkspace}
               events={events}
               onClearEvents={() => setEvents([])}
+              onAddEvent={addEvent}
+              onSendConsoleInput={(event: ConsoleEvent) => {
+                // Send console input via WebSocket
+                const message: SidecarCommand = {
+                  id: crypto.randomUUID(),
+                  type: "console_input",
+                  workspaceId: workspaceData.id,
+                  data: event,
+                  timestamp: new Date().toISOString(),
+                };
+                sidecarClient.sendMessage(message);
+              }}
             />
           )}
           {activeTab === "tasks" && (

@@ -45,12 +45,15 @@ import {
 import { Button } from "../../../shared/components/ui/button";
 import { ScrollArea } from "../../../shared/components/ui/scroll-area";
 import Select from "../../../shared/components/ui/select";
+import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
 
 interface WorkspaceTabProps {
   workspaceData: WorkspaceData;
   onUpdateWorkspace?: (updatedData: Partial<WorkspaceData>) => Promise<void>;
   events: ConsoleEvent[];
   onClearEvents?: () => void;
+  onAddEvent?: (event: ConsoleEvent) => void;
+  onSendConsoleInput?: (event: ConsoleEvent) => void;
 }
 
 const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
@@ -58,10 +61,13 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   onUpdateWorkspace: onUpdateWorkspace,
   events: initialEvents,
   onClearEvents,
+  onAddEvent,
+  onSendConsoleInput,
 }) => {
   // Console state
   const [events, setEvents] = useState<ConsoleEvent[]>([]);
 
+  const [consoleInput, setConsoleInput] = useState("");
   const [isConsoleRunning, setIsConsoleRunning] = useState(true);
   const [isConsoleExpanded, setIsConsoleExpanded] = useState(false);
 
@@ -78,64 +84,39 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     }
   }, []);
 
-  // Available LLM options
-  const availableLLMs: LLMOption[] = useMemo(
-    () => [
-      {
-        provider: "openai",
-        model: "gpt-4.1-nano",
-      },
-      {
-        provider: "openai",
-        model: "gpt-3.5-turbo",
-      },
-      {
-        provider: "openrouter",
-        model: "deepseek/deepseek-chat-v3.1:free",
-      },
-      {
-        provider: "claude",
-        model: "claude-3-opus-latest",
-      },
-      {
-        provider: "gemini",
-        model: "gemini-2.0-flash",
-      },
-      {
-        provider: "gemini",
-        model: "gemini-2.5-flash",
-      },
-      {
-        provider: "gemini",
-        model: "gemini-2.5-flash-lite",
-      },
-      {
-        provider: "groq",
-        model: "llama-3.1-8b-instant",
-      },
-      {
-        provider: "groq",
-        model: "mixtral-8x7b",
-      },
-      {
-        provider: "groq",
-        model: "llama-2-70b",
-      },
-    ],
-    []
+  const [formValues, setFormValues] = useState({
+    name: workspaceData.name || "",
+    description: workspaceData.description || "",
+    mainLLM: workspaceData.mainLLM,
+    apiKey: workspaceData.apiKey || "",
+    useSavedCredentials: workspaceData.useSavedCredentials || false,
+  });
+
+  // LLM providers/models derived from AvailableLLMs
+  const llmProviders = Object.keys(AvailableLLMs) as LLMOption["provider"][];
+
+  // State for selected provider
+  const [selectedProvider, setSelectedProvider] =
+    useState<LLMOption["provider"]>("Groq");
+  // remove unused selectedModel state
+
+  const [llmOptions, setLLMOptions] = useState<LLMModel[]>(
+    AvailableLLMs["Groq"]
   );
+
+  useEffect(() => {
+    setLLMOptions(AvailableLLMs[selectedProvider]);
+  }, [selectedProvider]);
 
   // State for editing mode
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
   // State for form values
-  const [formValues, setFormValues] = useState({
-    name: workspaceData.name || "",
-    description: workspaceData.description || "",
-    mainLLM: workspaceData.mainLLM || { provider: "groq", model: "" },
-    apiKey: workspaceData.apiKey || "",
-    useSavedCredentials: workspaceData.useSavedCredentials || false,
-  });
+  useEffect(() => {
+    if (isEditing) {
+      setSelectedProvider(workspaceData.mainLLM.provider);
+    }
+  }, [isEditing, workspaceData.mainLLM.provider]);
 
   // Handle input changes
   const handleInputChange = (
@@ -162,13 +143,44 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     setIsEditing(false);
   };
 
+  //Handle console input submission via WebSocket
+  const handleConsoleInput = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (consoleInput.trim()) {
+      const newEvent: ConsoleEvent = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        timestamp: Date.now(),
+        type: "info",
+        message: consoleInput,
+        details: "User input",
+      };
+
+      console.log("Sending console input via WebSocket:", newEvent);
+
+      // Send via WebSocket if callback is provided
+      if (onSendConsoleInput) {
+        onSendConsoleInput(newEvent);
+      } else {
+        // Fallback to local add if no WebSocket callback
+        console.warn("No WebSocket callback provided, adding locally only");
+        if (onAddEvent) {
+          onAddEvent(newEvent);
+        } else {
+          setEvents((prev) => [...prev, newEvent]);
+        }
+      }
+
+      setConsoleInput("");
+    }
+  };
+
   // Handle cancel
   const handleCancel = () => {
     // Reset form values to original data
     setFormValues({
       name: workspaceData.name || "",
       description: workspaceData.description || "",
-      mainLLM: workspaceData.mainLLM || { provider: "groq", model: "" },
+      mainLLM: workspaceData.mainLLM,
       apiKey: workspaceData.apiKey || "",
       useSavedCredentials: workspaceData.useSavedCredentials || false,
     });
@@ -180,7 +192,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     setFormValues({
       name: workspaceData.name || "",
       description: workspaceData.description || "",
-      mainLLM: workspaceData.mainLLM || { provider: "groq", model: "" },
+      mainLLM: workspaceData.mainLLM,
       apiKey: workspaceData.apiKey || "",
       useSavedCredentials: workspaceData.useSavedCredentials || false,
     });
@@ -365,40 +377,61 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                   <Brain className="h-4 w-4 text-zinc-500" />
                   {isEditing ? (
                     <div className="flex-1">
-                      <Select
-                        id="model"
-                        value={
-                          formValues.mainLLM
-                            ? `${formValues.mainLLM.provider}:${formValues.mainLLM.model}`
-                            : ""
-                        }
-                        onChange={(value) => {
-                          const [provider, model] = value.split(":");
-                          setFormValues((prev) => ({
-                            ...prev,
-                            mainLLM: {
-                              provider: provider as LLMOption["provider"],
-                              model: model,
-                            },
-                          }));
-                        }}
-                        options={[
-                          {
-                            value: "",
-                            label: "Select a model...",
-                            disabled: true,
-                          },
-                          ...availableLLMs.map((llm) => ({
-                            value: `${llm.provider}:${llm.model}`,
-                            label: `${llm.model} (${llm.provider})`,
-                          })),
-                        ]}
-                        label="Select Model"
-                      />
+                      <div className="grid grid-cols-5 gap-4">
+                        <div className="col-span-2">
+                          <Select
+                            id="workspace-llm-provider"
+                            value={selectedProvider}
+                            onChange={(value) => {
+                              setSelectedProvider(
+                                value as LLMOption["provider"]
+                              );
+                            }}
+                            options={llmProviders.map((p) => ({
+                              value: p,
+                              label: p,
+                            }))}
+                            label="Provider"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <Select
+                            id="workspace-llm-model"
+                            value={formValues.mainLLM.model.id}
+                            onChange={(value) => {
+                              const option = llmOptions.find(
+                                (m) => m.id == value
+                              );
+                              if (!option) return;
+
+                              setFormValues((prev) => ({
+                                ...prev,
+                                mainLLM: {
+                                  provider: selectedProvider,
+                                  model: option,
+                                },
+                              }));
+                            }}
+                            options={[
+                              {
+                                value: "",
+                                label: "Select a model...",
+                                disabled: true,
+                              },
+                              ...llmOptions.map((m) => ({
+                                value: m.id,
+                                label: m.name,
+                              })),
+                            ]}
+                            disabled={!selectedProvider}
+                            label="Model"
+                          />
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <span className="text-sm text-[#FFC72C] font-medium">
-                      {workspaceData.mainLLM?.model || "gpt-3.5-turbo"}
+                      {workspaceData.mainLLM?.model.name || "No model selected"}
                     </span>
                   )}
                 </div>
@@ -587,7 +620,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
           </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col min-h-0">
-          <ScrollArea ref={scrollAreaRef} className="flex-1 w-full">
+          <ScrollArea ref={scrollAreaRef} className="flex-1 w-full mb-3">
             <div className="space-y-2 font-mono text-sm">
               {events.length === 0 ? (
                 <div className="text-zinc-500 text-center py-8">
@@ -597,22 +630,24 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 events.map((event) => (
                   <div
                     key={event.id}
-                    className="flex items-center gap-3 p-2 rounded hover:bg-zinc-800/50"
+                    className="flex items-start gap-3 p-2 rounded hover:bg-zinc-800/50"
                   >
-                    <span className="text-zinc-500 text-xs mt-0.5 min-w-[60px]">
+                    <span className="text-zinc-500 text-xs mt-0.5 min-w-[60px] flex-shrink-0">
                       {formatTimestamp(event.timestamp)}
                     </span>
                     <span
-                      className={`text-xs font-medium min-w-[60px] ${getEventColor(
+                      className={`text-xs font-medium min-w-[60px] flex-shrink-0 ${getEventColor(
                         event.type
                       )}`}
                     >
                       [{event.type.toUpperCase()}]
                     </span>
-                    <div className="flex-1">
-                      <div className="text-white">{event.message}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white break-words">
+                        {event.message}
+                      </div>
                       {event.details && (
-                        <div className="text-zinc-400 text-xs mt-1">
+                        <div className="text-zinc-400 text-xs mt-1 break-words">
                           {event.details}
                         </div>
                       )}
@@ -622,6 +657,27 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
               )}
             </div>
           </ScrollArea>
+          {/* Console Input Form */}
+          <form
+            onSubmit={handleConsoleInput}
+            className="flex gap-2 border-t border-zinc-800 pt-3"
+          >
+            <input
+              type="text"
+              value={consoleInput}
+              onChange={(e) => setConsoleInput(e.target.value)}
+              placeholder="Please enter your input:"
+              className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C] text-sm"
+              disabled={!isConsoleRunning}
+            />
+            <button
+              type="submit"
+              className="bg-[#FFC72C] hover:bg-[#E6B428] text-black px-4 py-2 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!isConsoleRunning || !consoleInput.trim()}
+            >
+              Send
+            </button>
+          </form>
         </CardContent>
       </Card>
     </div>

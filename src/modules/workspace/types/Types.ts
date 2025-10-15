@@ -11,6 +11,7 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
+import { LLMModel } from "../../../shared/LLM/config";
 import { NodeRegistry } from "../../flow/types/NodeRegistry";
 import { Task, TaskConnection } from "../../task/types/types";
 
@@ -55,8 +56,8 @@ export interface Workflow {
 //   tokenLimit: number;
 // }
 export interface LLMOption {
-  provider: "groq" | "openrouter" | "openai" | "gemini" | "claude";
-  model: string;
+  provider: "Groq" | "OpenAI" | "OpenRouter" | "Gemini" | "Anthropic";
+  model: LLMModel;
 }
 
 export interface WorkspaceData {

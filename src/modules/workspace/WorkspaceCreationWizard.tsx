@@ -11,7 +11,7 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "../../shared/components/ui/button";
 import { useTranslation } from "react-i18next";
 import {
@@ -24,11 +24,18 @@ import {
   Key,
   Edit2,
 } from "lucide-react";
-import { WorkspaceData, LLMOption, Agent } from "./types/Types";
+import {
+  WorkspaceData,
+  Agent,
+  Tool,
+  ToolConfig,
+  LLMOption,
+} from "./types/Types";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { TooltipHelper } from "../../shared/components/ui/tooltip-helper";
 import Select from "../../shared/components/ui/select";
 import { generateUniqueWorkspaceId } from "./utils/storageUtils";
+import { AvailableLLMs, LLMModel } from "../../shared/LLM/config";
 
 interface WorkspaceCreationWizardProps {
   onClose: () => void;
@@ -73,25 +80,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     },
   ];
 
-  // LLM providers and models aligned with LLMOption { provider, model }
-  const providerLabelToKey: Record<string, LLMOption["provider"]> = {
-    Groq: "groq",
-    OpenAI: "openai",
-    OpenRouter: "openrouter",
-    Gemini: "gemini",
-    Anthropic: "claude",
-  };
-
-  const providerModels: Record<string, string[]> = {
-    Groq: ["llama-3.1-70b", "mixtral-8x7b", "llama-3.1-8b"],
-    OpenAI: ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
-    OpenRouter: ["meta-llama/llama-3.1-70b", "mistralai/mixtral-8x7b"],
-    Gemini: ["gemini-1.5-pro", "gemini-1.5-flash"],
-    Anthropic: ["claude-3-5-sonnet", "claude-3-opus", "claude-3-sonnet"],
-  };
-
-  const llmProviders = Object.keys(providerLabelToKey);
-
   // workspace data state
   const [workspaceData, setWorkspaceData] = useState<WorkspaceData>({
     id: "", // Will be set when component mounts
@@ -102,7 +90,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     description: "",
 
     // Step 2: LLM Selection
-    mainLLM: { provider: "groq", model: "" },
+    mainLLM: {
+      provider: "Groq",
+      model: { name: "Llama 3.1 8B", id: "llama-3.1-8b-instant" },
+    },
     apiKey: "",
     useSavedCredentials: false,
 
@@ -144,8 +135,21 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     return `ag-${shortDate}${randomPart}`;
   };
 
+  // LLM providers/models derived from AvailableLLMs
+  const llmProviders = Object.keys(AvailableLLMs) as LLMOption["provider"][];
+
   // State for selected provider
-  const [selectedProvider, setSelectedProvider] = useState<string>("Groq");
+  const [selectedProvider, setSelectedProvider] =
+    useState<LLMOption["provider"]>("Groq");
+  // remove unused selectedModel state
+
+  const [llmOptions, setLLMOptions] = useState<LLMModel[]>(
+    AvailableLLMs["Groq"]
+  );
+
+  useEffect(() => {
+    setLLMOptions(AvailableLLMs[selectedProvider]);
+  }, [selectedProvider]);
 
   // State for tool popup
   const [showToolPopup, setShowToolPopup] = useState(false);
@@ -207,19 +211,22 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   const [taskType, setTaskType] = useState<"agent" | "workflow">("agent");
 
   // Temporary state for new agents
-  const [newAgent, setNewAgent] = useState<Omit<Agent, "id"> & { id?: string }>(
-    {
-      name: "",
-      role: "",
-      objective: "",
-      background: "",
-      capabilities: "",
-      tools: [],
-      llmId: workspaceData.mainLLM.model, // Default to workspace's main LLM
-      variables: {}, // Initialize empty variables object
-      apiKey: "",
-    }
-  );
+  type WizardAgentDraft = Omit<Agent, "id" | "tools"> & {
+    id?: string;
+    tools: ToolConfig[];
+  };
+
+  const [newAgent, setNewAgent] = useState<WizardAgentDraft>({
+    name: "",
+    role: "",
+    objective: "",
+    background: "",
+    capabilities: "",
+    tools: [],
+    llm: workspaceData.mainLLM,
+    variables: {}, // Initialize empty variables object
+    apiKey: "",
+  });
 
   // State for new variable being added
   const [newVariable, setNewVariable] = useState({ key: "", value: "" });
@@ -267,7 +274,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         updatedAt: Date.now(),
         name: "",
         description: "",
-        mainLLM: { provider: "groq", model: "" },
+        mainLLM: {
+          provider: "Groq",
+          model: { name: "Llama 3.1 8B", id: "llama-3.1-8b-instant" },
+        },
         apiKey: "",
         useSavedCredentials: false,
         tasks: [],
@@ -383,7 +393,27 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         setWorkspaceData((prev) => ({
           ...prev,
           agents: prev.agents.map((agent) =>
-            agent.id === newAgent.id ? { ...(newAgent as Agent) } : agent
+            agent.id === newAgent.id
+              ? {
+                  ...agent,
+                  name: newAgent.name,
+                  role: newAgent.role,
+                  objective: newAgent.objective,
+                  background: newAgent.background,
+                  capabilities: newAgent.capabilities,
+                  tools: newAgent.tools.map<Tool>((t) => ({
+                    type: "basic",
+                    name: t.name,
+                    description:
+                      (t.isInputChannel ? "Input " : "") +
+                        (t.isOutputProducer ? "Output " : "") +
+                        (t.isJudge ? "Judge" : "").trim() || "",
+                  })),
+                  llm: newAgent.llm,
+                  variables: newAgent.variables,
+                  apiKey: newAgent.apiKey,
+                }
+              : agent
           ),
         }));
       } else {
@@ -395,8 +425,15 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           objective: newAgent.objective,
           background: newAgent.background,
           capabilities: newAgent.capabilities,
-          tools: newAgent.tools,
-          llmId: newAgent.llmId,
+          tools: newAgent.tools.map<Tool>((t) => ({
+            type: "basic",
+            name: t.name,
+            description:
+              (t.isInputChannel ? "Input " : "") +
+                (t.isOutputProducer ? "Output " : "") +
+                (t.isJudge ? "Judge" : "").trim() || "",
+          })),
+          llm: newAgent.llm,
           variables: newAgent.variables,
           apiKey: newAgent.apiKey,
         };
@@ -415,7 +452,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         background: "",
         capabilities: "",
         tools: [],
-        llmId: workspaceData.mainLLM.model, // Keep using workspace's main LLM as default
+        llm: workspaceData.mainLLM, // Keep using workspace's main LLM as default
         variables: {},
         apiKey: "",
       });
@@ -428,7 +465,21 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     const agentToEdit = workspaceData.agents.find((agent) => agent.id === id);
     if (agentToEdit) {
       setNewAgent({
-        ...agentToEdit,
+        id: agentToEdit.id,
+        name: agentToEdit.name,
+        role: agentToEdit.role,
+        objective: agentToEdit.objective,
+        background: agentToEdit.background,
+        capabilities: agentToEdit.capabilities,
+        llm: agentToEdit.llm,
+        apiKey: agentToEdit.apiKey,
+        variables: agentToEdit.variables || {},
+        tools: (agentToEdit.tools || []).map((t) => ({
+          name: t.name,
+          isInputChannel: false,
+          isOutputProducer: false,
+          isJudge: false,
+        })),
       });
       setIsEditingAgent(true);
     }
@@ -444,7 +495,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         background: "",
         capabilities: "",
         tools: [],
-        llmId: workspaceData.mainLLM.model,
+        llm: workspaceData.mainLLM,
         variables: {},
         apiKey: "",
       });
@@ -777,59 +828,72 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         ({t("workspaces.optional", "Optional")})
                       </span>
                     </h3>
+                    <div className="grid grid-cols-5 gap-4">
+                      {/* Provider Selection */}
+                      <div className="mb-6 col-span-2">
+                        <Select
+                          id="provider"
+                          value={selectedProvider}
+                          onChange={(value) =>
+                            setSelectedProvider(value as LLMOption["provider"])
+                          }
+                          options={llmProviders.map((provider) => ({
+                            value: provider,
+                            label: provider,
+                          }))}
+                          placeholder={t(
+                            "workspaces.selectProviderPlaceholder",
+                            "Select a provider..."
+                          )}
+                          label={t(
+                            "workspaces.selectProvider",
+                            "Select Provider"
+                          )}
+                        />
+                      </div>
 
-                    {/* Provider Selection */}
-                    <div className="mb-6">
-                      <Select
-                        id="provider"
-                        value={selectedProvider}
-                        onChange={(value) => setSelectedProvider(value)}
-                        options={llmProviders.map((provider) => ({
-                          value: provider,
-                          label: provider,
-                        }))}
-                        placeholder={t(
-                          "workspaces.selectProviderPlaceholder",
-                          "Select a provider..."
-                        )}
-                        label={t(
-                          "workspaces.selectProvider",
-                          "Select Provider"
-                        )}
-                      />
-                    </div>
+                      {/* Model Selection */}
+                      <div className="mb-6 col-span-3">
+                        <Select
+                          id="model"
+                          value={workspaceData.mainLLM.model?.id || ""}
+                          onChange={(value) => {
+                            const option = llmOptions.find(
+                              (m) => m.id == value
+                            );
+                            if (!option) return;
 
-                    {/* Model Selection */}
-                    <div className="mb-6">
-                      <Select
-                        id="model"
-                        value={workspaceData.mainLLM.model || ""}
-                        onChange={(value) =>
-                          setWorkspaceData((prev) => ({
-                            ...prev,
-                            mainLLM: { ...prev.mainLLM, model: value },
-                          }))
-                        }
-                        options={[
-                          {
-                            value: "",
-                            label: t(
-                              "workspaces.selectModelPlaceholder",
-                              "Select a model..."
-                            ),
-                            disabled: true,
-                          },
-                          ...(providerModels[selectedProvider] || []).map(
-                            (m) => ({ value: m, label: m })
-                          ),
-                        ]}
-                        disabled={!selectedProvider}
-                        label={t("workspaces.selectModel", "Select Model")}
-                      />
+                            setWorkspaceData((prev) => ({
+                              ...prev,
+                              // set new LLM option
+                              mainLLM: {
+                                provider: selectedProvider,
+                                model: option,
+                              },
+                            }));
+                          }}
+                          options={[
+                            {
+                              value: "",
+                              label: t(
+                                "workspaces.selectModelPlaceholder",
+                                "Select a model..."
+                              ),
+                              disabled: true,
+                            },
+                            ...(llmOptions || []).map((m) => ({
+                              value: m.id,
+                              label: m.name,
+                            })),
+                          ]}
+                          disabled={!selectedProvider}
+                          label={t("workspaces.selectModel", "Select Model")}
+                        />
+                      </div>
                     </div>
 
                     {/* API Key Section */}
-                    <div className="mt-8 space-y-4">
+                    <div className="mb-8 space-y-4">
                       <label
                         htmlFor="apiKeyOption"
                         className="block text-sm font-medium text-gray-300 mb-2 "
@@ -907,7 +971,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                   onClick={() =>
                                     openUrl("https://console.groq.com/keys")
                                   }
-                                  className="text-xs text-yellow-400 hover:text-yellow-300 ml-2 underline"
+                                  className="text-xs text-yellow-400 hover:text-yellow-300 ml-2 underline cursor-pointer"
                                 >
                                   {t(
                                     "workspaces.getGroqApiKey",
@@ -1056,56 +1120,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           )}
                         />
                       </div>
-
-                      <div className="flex flex-col gap-1">
-                        <Select
-                          id="agentLLM"
-                          value={newAgent.llmId}
-                          onChange={(value) =>
-                            setNewAgent((prev) => ({ ...prev, llmId: value }))
-                          }
-                          options={[
-                            {
-                              value: "",
-                              label: t(
-                                "workspaces.useWorkspaceLLM",
-                                "Use workspace default"
-                              ),
-                              disabled: false,
-                            },
-                            ...(providerModels[selectedProvider] || []).map(
-                              (m) => ({ value: m, label: m })
-                            ),
-                          ]}
-                          label={t("workspaces.agentLLM", "Language Model")}
-                        />
-                        <p className="text-xs text-gray-400 mt-1">
-                          {newAgent.llmId
-                            ? t(
-                                "workspaces.customLLMSelected",
-                                "Custom LLM selected for this agent"
-                              )
-                            : t(
-                                "workspaces.usingWorkspaceLLM",
-                                `Using workspace's main LLM: ${
-                                  workspaceData.mainLLM.model || "None selected"
-                                }`
-                              )}
-                        </p>
-                      </div>
-
-                      {/* <div className="flex flex-col gap-1">
-                      <label htmlFor="agentObjective" className="block text-sm font-medium text-gray-300 mb-1 ">
-                        {t('workspaces.agentDescription', 'Objective')}
-                      </label>
-                      <textarea
-                        id="agentObjective"
-                        value={newAgent.objective}
-                        onChange={(e) => setNewAgent(prev => ({ ...prev, objective: e.target.value }))}
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
-                        placeholder={t('workspaces.enterAgentObjective', 'Enter agent objective')}
-                      />
-                    </div> */}
                       <div className="flex flex-col gap-1">
                         <div className="flex justify-between items-center">
                           <label
@@ -1287,6 +1301,154 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           </div>
                         )}
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-300 mb-1">
+                          {t("workspaces.agentLLM", "Language Model")}
+                        </label>
+                        <div className="grid grid-cols-5 gap-4">
+                          <div className="col-span-2">
+                            <Select
+                              id="agent-llm-provider"
+                              value={selectedProvider}
+                              onChange={(value: string) => {
+                                const next = value;
+                                setSelectedProvider(
+                                  next as LLMOption["provider"]
+                                );
+                              }}
+                              options={llmProviders.map((provider) => ({
+                                value: provider,
+                                label: provider,
+                              }))}
+                              label={t("workspaces.selectProvider", "Provider")}
+                            />
+                          </div>
+                          <div className="col-span-3">
+                            <Select
+                              id="agent-llm-model"
+                              value={newAgent.llm.model?.id || ""}
+                              onChange={(value: string) => {
+                                const option = llmOptions.find(
+                                  (m) => m.id == value
+                                );
+                                if (!option) return;
+                                setNewAgent({
+                                  ...newAgent,
+                                  llm: {
+                                    provider: selectedProvider,
+                                    model: option,
+                                  },
+                                });
+                              }}
+                              options={[
+                                {
+                                  value: "",
+                                  label: t(
+                                    "workspaces.selectModelPlaceholder",
+                                    "Select a model..."
+                                  ),
+                                  disabled: true,
+                                },
+                                ...(llmOptions || []).map((m) => ({
+                                  value: m.id,
+                                  label: m.name,
+                                })),
+                              ]}
+                              disabled={!selectedProvider}
+                              label={t("workspaces.selectModel", "Model")}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-zinc-400 mt-2">
+                          {newAgent.llm.model
+                            ? t(
+                                "workspaces.customLLMSelected",
+                                "Custom LLM selected for this agent"
+                              )
+                            : t(
+                                "workspaces.usingWorkspaceLLM",
+                                `Using workspace's main LLM: ${
+                                  workspaceData.mainLLM.model?.name ||
+                                  "None selected"
+                                }`
+                              )}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-300 mb-1">
+                          {t("workspaces.agentApiKey", "Api Key")}
+                        </label>
+
+                        <input
+                          type="password"
+                          className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                          value={newAgent.apiKey}
+                          onChange={(e) =>
+                            setNewAgent({
+                              ...newAgent,
+                              apiKey: e.target.value,
+                            })
+                          }
+                          placeholder={t(
+                            "workspaces.enterApiKey",
+                            "Enter agent Api Key"
+                          )}
+                        />
+                      </div>
+
+                      {/* <div className="flex flex-col gap-1">
+                        <Select
+                          id="agentLLM"
+                          value={newAgent.llm.model}
+                          onChange={(value) =>
+                            setNewAgent((prev) => ({
+                              ...prev,
+                              llm: { ...prev.llm, model: value },
+                            }))
+                          }
+                          options={[
+                            {
+                              value: "",
+                              label: t(
+                                "workspaces.useWorkspaceLLM",
+                                "Use workspace default"
+                              ),
+                              disabled: false,
+                            },
+                            ...(providerModels[selectedProvider] || []).map(
+                              (m) => ({ value: m.id, label: m.name })
+                            ),
+                          ]}
+                          label={t("workspaces.agentLLM", "Language Model")}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          {newAgent.llm.model
+                            ? t(
+                                "workspaces.customLLMSelected",
+                                "Custom LLM selected for this agent"
+                              )
+                            : t(
+                                "workspaces.usingWorkspaceLLM",
+                                `Using workspace's main LLM: ${
+                                  workspaceData.mainLLM.model || "None selected"
+                                }`
+                              )}
+                        </p>
+                      </div> */}
+
+                      {/* <div className="flex flex-col gap-1">
+                      <label htmlFor="agentObjective" className="block text-sm font-medium text-gray-300 mb-1 ">
+                        {t('workspaces.agentDescription', 'Objective')}
+                      </label>
+                      <textarea
+                        id="agentObjective"
+                        value={newAgent.objective}
+                        onChange={(e) => setNewAgent(prev => ({ ...prev, objective: e.target.value }))}
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
+                        placeholder={t('workspaces.enterAgentObjective', 'Enter agent objective')}
+                      />
+                    </div> */}
 
                       <div className="mb-4">
                         <div className="flex items-center justify-between  gap-2 mb-2">
@@ -1579,7 +1741,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               background: "",
                               capabilities: "",
                               tools: [],
-                              llmId: workspaceData.mainLLM.model,
+                              llm: workspaceData.mainLLM,
                               apiKey: "",
                             });
                             setIsEditingAgent(false);
@@ -1657,12 +1819,12 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                     {agent.capabilities}
                                   </p>
                                 )}
-                                {agent.llmId &&
-                                  agent.llmId !==
+                                {agent.llm?.model &&
+                                  agent.llm.model !==
                                     workspaceData.mainLLM.model && (
                                     <div className="mt-1 flex items-center">
                                       <span className="text-xs text-yellow-400">
-                                        LLM: {agent.llmId}
+                                        LLM: {agent.llm.model.name}
                                       </span>
                                     </div>
                                   )}
@@ -1758,14 +1920,22 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                 {agent.tools.map((tool, index) => {
                                   let roleLabel = "";
                                   let bgColor = "";
-
-                                  if (tool.isInputChannel) {
+                                  // runtime Tool doesn't have flags; display none
+                                  if (
+                                    (tool as unknown as ToolConfig)
+                                      .isInputChannel
+                                  ) {
                                     roleLabel = "Input";
                                     bgColor = "bg-yellow-400 text-black";
-                                  } else if (tool.isOutputProducer) {
+                                  } else if (
+                                    (tool as unknown as ToolConfig)
+                                      .isOutputProducer
+                                  ) {
                                     roleLabel = "Output";
                                     bgColor = "bg-yellow-400 text-black";
-                                  } else if (tool.isJudge) {
+                                  } else if (
+                                    (tool as unknown as ToolConfig).isJudge
+                                  ) {
                                     roleLabel = "Judge";
                                     bgColor = "bg-yellow-400 text-black";
                                   }
@@ -2438,9 +2608,9 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         <span className="text-gray-400 w-40 whitespace-nowrap">
                           {t("workspaces.mainLLM", "Main LLM")}:
                         </span>
-                        {workspaceData.mainLLM.model ? (
+                        {workspaceData.mainLLM?.model ? (
                           <span className="text-white font-medium">
-                            {workspaceData.mainLLM.model}
+                            {workspaceData.mainLLM.model.name}
                           </span>
                         ) : (
                           <span className="text-white w-40 whitespace-nowrap">
@@ -2453,7 +2623,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           {t("workspaces.credentials", "Credentials")}:
                         </span>
                         <span className="text-white">
-                          {workspaceData.mainLLM.model
+                          {workspaceData.mainLLM?.model
                             ? workspaceData.useSavedCredentials
                               ? t(
                                   "workspaces.usingSavedCredentials",
@@ -2513,14 +2683,15 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               </div>
                             )}
 
-                            {agent.llmId &&
-                              agent.llmId !== workspaceData.mainLLM.model && (
+                            {agent.llm?.model &&
+                              agent.llm.model !==
+                                workspaceData.mainLLM.model && (
                                 <div className="mt-2 flex items-center">
                                   <span className="text-xs text-gray-400 mr-2">
                                     Custom LLM:
                                   </span>
                                   <span className="text-xs bg-zinc-700 px-2 py-0.5 rounded text-yellow-400">
-                                    {agent.llmId}
+                                    {agent.llm.model.name}
                                   </span>
                                 </div>
                               )}
@@ -2534,14 +2705,21 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                   {agent.tools.map((tool, index) => {
                                     let roleLabel = "";
                                     let bgColor = "";
-
-                                    if (tool.isInputChannel) {
+                                    if (
+                                      (tool as unknown as ToolConfig)
+                                        .isInputChannel
+                                    ) {
                                       roleLabel = "Input";
                                       bgColor = "bg-yellow-400 text-black";
-                                    } else if (tool.isOutputProducer) {
+                                    } else if (
+                                      (tool as unknown as ToolConfig)
+                                        .isOutputProducer
+                                    ) {
                                       roleLabel = "Output";
                                       bgColor = "bg-yellow-400 text-black";
-                                    } else if (tool.isJudge) {
+                                    } else if (
+                                      (tool as unknown as ToolConfig).isJudge
+                                    ) {
                                       roleLabel = "Judge";
                                       bgColor = "bg-yellow-400 text-black";
                                     }
