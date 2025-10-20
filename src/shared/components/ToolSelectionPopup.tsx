@@ -15,18 +15,17 @@ import React, { useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 import { Button } from "./ui/button";
-
-export interface Tool {
-  type: "function" | "workflow" | "mcp" | "basic";
-  name: string;
-  description: string;
-  parameters?: Record<string, unknown>;
-}
+import {
+  loadAllWorkflowsFromFiles,
+  type WorkflowFile,
+} from "../../modules/workspace/utils/workflowStorageUtils";
+import { Tool, Workflow } from "../../modules/workspace/types/Types";
 
 export interface ToolSelectionPopupProps {
   isOpen: boolean;
   onClose: () => void;
   onAddTool: (tool: Tool) => void;
+  handleImportWorkflow: (workflow: Workflow) => void;
   availableTools: Tool[];
   existingTools: Tool[];
   editingTool?: Tool | null;
@@ -36,6 +35,7 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
   isOpen,
   onClose,
   onAddTool,
+  handleImportWorkflow,
   availableTools,
   existingTools,
   editingTool,
@@ -45,6 +45,12 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
   const [toolPickerStep, setToolPickerStep] = React.useState<
     "root" | "workflow"
   >("root");
+  const [workflowTab, setWorkflowTab] = React.useState<"workspace" | "all">(
+    "workspace"
+  );
+  const [allWorkflows, setAllWorkflows] = React.useState<WorkflowFile[]>([]);
+  const [isLoadingAll, setIsLoadingAll] = React.useState<boolean>(false);
+  const hasRequestedAllRef = React.useRef<boolean>(false);
 
   // Helper function to transform workflow name to tool name
   const transformWorkflowName = (name: string): string => {
@@ -59,6 +65,16 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
   useEffect(() => {
     if (isOpen) {
       setToolPickerStep("root");
+      setWorkflowTab("workspace");
+      setAllWorkflows([]);
+      setIsLoadingAll(false);
+      hasRequestedAllRef.current = false;
+      // Lock background scroll when popup opens
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = previousOverflow;
+      };
     }
   }, [isOpen]);
 
@@ -88,20 +104,63 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
     };
   }, [isOpen, onClose]);
 
+  // Load all workflows when switching to the "all" tab in workflow step
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        if (allWorkflows.length === 0) {
+          setIsLoadingAll(true);
+        }
+        const items = await loadAllWorkflowsFromFiles();
+        setAllWorkflows(items);
+      } finally {
+        setIsLoadingAll(false);
+      }
+    };
+
+    if (
+      isOpen &&
+      toolPickerStep === "workflow" &&
+      workflowTab === "all" &&
+      !hasRequestedAllRef.current
+    ) {
+      hasRequestedAllRef.current = true;
+      fetchAll();
+    }
+  }, [isOpen, toolPickerStep, workflowTab, allWorkflows.length]);
+
   const handleAddWorkflowTool = (workflowId: string) => {
-    const workflow = availableTools.find(
+    const workflowTool: Tool | undefined = availableTools.find(
       (tool) => tool.type === "workflow" && tool.name === workflowId
     );
-    if (!workflow) return;
+    if (!workflowTool) return;
 
-    const toolName = transformWorkflowName(workflow.name);
+    const toolName = transformWorkflowName(workflowTool.name);
 
     const tool: Tool = {
       type: "workflow",
       name: toolName,
-      description: workflow.description,
+      description:
+        workflowTool.description + " -- WorkflowId: " + workflowTool.id,
     };
 
+    onAddTool(tool);
+    onClose();
+  };
+
+  const handleAddWorkflowFromAll = (workflow: WorkflowFile) => {
+    const importedWorflow: Workflow = {
+      id: workflow.id,
+      name: workflow.name,
+      description: workflow.description,
+    };
+    handleImportWorkflow(importedWorflow);
+    const toolName = transformWorkflowName(workflow.name);
+    const tool: Tool = {
+      type: "workflow",
+      name: toolName,
+      description: workflow.description + " -- WorkflowId: " + workflow.id,
+    };
     onAddTool(tool);
     onClose();
   };
@@ -127,7 +186,9 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
         ref={popupRef}
-        className="bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full max-w-md shadow-xl animate-in fade-in duration-200"
+        className={`bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full shadow-xl animate-in fade-in duration-200 transition-[max-width] ${
+          toolPickerStep === "workflow" ? "max-w-xl" : "max-w-md"
+        }`}
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-white">
@@ -184,41 +245,112 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
               </h4>
             </div>
 
-            <div className="max-h-60 overflow-y-auto">
-              {workflowTools.length > 0 ? (
-                <div className="space-y-2">
-                  {workflowTools
-                    .filter((tool) => {
-                      // Transform the workflow name the same way as in handleAddWorkflowTool
-                      const transformedName = transformWorkflowName(tool.name);
+            {/* Tabs */}
+            <div className="flex items-center gap-2 border-b border-zinc-700">
+              <button
+                className={`px-3 py-2 text-sm rounded-t-md ${
+                  workflowTab === "workspace"
+                    ? "bg-zinc-800 text-white"
+                    : "text-zinc-300 hover:text-white"
+                }`}
+                onClick={() => setWorkflowTab("workspace")}
+              >
+                In this workspace
+              </button>
+              <button
+                className={`px-3 py-2 text-sm rounded-t-md ${
+                  workflowTab === "all"
+                    ? "bg-zinc-800 text-white"
+                    : "text-zinc-300 hover:text-white"
+                }`}
+                onClick={() => setWorkflowTab("all")}
+              >
+                All workflows
+              </button>
+            </div>
 
-                      // Check if any existing tool matches the transformed name
-                      const isAlreadyAdded = existingTools.some(
-                        (t) => t.name === transformedName
-                      );
-
-                      // Only show if not already added
-                      return !isAlreadyAdded;
-                    })
-                    .map((tool) => (
-                      <button
-                        key={tool.name}
-                        className="w-full text-left px-3 py-3 text-sm text-white hover:bg-zinc-800 rounded-md border border-zinc-700 cursor-pointer"
-                        onClick={() => handleAddWorkflowTool(tool.name)}
-                        title={tool.description}
-                      >
-                        <div className="font-medium">{tool.name}</div>
-                        {tool.description && (
-                          <div className="text-xs text-gray-400 mt-1">
-                            {tool.description}
-                          </div>
-                        )}
-                      </button>
-                    ))}
+            {/* Tab content: fixed height, absolute children to avoid vertical layout changes */}
+            <div className="relative h-84">
+              {workflowTab === "workspace" && (
+                <div className="absolute inset-0 overflow-y-auto animate-in fade-in duration-150">
+                  {workflowTools.length > 0 ? (
+                    <div className="space-y-2">
+                      {workflowTools
+                        .filter((tool) => {
+                          const transformedName = transformWorkflowName(
+                            tool.name
+                          );
+                          const isAlreadyAdded = existingTools.some(
+                            (t) => t.name === transformedName
+                          );
+                          return !isAlreadyAdded;
+                        })
+                        .map((tool) => (
+                          <button
+                            key={tool.name}
+                            className="w-full text-left px-3 py-3 text-sm text-white hover:bg-zinc-800 rounded-md border border-zinc-700 cursor-pointer"
+                            onClick={() => handleAddWorkflowTool(tool.name)}
+                            title={tool.description}
+                          >
+                            <div className="font-medium">{tool.name}</div>
+                            {tool.description && (
+                              <div className="text-xs text-gray-400 mt-1">
+                                {tool.description}
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="px-3 py-4 text-sm text-zinc-400 text-center">
+                      {t("workspaces.noWorkflows", "No workflows available")}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="px-3 py-4 text-sm text-zinc-400 text-center">
-                  {t("workspaces.noWorkflows", "No workflows available")}
+              )}
+
+              {workflowTab === "all" && (
+                <div className="absolute inset-0 overflow-y-auto animate-in fade-in duration-150">
+                  {allWorkflows.length > 0 ? (
+                    <div className="space-y-2">
+                      {allWorkflows
+                        .filter((wf) => {
+                          const transformedName = transformWorkflowName(
+                            wf.name
+                          );
+                          const isAlreadyAdded = existingTools.some(
+                            (t) => t.name === transformedName
+                          );
+                          return !isAlreadyAdded;
+                        })
+                        .map((wf) => (
+                          <button
+                            key={wf.id}
+                            className="w-full text-left px-3 py-3 text-sm text-white hover:bg-zinc-800 rounded-md border border-zinc-700 cursor-pointer"
+                            onClick={() => handleAddWorkflowFromAll(wf)}
+                            title={wf.description}
+                          >
+                            <div className="font-medium">{wf.name}</div>
+                            {wf.description && (
+                              <div className="text-xs text-gray-400 mt-1">
+                                {wf.description}
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      {isLoadingAll && (
+                        <div className="px-3 py-2 text-xs text-zinc-400 text-center">
+                          Updating...
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="px-3 py-4 text-sm text-zinc-400 text-center">
+                      {isLoadingAll
+                        ? "Loading..."
+                        : t("workspaces.noWorkflows", "No workflows available")}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

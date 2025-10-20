@@ -11,7 +11,7 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "../../shared/components/ui/button";
 import { useTranslation } from "react-i18next";
 import {
@@ -24,18 +24,15 @@ import {
   Key,
   Edit2,
 } from "lucide-react";
-import {
-  WorkspaceData,
-  Agent,
-  Tool,
-  ToolConfig,
-  LLMOption,
-} from "./types/Types";
+import { WorkspaceData, Agent, Tool, LLMOption, Workflow } from "./types/Types";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { TooltipHelper } from "../../shared/components/ui/tooltip-helper";
 import Select from "../../shared/components/ui/select";
 import { generateUniqueWorkspaceId } from "./utils/storageUtils";
 import { AvailableLLMs, LLMModel } from "../../shared/LLM/config";
+import AgentForm from "./components/AgentForm";
+import type { AgentFormValues } from "./components/AgentForm";
+import { Task, TaskConnection, TaskSocket } from "../task/types/types";
 
 interface WorkspaceCreationWizardProps {
   onClose: () => void;
@@ -58,27 +55,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
 }) => {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
-  // Placeholder tools
-  const availableTools = [
-    {
-      name: "Web Search",
-      isInputChannel: false,
-      isOutputProducer: false,
-      isJudge: false,
-    },
-    {
-      name: "Compile Code",
-      isInputChannel: false,
-      isOutputProducer: false,
-      isJudge: false,
-    },
-    {
-      name: "Api Call",
-      isInputChannel: false,
-      isOutputProducer: false,
-      isJudge: false,
-    },
-  ];
 
   // workspace data state
   const [workspaceData, setWorkspaceData] = useState<WorkspaceData>({
@@ -151,69 +127,23 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     setLLMOptions(AvailableLLMs[selectedProvider]);
   }, [selectedProvider]);
 
-  // State for tool popup
-  const [showToolPopup, setShowToolPopup] = useState(false);
-  const [selectedToolInPopup, setSelectedToolInPopup] = useState("");
-  const [selectedToolPropertyInPopup, setSelectedToolPropertyInPopup] =
-    useState<"none" | "isInputChannel" | "isOutputProducer" | "isJudge">(
-      "none"
-    );
-  const [editingToolName, setEditingToolName] = useState<string | null>(null);
-  const popupRef = useRef<HTMLDivElement>(null);
-
-  // Close popup when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        popupRef.current &&
-        !popupRef.current.contains(event.target as Node)
-      ) {
-        setShowToolPopup(false);
-      }
-    };
-
-    if (showToolPopup) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showToolPopup]);
-
-  // Local wizard-only tasks (simpler than canvas tasks)
-  interface WizardTask {
-    id: string;
-    name: string;
-    description: string;
-    expectedOutput: string;
-    assignedAgent: string | null;
-    executeWorkflow: boolean;
-    workflowId: string | null;
-    workflowName?: string;
-  }
-
-  const [wizardTasks, setWizardTasks] = useState<WizardTask[]>([]);
-
   // Temporary state for new items
-  const [newTask, setNewTask] = useState<
-    Omit<WizardTask, "id"> & { id?: string }
-  >({
-    name: "",
+  const [newTask, setNewTask] = useState({
+    id: generateTaskId(),
+    title: "",
     description: "",
     expectedOutput: "",
-    assignedAgent: null,
-    executeWorkflow: false,
-    workflowId: null,
+    type: "agentic",
+    executorId: null as string | null,
+    sockets: [] as TaskSocket[],
   });
 
-  // Task type selection (workflow or agent)
-  const [taskType, setTaskType] = useState<"agent" | "workflow">("agent");
+  const [latestOutputSocket, setLatestOutputSocket] = useState<TaskSocket>();
 
   // Temporary state for new agents
   type WizardAgentDraft = Omit<Agent, "id" | "tools"> & {
     id?: string;
-    tools: ToolConfig[];
+    tools: Tool[];
   };
 
   const [newAgent, setNewAgent] = useState<WizardAgentDraft>({
@@ -228,11 +158,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     apiKey: "",
   });
 
-  // State for new variable being added
-  const [newVariable, setNewVariable] = useState({ key: "", value: "" });
-  const [showVariablePopup, setShowVariablePopup] = useState(false);
-  const [variableError, setVariableError] = useState<string | null>(null);
-
+  // Variables input state moved into AgentForm
   // State for editing agent variables
   const [editingAgentVariables, setEditingAgentVariables] = useState<
     string | null
@@ -240,6 +166,8 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   const [tempVariables, setTempVariables] = useState<Record<string, string>>(
     {}
   );
+
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
   // Track if we're in edit mode
   const [isEditingAgent, setIsEditingAgent] = useState(false);
@@ -331,58 +259,87 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
 
   // On press of add task to add task to workspace's task list and empty form state
   const handleAddTask = () => {
-    if (newTask.name.trim()) {
-      if (isEditingTask && newTask.id) {
+    if (newTask.title.trim()) {
+      if (isEditingTask && taskToEdit) {
         // Update existing task
-        setWizardTasks((prev) =>
-          prev.map((task) =>
-            task.id === newTask.id ? { ...(newTask as WizardTask) } : task
-          )
-        );
+        setWorkspaceData((prev) => ({
+          ...prev,
+          tasks: prev.tasks.map((task) =>
+            task.id === newTask.id ? { ...(newTask as Task) } : task
+          ),
+        }));
       } else {
+        const base = (workspaceData.tasks.length + 1) * 100;
+        const generatedSockets: TaskSocket[] = [
+          { id: base + 1, title: "Input", type: "input" },
+          { id: base + 2, title: "Output", type: "output" },
+        ];
         // Add new task
-        const task: WizardTask = {
-          id: generateTaskId(),
-          name: newTask.name,
+        const task: Task = {
+          id: newTask.id,
+          title: newTask.title,
           description: newTask.description,
           expectedOutput: newTask.expectedOutput,
-          assignedAgent: newTask.assignedAgent,
-          executeWorkflow: newTask.executeWorkflow,
-          workflowId: newTask.workflowId,
-          workflowName: newTask.workflowName,
+          type: newTask.type,
+          executorId: null,
+          position: {
+            x: base * 5,
+            y: Math.floor(Math.random() * 201) - 100,
+          },
+          selected: false,
+          sockets: generatedSockets,
         };
+        if (latestOutputSocket) {
+          const newConnection: TaskConnection = {
+            fromSocket: latestOutputSocket?.id,
+            toSocket: generatedSockets[0].id,
+          };
 
-        setWizardTasks((prev) => [...prev, task]);
+          setWorkspaceData((prev) => ({
+            ...prev,
+            tasks: [...prev.tasks, task],
+            connections: [...prev.connections, newConnection],
+          }));
+        } else {
+          setWorkspaceData((prev) => ({
+            ...prev,
+            tasks: [...prev.tasks, task],
+          }));
+        }
+        setLatestOutputSocket(generatedSockets[1]);
       }
 
       // Reset form and always default to 'Assign to Agent'
       setNewTask({
-        name: "",
+        id: generateTaskId(),
+        title: "",
         description: "",
         expectedOutput: "",
-        assignedAgent: null,
-        executeWorkflow: false,
-        workflowId: null,
+        type: "agentic",
+        executorId: null as string | null,
+        sockets: [] as TaskSocket[],
       });
-      setTaskType("agent"); // Reset to agent type
+      setTaskToEdit(null);
       setIsEditingTask(false);
     }
   };
 
   // Handle editing an existing task
   const handleEditTask = (id: string) => {
-    const taskToEdit = wizardTasks.find((task) => task.id === id);
-    if (taskToEdit) {
-      setNewTask({
-        ...taskToEdit,
-      });
-      setTaskType(taskToEdit.executeWorkflow ? "workflow" : "agent");
-      setIsEditingTask(true);
-    }
+    const task = workspaceData.tasks.find((t) => t.id === id);
+    if (!task) return;
+    setTaskToEdit(task);
+    setNewTask({
+      ...task,
+    });
+    setIsEditingTask(true);
   };
 
   const handleRemoveTask = (id: string) => {
-    setWizardTasks((prev) => prev.filter((task) => task.id !== id));
+    setWorkspaceData((prev) => ({
+      ...prev,
+      tasks: prev.tasks.filter((task) => task.id !== id),
+    }));
   };
 
   // On press of add agent to add agent to workspace's agent list and empty form state
@@ -401,14 +358,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                   objective: newAgent.objective,
                   background: newAgent.background,
                   capabilities: newAgent.capabilities,
-                  tools: newAgent.tools.map<Tool>((t) => ({
-                    type: "basic",
-                    name: t.name,
-                    description:
-                      (t.isInputChannel ? "Input " : "") +
-                        (t.isOutputProducer ? "Output " : "") +
-                        (t.isJudge ? "Judge" : "").trim() || "",
-                  })),
+                  tools: newAgent.tools,
                   llm: newAgent.llm,
                   variables: newAgent.variables,
                   apiKey: newAgent.apiKey,
@@ -425,14 +375,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           objective: newAgent.objective,
           background: newAgent.background,
           capabilities: newAgent.capabilities,
-          tools: newAgent.tools.map<Tool>((t) => ({
-            type: "basic",
-            name: t.name,
-            description:
-              (t.isInputChannel ? "Input " : "") +
-                (t.isOutputProducer ? "Output " : "") +
-                (t.isJudge ? "Judge" : "").trim() || "",
-          })),
+          tools: newAgent.tools,
           llm: newAgent.llm,
           variables: newAgent.variables,
           apiKey: newAgent.apiKey,
@@ -474,12 +417,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         llm: agentToEdit.llm,
         apiKey: agentToEdit.apiKey,
         variables: agentToEdit.variables || {},
-        tools: (agentToEdit.tools || []).map((t) => ({
-          name: t.name,
-          isInputChannel: false,
-          isOutputProducer: false,
-          isJudge: false,
-        })),
+        tools: agentToEdit.tools,
       });
       setIsEditingAgent(true);
     }
@@ -508,114 +446,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     }));
   };
 
-  // Add tool to agent's tools list or update existing tool
-  const handleAddTool = (tool: string) => {
-    if (editingToolName) {
-      // Update existing tool
-      setNewAgent((prev) => ({
-        ...prev,
-        tools: prev.tools.map((t) => {
-          if (t.name === editingToolName) {
-            // Create updated tool with selected property
-            const updatedTool = {
-              name: tool,
-              isInputChannel: false,
-              isOutputProducer: false,
-              isJudge: false,
-            };
-
-            // Set the selected property if it's not 'none'
-            if (selectedToolPropertyInPopup !== "none") {
-              updatedTool[selectedToolPropertyInPopup] = true;
-            }
-
-            return updatedTool;
-          }
-          return t;
-        }),
-      }));
-
-      // Reset editing state
-      setEditingToolName(null);
-    } else {
-      // Check if the tool is already added
-      if (newAgent.tools.some((t) => t.name === tool)) {
-        return; // Tool already exists, don't add it again
-      }
-
-      // Create new tool with selected property
-      const newTool = {
-        name: tool,
-        isInputChannel: false,
-        isOutputProducer: false,
-        isJudge: false,
-      };
-
-      // Set the selected property if it's not 'none'
-      if (selectedToolPropertyInPopup !== "none") {
-        newTool[selectedToolPropertyInPopup] = true;
-      }
-
-      setNewAgent((prev) => ({
-        ...prev,
-        tools: [...prev.tools, newTool],
-      }));
-    }
-
-    // Reset selected tool and close popup
-    setSelectedToolInPopup("");
-    setSelectedToolPropertyInPopup("none");
-    setShowToolPopup(false);
-  };
-
-  // Handle removing a tool from the agent's tools list
-  const handleRemoveTool = (tool: string) => {
-    setNewAgent((prev) => ({
-      ...prev,
-      tools: prev.tools.filter((t) => t.name !== tool),
-    }));
-  };
-
-  // Function to add a variable to the agent
-  const handleAddVariable = () => {
-    const trimmedKey = newVariable.key.trim();
-    if (trimmedKey) {
-      // Check if variable with this name already exists
-      if (newAgent.variables && newAgent.variables[trimmedKey] !== undefined) {
-        console.log("ALREADY EXIST");
-        setVariableError(
-          t(
-            "workspaces.duplicateVariable",
-            "A variable with this name already exists"
-          )
-        );
-        return;
-      }
-
-      setNewAgent((prev) => ({
-        ...prev,
-        variables: {
-          ...prev.variables,
-          [trimmedKey]: newVariable.value,
-        },
-      }));
-      setNewVariable({ key: "", value: "" });
-      setVariableError(null);
-      setShowVariablePopup(false);
-    }
-  };
-
-  // Function to remove a variable from the agent
-  const handleRemoveVariable = (key: string) => {
-    setNewAgent((prev) => {
-      const updatedVariables = { ...prev.variables };
-      delete updatedVariables[key];
-      return {
-        ...prev,
-        variables: updatedVariables,
-      };
-    });
-  };
+  // Tool add/remove now handled inside AgentForm
 
   // Function to open the variable editing dialog for an agent
   const handleOpenVariableDialog = (agentId: string) => {
@@ -623,7 +454,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     if (agent) {
       setTempVariables(agent.variables || {});
       setEditingAgentVariables(agentId);
-      setVariableError(null); // Clear any previous errors
     }
   };
 
@@ -661,10 +491,43 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     return result;
   };
 
-  // Function to preview text with variables replaced
-  const getBackgroundPreview = () => {
-    return replaceVariables(newAgent.background, newAgent.variables || {});
+  // Task badges helpers
+  const getTaskTypeLabel = (type: string) => {
+    switch (type) {
+      case "agentic":
+        return "Agentic";
+      case "specific-agent":
+        return "Specific Agent";
+      case "workflow":
+        return "Workflow";
+      case "MCP":
+        return "MCP";
+      default:
+        return type || "Unknown";
+    }
   };
+
+  const getExecutorLabel = (type: string, executorId: string | null) => {
+    if (!executorId) return "";
+    if (type === "specific-agent") {
+      const agent = workspaceData.agents.find((a) => a.id === executorId);
+      return agent ? agent.name : executorId;
+    }
+    if (type === "workflow") {
+      const wf = workspaceData.workflows.find((w) => w.id === executorId);
+      return wf ? wf.name : executorId;
+    }
+    return executorId;
+  };
+
+  const handleImportWorkflow = (workflow: Workflow) => {
+    const exist = workspaceData.workflows.find((w) => w.id == workflow.id);
+    if (exist) return;
+    const newWorkflows = [...workspaceData.workflows, workflow];
+    setWorkspaceData({ ...workspaceData, workflows: newWorkflows });
+  };
+
+  // Background preview is handled within AgentForm
 
   // Note: We've removed the handleToolPropertyChange function as it's no longer needed
   // Tool properties are now set directly in the popup dialog
@@ -727,6 +590,33 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         ))}
       </div>
     );
+  };
+
+  // Available tools derived from workflows (for ToolSelectionPopup)
+  const availableTools = useMemo(() => {
+    const workflowTools: Tool[] =
+      workspaceData.workflows?.map((workflow) => ({
+        type: "workflow" as const,
+        name: workflow.name,
+        description: `${workflow.description || ""}-- WorkflowId: ${
+          workflow.id
+        }`,
+      })) || [];
+    return workflowTools;
+  }, [workspaceData.workflows]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setNewTask((prev) => ({
+      ...prev,
+      [name]: value === "" && name === "executorId" ? null : value,
+      // Clear executorId when type is set to "agentic"
+      ...(name === "type" && value === "agentic" ? { executorId: null } : {}),
+    }));
   };
 
   return (
@@ -1070,665 +960,36 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         : t("workspaces.addAgent", `Add Agent`)}
                     </h3>
 
-                    <div className="space-y-4 mb-4">
-                      <div className="flex flex-col gap-1">
-                        <label
-                          htmlFor="agentName"
-                          className="block text-sm font-medium text-gray-300 mb-1 "
-                        >
-                          {t("workspaces.agentName", "Name")}
-                        </label>
-                        <input
-                          type="text"
-                          id="agentName"
-                          value={newAgent.name}
-                          onChange={(e) =>
-                            setNewAgent((prev) => ({
-                              ...prev,
-                              name: e.target.value,
-                            }))
-                          }
-                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                          placeholder={t(
-                            "workspaces.enterAgentName",
-                            "Enter agent name"
-                          )}
-                        />
-                      </div>
-
-                      <div className="flex flex-col gap-1">
-                        <label
-                          htmlFor="agentRole"
-                          className="block text-sm font-medium text-gray-300 mb-1 "
-                        >
-                          {t("workspaces.agentRole", "Role")}
-                        </label>
-                        <input
-                          type="text"
-                          id="agentRole"
-                          value={newAgent.role}
-                          onChange={(e) =>
-                            setNewAgent((prev) => ({
-                              ...prev,
-                              role: e.target.value,
-                            }))
-                          }
-                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                          placeholder={t(
-                            "workspaces.enterAgentRole",
-                            "Enter agent role"
-                          )}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <div className="flex justify-between items-center">
-                          <label
-                            htmlFor="agentBackground"
-                            className="block text-sm font-medium text-gray-300 mb-1 "
-                          >
-                            {t("workspaces.agentDescription", "Background")}
-                          </label>
-                          <button
-                            onClick={() => setShowVariablePopup(true)}
-                            className="text-yellow-400 hover:text-yellow-500 transition-colors flex items-center gap-1 text-sm cursor-pointer"
-                            title={t("workspaces.addVariable", "Add variable")}
-                          >
-                            <Plus className="h-4 w-4 " />
-                            {t("workspaces.addVariable", "Add Variable")}
-                          </button>
-                        </div>
-                        <textarea
-                          id="agentBackground"
-                          value={newAgent.background}
-                          onChange={(e) =>
-                            setNewAgent((prev) => ({
-                              ...prev,
-                              background: e.target.value,
-                            }))
-                          }
-                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
-                          placeholder={t(
-                            "workspaces.enterAgentBackground",
-                            "Enter agent background with {{variables}} like: You are an expert in {{expertise}} with {{years}} years of experience"
-                          )}
-                        />
-
-                        {/* Variables list */}
-                        {Object.keys(newAgent.variables || {}).length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-xs text-gray-400 mb-1">
-                              {t(
-                                "workspaces.definedVariables",
-                                "Defined Variables:"
-                              )}
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {Object.entries(newAgent.variables || {}).map(
-                                ([key, value]) => (
-                                  <div
-                                    key={key}
-                                    className="bg-zinc-800 text-white px-2 py-1 rounded flex items-center gap-2 border border-zinc-700"
-                                  >
-                                    <span className="text-sm text-yellow-400">{`{{${key}}}`}</span>
-                                    {value && (
-                                      <span className="text-xs text-gray-400">
-                                        = {value}
-                                      </span>
-                                    )}
-                                    <button
-                                      onClick={() => handleRemoveVariable(key)}
-                                      className="text-gray-400 hover:text-red-500 transition-colors"
-                                      title={t(
-                                        "workspaces.removeVariable",
-                                        "Remove variable"
-                                      )}
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </button>
-                                  </div>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Background preview */}
-                        {newAgent.background &&
-                          Object.keys(newAgent.variables || {}).length > 0 && (
-                            <div className="mt-3 p-3 bg-zinc-900 border border-zinc-700 rounded-md">
-                              <p className="text-xs text-gray-400 mb-1">
-                                {t(
-                                  "workspaces.backgroundPreview",
-                                  "Background Preview:"
-                                )}
-                              </p>
-                              <p className="text-sm text-gray-300">
-                                {getBackgroundPreview()}
-                              </p>
-                            </div>
-                          )}
-
-                        {/* Variable popup */}
-                        {showVariablePopup && (
-                          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                            <div className="bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full max-w-md shadow-xl animate-in fade-in duration-200">
-                              <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-medium text-white">
-                                  {t("workspaces.addVariable", "Add Variable")}
-                                </h3>
-                                <button
-                                  onClick={() => setShowVariablePopup(false)}
-                                  className="text-gray-400 hover:text-white"
-                                >
-                                  <X className="h-5 w-5" />
-                                </button>
-                              </div>
-
-                              <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
-                                  {t(
-                                    "workspaces.variableName",
-                                    "Variable Name"
-                                  )}
-                                </label>
-                                <input
-                                  type="text"
-                                  value={newVariable.key}
-                                  onChange={(e) => {
-                                    setNewVariable((prev) => ({
-                                      ...prev,
-                                      key: e.target.value,
-                                    }));
-                                    setVariableError(null); // Clear error when input changes
-                                  }}
-                                  className={`w-full px-3 py-2 bg-zinc-800 border ${
-                                    variableError
-                                      ? "border-red-500"
-                                      : "border-zinc-700"
-                                  } rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500`}
-                                  placeholder={t(
-                                    "workspaces.enterVariableName",
-                                    "Enter variable name (e.g. expertise)"
-                                  )}
-                                />
-                                {variableError && (
-                                  <p className="text-red-500 text-xs mt-1">
-                                    {variableError}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
-                                  {t(
-                                    "workspaces.variableValue",
-                                    "Default Value"
-                                  )}
-                                </label>
-                                <input
-                                  type="text"
-                                  value={newVariable.value}
-                                  onChange={(e) =>
-                                    setNewVariable((prev) => ({
-                                      ...prev,
-                                      value: e.target.value,
-                                    }))
-                                  }
-                                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                  placeholder={t(
-                                    "workspaces.enterVariableValue",
-                                    "Enter default value (e.g. JavaScript)"
-                                  )}
-                                />
-                              </div>
-
-                              <div className="flex gap-2 justify-end">
-                                <Button
-                                  onClick={() => setShowVariablePopup(false)}
-                                  className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium border-0"
-                                >
-                                  {t("common.cancel", "Cancel")}
-                                </Button>
-                                <Button
-                                  onClick={handleAddVariable}
-                                  className="bg-yellow-500 hover:bg-yellow-600 text-white font-medium border-0"
-                                  disabled={!newVariable.key.trim()}
-                                >
-                                  {t("common.add", "Add")}
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-1">
-                          {t("workspaces.agentLLM", "Language Model")}
-                        </label>
-                        <div className="grid grid-cols-5 gap-4">
-                          <div className="col-span-2">
-                            <Select
-                              id="agent-llm-provider"
-                              value={selectedProvider}
-                              onChange={(value: string) => {
-                                const next = value;
-                                setSelectedProvider(
-                                  next as LLMOption["provider"]
-                                );
-                              }}
-                              options={llmProviders.map((provider) => ({
-                                value: provider,
-                                label: provider,
-                              }))}
-                              label={t("workspaces.selectProvider", "Provider")}
-                            />
-                          </div>
-                          <div className="col-span-3">
-                            <Select
-                              id="agent-llm-model"
-                              value={newAgent.llm.model?.id || ""}
-                              onChange={(value: string) => {
-                                const option = llmOptions.find(
-                                  (m) => m.id == value
-                                );
-                                if (!option) return;
-                                setNewAgent({
-                                  ...newAgent,
-                                  llm: {
-                                    provider: selectedProvider,
-                                    model: option,
-                                  },
-                                });
-                              }}
-                              options={[
-                                {
-                                  value: "",
-                                  label: t(
-                                    "workspaces.selectModelPlaceholder",
-                                    "Select a model..."
-                                  ),
-                                  disabled: true,
-                                },
-                                ...(llmOptions || []).map((m) => ({
-                                  value: m.id,
-                                  label: m.name,
-                                })),
-                              ]}
-                              disabled={!selectedProvider}
-                              label={t("workspaces.selectModel", "Model")}
-                            />
-                          </div>
-                        </div>
-                        <p className="text-xs text-zinc-400 mt-2">
-                          {newAgent.llm.model
-                            ? t(
-                                "workspaces.customLLMSelected",
-                                "Custom LLM selected for this agent"
-                              )
-                            : t(
-                                "workspaces.usingWorkspaceLLM",
-                                `Using workspace's main LLM: ${
-                                  workspaceData.mainLLM.model?.name ||
-                                  "None selected"
-                                }`
-                              )}
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-1">
-                          {t("workspaces.agentApiKey", "Api Key")}
-                        </label>
-
-                        <input
-                          type="password"
-                          className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                          value={newAgent.apiKey}
-                          onChange={(e) =>
-                            setNewAgent({
-                              ...newAgent,
-                              apiKey: e.target.value,
-                            })
-                          }
-                          placeholder={t(
-                            "workspaces.enterApiKey",
-                            "Enter agent Api Key"
-                          )}
-                        />
-                      </div>
-
-                      {/* <div className="flex flex-col gap-1">
-                        <Select
-                          id="agentLLM"
-                          value={newAgent.llm.model}
-                          onChange={(value) =>
-                            setNewAgent((prev) => ({
-                              ...prev,
-                              llm: { ...prev.llm, model: value },
-                            }))
-                          }
-                          options={[
-                            {
-                              value: "",
-                              label: t(
-                                "workspaces.useWorkspaceLLM",
-                                "Use workspace default"
-                              ),
-                              disabled: false,
-                            },
-                            ...(providerModels[selectedProvider] || []).map(
-                              (m) => ({ value: m.id, label: m.name })
-                            ),
-                          ]}
-                          label={t("workspaces.agentLLM", "Language Model")}
-                        />
-                        <p className="text-xs text-gray-400 mt-1">
-                          {newAgent.llm.model
-                            ? t(
-                                "workspaces.customLLMSelected",
-                                "Custom LLM selected for this agent"
-                              )
-                            : t(
-                                "workspaces.usingWorkspaceLLM",
-                                `Using workspace's main LLM: ${
-                                  workspaceData.mainLLM.model || "None selected"
-                                }`
-                              )}
-                        </p>
-                      </div> */}
-
-                      {/* <div className="flex flex-col gap-1">
-                      <label htmlFor="agentObjective" className="block text-sm font-medium text-gray-300 mb-1 ">
-                        {t('workspaces.agentDescription', 'Objective')}
-                      </label>
-                      <textarea
-                        id="agentObjective"
-                        value={newAgent.objective}
-                        onChange={(e) => setNewAgent(prev => ({ ...prev, objective: e.target.value }))}
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
-                        placeholder={t('workspaces.enterAgentObjective', 'Enter agent objective')}
-                      />
-                    </div> */}
-
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between  gap-2 mb-2">
-                          <label className="block text-sm font-medium text-gray-300">
-                            {t("workspaces.agentTools", "Agent Tools")}
-                          </label>
-
-                          <button
-                            onClick={() => setShowToolPopup(true)}
-                            className="text-yellow-400 hover:text-yellow-500 transition-colors flex items-center gap-1 text-sm cursor-pointer"
-                            title={t("workspaces.addTool", "Add Tool")}
-                          >
-                            <Plus className="h-4 w-4 " />
-                            {t("workspaces.addTool", "Add Tool")}
-                          </button>
-                        </div>
-
-                        <div className="flex flex-col gap-4 h-14">
-                          {/* Selected Tools */}
-                          {newAgent.tools.length > 0 ? (
-                            <div className="mt-2">
-                              <div className="flex overflow-x-auto pb-2">
-                                <div className="flex gap-2">
-                                  {newAgent.tools.map((tool) => {
-                                    // Determine badge color based on tool function
-                                    let badgeColor = "";
-                                    let functionLabel = "";
-
-                                    if (tool.isInputChannel) {
-                                      badgeColor = "bg-yellow-400 text-black";
-                                      functionLabel = "Input";
-                                    } else if (tool.isOutputProducer) {
-                                      badgeColor = "bg-yellow-400 text-black";
-                                      functionLabel = "Output";
-                                    } else if (tool.isJudge) {
-                                      badgeColor = "bg-yellow-400 text-black";
-                                      functionLabel = "Judge";
-                                    }
-
-                                    return (
-                                      <div
-                                        key={tool.name}
-                                        className="bg-zinc-800 text-white px-2 py-1.5 rounded flex items-center gap-2 border border-zinc-700"
-                                      >
-                                        <span className="text-sm text-nowrap">
-                                          {tool.name}
-                                        </span>
-                                        {functionLabel && (
-                                          <span
-                                            className={`${badgeColor} px-1.5 py-0.5 rounded text-xs`}
-                                          >
-                                            {functionLabel}
-                                          </span>
-                                        )}
-                                        <div className="flex gap-1 ml-1">
-                                          <button
-                                            onClick={() => {
-                                              // Open the tool popup for editing
-                                              setEditingToolName(tool.name);
-                                              setSelectedToolInPopup(tool.name);
-
-                                              // Set the current tool property
-                                              if (tool.isInputChannel) {
-                                                setSelectedToolPropertyInPopup(
-                                                  "isInputChannel"
-                                                );
-                                              } else if (
-                                                tool.isOutputProducer
-                                              ) {
-                                                setSelectedToolPropertyInPopup(
-                                                  "isOutputProducer"
-                                                );
-                                              } else if (tool.isJudge) {
-                                                setSelectedToolPropertyInPopup(
-                                                  "isJudge"
-                                                );
-                                              } else {
-                                                setSelectedToolPropertyInPopup(
-                                                  "none"
-                                                );
-                                              }
-
-                                              setShowToolPopup(true);
-                                            }}
-                                            className="text-gray-400 hover:text-yellow-400 transition-colors"
-                                            title={t(
-                                              "workspaces.editTool",
-                                              "Edit tool"
-                                            )}
-                                          >
-                                            <Edit2 className="h-3 w-3" />
-                                          </button>
-                                          <button
-                                            onClick={() =>
-                                              handleRemoveTool(tool.name)
-                                            }
-                                            className="text-gray-400 hover:text-red-500 transition-colors"
-                                            title={t(
-                                              "workspaces.removeTool",
-                                              "Remove tool"
-                                            )}
-                                          >
-                                            <X className="h-3 w-3" />
-                                          </button>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="mt-2 text-sm text-gray-400">
-                              {t(
-                                "workspaces.noToolsSelected",
-                                "No tools selected - Press the plus button to add tools"
-                              )}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Tool Selection Popup */}
-                        {showToolPopup && (
-                          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                            <div
-                              ref={popupRef}
-                              className="bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full max-w-md shadow-xl animate-in fade-in duration-200"
-                            >
-                              <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-medium text-white">
-                                  {editingToolName
-                                    ? t("workspaces.editTool", "Edit Tool")
-                                    : t("workspaces.addTool", "Add Tool")}
-                                </h3>
-                                <button
-                                  onClick={() => {
-                                    setShowToolPopup(false);
-                                    setEditingToolName(null);
-                                    setSelectedToolPropertyInPopup("none");
-                                  }}
-                                  className="text-gray-400 hover:text-white"
-                                >
-                                  <X className="h-5 w-5" />
-                                </button>
-                              </div>
-
-                              <div className="mb-4">
-                                <Select
-                                  id="toolPopupSelect"
-                                  value={selectedToolInPopup}
-                                  onChange={(value) =>
-                                    setSelectedToolInPopup(value)
-                                  }
-                                  options={[
-                                    {
-                                      value: "",
-                                      label: t(
-                                        "workspaces.selectTool",
-                                        "Select a tool..."
-                                      ),
-                                      disabled: true,
-                                    },
-                                    ...availableTools
-                                      .filter(
-                                        (tool) =>
-                                          !newAgent.tools.some(
-                                            (t) => t.name === tool.name
-                                          ) || tool.name === editingToolName
-                                      )
-                                      .map((tool) => ({
-                                        value: tool.name,
-                                        label: tool.name,
-                                      })),
-                                  ]}
-                                  label={t(
-                                    "workspaces.selectTool",
-                                    "Select Tool"
-                                  )}
-                                />
-                              </div>
-
-                              <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
-                                  {t(
-                                    "workspaces.toolProperty",
-                                    "Tool Property"
-                                  )}
-                                </label>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <button
-                                    onClick={() =>
-                                      setSelectedToolPropertyInPopup("none")
-                                    }
-                                    className={`py-2 px-3 rounded-md text-sm ${
-                                      selectedToolPropertyInPopup === "none"
-                                        ? "bg-yellow-500 text-white"
-                                        : "bg-zinc-700 text-gray-300 hover:bg-zinc-600"
-                                    }`}
-                                  >
-                                    {t("workspaces.noProperty", "None")}
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      setSelectedToolPropertyInPopup(
-                                        "isInputChannel"
-                                      )
-                                    }
-                                    className={`py-2 px-3 rounded-md text-sm ${
-                                      selectedToolPropertyInPopup ===
-                                      "isInputChannel"
-                                        ? "bg-yellow-500 text-white"
-                                        : "bg-zinc-700 text-gray-300 hover:bg-zinc-600"
-                                    }`}
-                                  >
-                                    {t(
-                                      "workspaces.inputChannel",
-                                      "Input Channel"
-                                    )}
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      setSelectedToolPropertyInPopup(
-                                        "isOutputProducer"
-                                      )
-                                    }
-                                    className={`py-2 px-3 rounded-md text-sm ${
-                                      selectedToolPropertyInPopup ===
-                                      "isOutputProducer"
-                                        ? "bg-yellow-500 text-white"
-                                        : "bg-zinc-700 text-gray-300 hover:bg-zinc-600"
-                                    }`}
-                                  >
-                                    {t(
-                                      "workspaces.outputProducer",
-                                      "Output Producer"
-                                    )}
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      setSelectedToolPropertyInPopup("isJudge")
-                                    }
-                                    className={`py-2 px-3 rounded-md text-sm ${
-                                      selectedToolPropertyInPopup === "isJudge"
-                                        ? "bg-yellow-500 text-white"
-                                        : "bg-zinc-700 text-gray-300 hover:bg-zinc-600"
-                                    }`}
-                                  >
-                                    {t("workspaces.judge", "Judge")}
-                                  </button>
-                                </div>
-                              </div>
-
-                              <div className="flex gap-2 justify-end">
-                                <Button
-                                  onClick={() => {
-                                    setShowToolPopup(false);
-                                    setEditingToolName(null);
-                                    setSelectedToolPropertyInPopup("none");
-                                  }}
-                                  className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium border-0"
-                                >
-                                  {t("common.cancel", "Cancel")}
-                                </Button>
-                                <Button
-                                  onClick={() =>
-                                    handleAddTool(selectedToolInPopup)
-                                  }
-                                  className="bg-yellow-500 hover:bg-yellow-600 text-white font-medium border-0"
-                                  disabled={!selectedToolInPopup}
-                                >
-                                  {editingToolName
-                                    ? t("common.update", "Update")
-                                    : t("common.add", "Add")}
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <AgentForm
+                      value={{
+                        name: newAgent.name,
+                        role: newAgent.role,
+                        background: newAgent.background,
+                        llm: newAgent.llm,
+                        apiKey: newAgent.apiKey,
+                        tools: newAgent.tools,
+                        variables: newAgent.variables,
+                      }}
+                      onChange={(val: AgentFormValues) =>
+                        setNewAgent((prev) => ({
+                          ...prev,
+                          name: val.name,
+                          role: val.role,
+                          background: val.background,
+                          llm: {
+                            provider: val.llm.provider,
+                            model: val.llm.model || prev.llm.model,
+                          },
+                          apiKey: val.apiKey,
+                          tools: val.tools,
+                          variables: val.variables || {},
+                        }))
+                      }
+                      handleImportWorkflow={handleImportWorkflow}
+                      availableTools={availableTools}
+                      enableVariables={false}
+                      workspaceMainLLMName={workspaceData.mainLLM.model?.name}
+                    />
 
                     {isEditingAgent ? (
                       <div className="flex gap-2">
@@ -1915,47 +1176,21 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               )}
 
                             {/* Display tools */}
-                            {agent.tools.length > 0 && (
-                              <div className="mt-3 flex flex-wrap gap-1">
-                                {agent.tools.map((tool, index) => {
-                                  let roleLabel = "";
-                                  let bgColor = "";
-                                  // runtime Tool doesn't have flags; display none
-                                  if (
-                                    (tool as unknown as ToolConfig)
-                                      .isInputChannel
-                                  ) {
-                                    roleLabel = "Input";
-                                    bgColor = "bg-yellow-400 text-black";
-                                  } else if (
-                                    (tool as unknown as ToolConfig)
-                                      .isOutputProducer
-                                  ) {
-                                    roleLabel = "Output";
-                                    bgColor = "bg-yellow-400 text-black";
-                                  } else if (
-                                    (tool as unknown as ToolConfig).isJudge
-                                  ) {
-                                    roleLabel = "Judge";
-                                    bgColor = "bg-yellow-400 text-black";
-                                  }
-
-                                  return (
+                            {agent.tools && agent.tools.length > 0 && (
+                              <div className="mt-2">
+                                <span className="text-xs text-gray-400">
+                                  Tools:
+                                </span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {agent.tools.map((tool, index) => (
                                     <span
                                       key={index}
-                                      className="text-xs bg-zinc-700 text-gray-300 px-2 py-1 rounded flex items-center gap-1.5"
+                                      className="text-xs bg-zinc-700 text-gray-300 px-2 py-0.5 rounded"
                                     >
                                       {tool.name}
-                                      {roleLabel && (
-                                        <span
-                                          className={`${bgColor} px-1.5 py-0.5 rounded text-[10px] text-white`}
-                                        >
-                                          {roleLabel}
-                                        </span>
-                                      )}
                                     </span>
-                                  );
-                                })}
+                                  ))}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -2086,12 +1321,12 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
 
                 {/* Side-by-side layout for task creation and list */}
                 <div className="flex flex-col lg:flex-row gap-6 h-full">
-                  {/* Add Task Form */}
-                  <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-4/7 flex flex-col h-full">
+                  {/* Add Task Form (Left 2/3) */}
+                  <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-2/3 flex flex-col h-full">
                     <h3 className="text-lg font-medium text-white mb-4 ">
                       {t(
                         "workspaces.addTask",
-                        `Add Task (${wizardTasks.length + 1})`
+                        `Add Task (${workspaceData.tasks.length + 1})`
                       )}
                     </h3>
 
@@ -2101,16 +1336,16 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           htmlFor="taskName"
                           className="block text-sm font-medium text-gray-300 mb-1 "
                         >
-                          {t("workspaces.taskName", "Task Name")}
+                          {t("workspaces.taskName", "Name")}
                         </label>
                         <input
                           type="text"
                           id="taskName"
-                          value={newTask.name}
+                          value={newTask.title}
                           onChange={(e) =>
                             setNewTask((prev) => ({
                               ...prev,
-                              name: e.target.value,
+                              title: e.target.value,
                             }))
                           }
                           className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
@@ -2126,7 +1361,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           htmlFor="taskDescription"
                           className="block text-sm font-medium text-gray-300 mb-1 "
                         >
-                          {t("workspaces.taskDescription", "Task Description")}
+                          {t("workspaces.taskDescription", "Description")}
                         </label>
                         <textarea
                           id="taskDescription"
@@ -2151,11 +1386,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         >
                           {t(
                             "workspaces.taskExpectedOutput",
-                            "Task Expected Output"
+                            "Expected Output"
                           )}
                         </label>
-                        <input
-                          type="text"
+                        <textarea
                           id="taskExpectedOutput"
                           value={newTask.expectedOutput}
                           onChange={(e) =>
@@ -2171,218 +1405,77 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           )}
                         />
                       </div>
-                      <div className="mb-4 border-t border-zinc-700 pt-4">
-                        <label className="block text-sm font-medium text-gray-300 mb-3 ">
-                          {t(
-                            "workspaces.taskExecutionType",
-                            "Task Execution Type"
-                          )}
+                      <div>
+                        <label
+                          htmlFor="type"
+                          className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
+                        >
+                          Type
                         </label>
-                        <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
-                          <p className="text-xs text-gray-400 mb-3">
-                            {t(
-                              "workspaces.taskTypeDescription",
-                              "Choose how this task will be executed. A task can either be assigned to an agent or execute a workflow, but not both."
-                            )}
-                          </p>
-                          <div className="flex flex-col gap-4">
-                            {/* Radio button for Agent option */}
-                            <div
-                              className={`flex items-start p-3 rounded-md cursor-pointer ${
-                                taskType === "agent"
-                                  ? "bg-zinc-700 border border-yellow-400/50"
-                                  : "bg-zinc-800/80 border border-zinc-700 hover:bg-zinc-700/50"
-                              }`}
-                              onClick={() => {
-                                setTaskType("agent");
-                                setNewTask((prev) => ({
-                                  ...prev,
-                                  executeWorkflow: false,
-                                  workflowId: null,
-                                }));
-                              }}
-                            >
-                              <div className="flex items-center h-5">
-                                <input
-                                  type="radio"
-                                  id="taskTypeAgent"
-                                  name="taskType"
-                                  checked={taskType === "agent"}
-                                  onChange={() => {
-                                    setTaskType("agent");
-                                    setNewTask((prev) => ({
-                                      ...prev,
-                                      executeWorkflow: false,
-                                      workflowId: null,
-                                    }));
-                                  }}
-                                  className="h-4 w-4 text-yellow-400 focus:ring-yellow-500 border-zinc-700 bg-zinc-800"
-                                />
-                              </div>
-                              <div className="ml-3 flex-1">
-                                <label
-                                  htmlFor="taskTypeAgent"
-                                  className="font-medium text-white cursor-pointer"
-                                >
-                                  {t(
-                                    "workspaces.assignToAgent",
-                                    "Assign to Agent"
-                                  )}
-                                </label>
-                                <p className="text-xs text-gray-400 mt-1">
-                                  {t(
-                                    "workspaces.assignToAgentDescription",
-                                    "The task will be handled by a single agent with specific capabilities"
-                                  )}
-                                </p>
-
-                                {taskType === "agent" && (
-                                  <div className="mt-3 pl-1">
-                                    <Select
-                                      id="taskAssignedAgent"
-                                      value={newTask.assignedAgent || ""}
-                                      onChange={(value) =>
-                                        setNewTask((prev) => ({
-                                          ...prev,
-                                          assignedAgent: value ? value : null,
-                                        }))
-                                      }
-                                      options={[
-                                        {
-                                          value: "",
-                                          label: t(
-                                            "workspaces.autoAssignAgent",
-                                            "Auto-assign best fit"
-                                          ),
-                                          disabled: true,
-                                        },
-                                        ...workspaceData.agents.map(
-                                          (agent) => ({
-                                            value: agent.id,
-                                            label: agent.name,
-                                          })
-                                        ),
-                                      ]}
-                                      label={t(
-                                        "workspaces.agentAssignment",
-                                        "Agent Assignment"
-                                      )}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Radio button for Workflow option */}
-                            <div
-                              className={`flex items-start p-3 rounded-md cursor-pointer ${
-                                taskType === "workflow"
-                                  ? "bg-zinc-700 border border-yellow-400/50"
-                                  : "bg-zinc-800/80 border border-zinc-700 hover:bg-zinc-700/50"
-                              }`}
-                              onClick={() => {
-                                setTaskType("workflow");
-                                setNewTask((prev) => ({
-                                  ...prev,
-                                  assignedAgent: null,
-                                  executeWorkflow: true,
-                                }));
-                              }}
-                            >
-                              <div className="flex items-center h-5">
-                                <input
-                                  type="radio"
-                                  id="taskTypeWorkflow"
-                                  name="taskType"
-                                  checked={taskType === "workflow"}
-                                  onChange={() => {
-                                    setTaskType("workflow");
-                                    setNewTask((prev) => ({
-                                      ...prev,
-                                      assignedAgent: null,
-                                      executeWorkflow: true,
-                                    }));
-                                  }}
-                                  className="h-4 w-4 text-yellow-400 focus:ring-yellow-500 border-zinc-700 bg-zinc-800"
-                                />
-                              </div>
-                              <div className="ml-3 flex-1">
-                                <label
-                                  htmlFor="taskTypeWorkflow"
-                                  className="font-medium text-white cursor-pointer"
-                                >
-                                  {t(
-                                    "workspaces.executeWorkflow",
-                                    "Execute a Workflow"
-                                  )}
-                                </label>
-                                <p className="text-xs text-gray-400 mt-1">
-                                  {t(
-                                    "workspaces.executeWorkflowDescription",
-                                    "The task will execute a predefined workflow with multiple steps"
-                                  )}
-                                </p>
-
-                                {taskType === "workflow" && (
-                                  <div className="mt-3 pl-1">
-                                    <Select
-                                      id="taskWorkflowId"
-                                      value={newTask.workflowId || ""}
-                                      onChange={(value) =>
-                                        setNewTask((prev) => ({
-                                          ...prev,
-                                          workflowId: value ? value : null,
-                                        }))
-                                      }
-                                      options={[
-                                        {
-                                          value: "",
-                                          label: t(
-                                            "workspaces.selectWorkflow",
-                                            "Select a workflow..."
-                                          ),
-                                          disabled: true,
-                                        },
-                                        // Example workflows - replace with actual workflows data
-                                        {
-                                          value: "workflow1",
-                                          label: "Data Processing Workflow",
-                                        },
-                                        {
-                                          value: "workflow2",
-                                          label: "Content Generation Workflow",
-                                        },
-                                        {
-                                          value: "workflow3",
-                                          label: "Analysis Workflow",
-                                        },
-                                      ]}
-                                      label={t(
-                                        "workspaces.workflowSelection",
-                                        "Workflow Selection"
-                                      )}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                        <select
+                          id="type"
+                          name="type"
+                          value={newTask.type}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent"
+                        >
+                          <option value="agentic">Agentic (Auto)</option>
+                          <option value="specific-agent">Specific Agent</option>
+                          <option value="workflow">Workflow</option>
+                          <option value="MCP">MCP</option>
+                        </select>
                       </div>
+                      {newTask.type === "specific-agent" ||
+                      newTask.type === "workflow" ? (
+                        <div>
+                          <label
+                            htmlFor="executorId"
+                            className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
+                          >
+                            {newTask.type === "specific-agent"
+                              ? "Agent"
+                              : "Workflow"}
+                          </label>
+                          <select
+                            id="executorId"
+                            name="executorId"
+                            value={newTask.executorId || ""}
+                            onChange={handleInputChange}
+                            className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent"
+                          >
+                            <option value="">None</option>
+                            {newTask.type === "specific-agent"
+                              ? workspaceData.agents.map((agent) => (
+                                  <option key={agent.id} value={agent.id}>
+                                    {agent.name}
+                                  </option>
+                                ))
+                              : workspaceData.workflows.map((wf) => (
+                                  <option key={wf.id} value={wf.id}>
+                                    {wf.name}
+                                  </option>
+                                ))}
+                          </select>
+                        </div>
+                      ) : (
+                        ""
+                      )}
                     </div>
+
                     {isEditingTask ? (
                       <div className="flex gap-2">
                         <Button
                           onClick={() => {
                             setNewTask({
-                              name: "",
+                              id: generateTaskId(),
+                              title: "",
                               description: "",
                               expectedOutput: "",
-                              assignedAgent: null,
-                              executeWorkflow: false,
-                              workflowId: null,
+                              type: "agentic",
+                              executorId: null as string | null,
+                              sockets: [] as TaskSocket[],
                             });
-                            setTaskType("agent"); // Reset to agent type
+                            setTaskToEdit(null);
                             setIsEditingTask(false);
                           }}
                           className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-medium border-0 flex items-center justify-center"
@@ -2393,7 +1486,12 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         <Button
                           onClick={handleAddTask}
                           className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center"
-                          disabled={!newTask.name.trim()}
+                          disabled={
+                            !newTask.title.trim() ||
+                            ((newTask.type === "specific-agent" ||
+                              newTask.type === "workflow") &&
+                              !newTask.executorId)
+                          }
                         >
                           <Check className="h-4 w-4 mr-1" />
                           {t("workspaces.updateTask", "Update Task")}
@@ -2403,11 +1501,21 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       <Button
                         onClick={handleAddTask}
                         className={`w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center ${
-                          newTask.name.trim()
+                          newTask.title.trim() &&
+                          !(
+                            (newTask.type === "specific-agent" ||
+                              newTask.type === "workflow") &&
+                            !newTask.executorId
+                          )
                             ? "cursor-pointer"
                             : "cursor-not-allowed"
                         }`}
-                        disabled={!newTask.name.trim()}
+                        disabled={
+                          !newTask.title.trim() ||
+                          ((newTask.type === "specific-agent" ||
+                            newTask.type === "workflow") &&
+                            !newTask.executorId)
+                        }
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         {t("workspaces.addTask", "Add Task")}
@@ -2415,21 +1523,21 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                     )}
                   </div>
 
-                  {/* Task List */}
-                  <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-3/7 flex flex-col ">
+                  {/* Task List (Right 1/3) */}
+                  <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-1/3 flex flex-col ">
                     <h3 className="text-lg font-medium text-white mb-4 ">
                       {t("workspaces.taskList", "Task List")}{" "}
-                      {wizardTasks.length > 0 && (
+                      {workspaceData.tasks.length > 0 && (
                         <span className="text-gray-400 text-sm">
                           {" "}
-                          {wizardTasks.length} task(s) added
+                          {workspaceData.tasks.length} task(s) added
                         </span>
                       )}
                     </h3>
 
-                    {wizardTasks.length > 0 ? (
+                    {workspaceData.tasks.length > 0 ? (
                       <div className="space-y-3 flex-grow overflow-y-auto">
-                        {wizardTasks.map((task) => (
+                        {workspaceData.tasks.map((task) => (
                           <div
                             key={task.id}
                             className="bg-zinc-800 rounded-lg p-4 flex justify-between items-start w-full"
@@ -2437,43 +1545,29 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             <div className="w-full">
                               <div className="flex items-center justify-between">
                                 <h4 className="font-medium text-white">
-                                  {task.name}
+                                  {task.title}
                                 </h4>
-                                <div className="flex items-center gap-2">
-                                  {task.executeWorkflow ? (
-                                    <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full flex items-center gap-1">
-                                      <span className="font-medium">
-                                        Workflow
-                                      </span>
-                                      {task.workflowId && (
-                                        <span className="text-[10px] bg-blue-600/60 px-1.5 py-0.5 rounded">
-                                          {task.workflowId === "workflow1"
-                                            ? "Data Processing"
-                                            : task.workflowId === "workflow2"
-                                            ? "Content Generation"
-                                            : task.workflowId === "workflow3"
-                                            ? "Analysis"
-                                            : "Selected"}
-                                        </span>
-                                      )}
-                                    </span>
-                                  ) : (
-                                    <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full flex items-center gap-1">
-                                      <span className="font-medium">Agent</span>
-                                      {task.assignedAgent ? (
-                                        <span className="text-[10px] bg-green-600/60 px-1.5 py-0.5 rounded">
-                                          {workspaceData.agents.find(
-                                            (a) => a.id === task.assignedAgent
-                                          )?.name || "Assigned"}
-                                        </span>
-                                      ) : (
-                                        <span className="text-[10px] bg-green-600/60 px-1.5 py-0.5 rounded">
-                                          Auto-assign
-                                        </span>
-                                      )}
-                                    </span>
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <span className="text-[10px] uppercase tracking-wide bg-zinc-700 text-gray-200 px-2 py-0.5 rounded">
+                                  {getTaskTypeLabel(
+                                    task.type as unknown as string
                                   )}
-                                </div>
+                                </span>
+                                {getExecutorLabel(
+                                  task.type as unknown as string,
+                                  task.executorId as unknown as string | null
+                                ) && (
+                                  <span className="text-[10px] bg-zinc-700/60 text-gray-300 px-2 py-0.5 rounded">
+                                    Exec:{" "}
+                                    {getExecutorLabel(
+                                      task.type as unknown as string,
+                                      task.executorId as unknown as
+                                        | string
+                                        | null
+                                    )}
+                                  </span>
+                                )}
                               </div>
                               {task.description && (
                                 <div className="mt-2">
@@ -2492,38 +1586,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                   </span>
                                   <p className="text-sm text-gray-300">
                                     {task.expectedOutput}
-                                  </p>
-                                </div>
-                              )}
-                              {task.executeWorkflow && task.workflowId && (
-                                <div className="mt-2">
-                                  <span className="text-xs font-medium text-gray-400">
-                                    Workflow:
-                                  </span>
-                                  <p className="text-sm text-gray-300">
-                                    {task.workflowId === "workflow1"
-                                      ? "Data Processing Workflow"
-                                      : task.workflowId === "workflow2"
-                                      ? "Content Generation Workflow"
-                                      : task.workflowId === "workflow3"
-                                      ? "Analysis Workflow"
-                                      : task.workflowId}
-                                  </p>
-                                </div>
-                              )}
-                              {!task.executeWorkflow && (
-                                <div className="mt-2">
-                                  <span className="text-xs font-medium text-gray-400">
-                                    Execution:
-                                  </span>
-                                  <p className="text-sm text-gray-300">
-                                    {task.assignedAgent
-                                      ? `Assigned to ${
-                                          workspaceData.agents.find(
-                                            (a) => a.id === task.assignedAgent
-                                          )?.name || "agent"
-                                        }`
-                                      : "Will be automatically assigned to the best agent"}
                                   </p>
                                 </div>
                               )}
@@ -2702,44 +1764,14 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                   Tools:
                                 </span>
                                 <div className="flex flex-wrap gap-1 mt-1">
-                                  {agent.tools.map((tool, index) => {
-                                    let roleLabel = "";
-                                    let bgColor = "";
-                                    if (
-                                      (tool as unknown as ToolConfig)
-                                        .isInputChannel
-                                    ) {
-                                      roleLabel = "Input";
-                                      bgColor = "bg-yellow-400 text-black";
-                                    } else if (
-                                      (tool as unknown as ToolConfig)
-                                        .isOutputProducer
-                                    ) {
-                                      roleLabel = "Output";
-                                      bgColor = "bg-yellow-400 text-black";
-                                    } else if (
-                                      (tool as unknown as ToolConfig).isJudge
-                                    ) {
-                                      roleLabel = "Judge";
-                                      bgColor = "bg-yellow-400 text-black";
-                                    }
-
-                                    return (
-                                      <span
-                                        key={index}
-                                        className="text-xs bg-zinc-700 text-gray-300 px-2 py-0.5 rounded flex items-center gap-1"
-                                      >
-                                        {tool.name}
-                                        {roleLabel && (
-                                          <span
-                                            className={`${bgColor} px-1 py-0.5 rounded-sm text-[10px]`}
-                                          >
-                                            {roleLabel}
-                                          </span>
-                                        )}
-                                      </span>
-                                    );
-                                  })}
+                                  {agent.tools.map((tool, index) => (
+                                    <span
+                                      key={index}
+                                      className="text-xs bg-zinc-700 text-gray-300 px-2 py-0.5 rounded"
+                                    >
+                                      {tool.name}
+                                    </span>
+                                  ))}
                                 </div>
                               </div>
                             )}
@@ -2767,35 +1799,36 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       </button>
                     </div>
 
-                    {wizardTasks.length > 0 ? (
+                    {workspaceData.tasks.length > 0 ? (
                       <div className="space-y-3">
-                        {wizardTasks.map((task) => (
+                        {workspaceData.tasks.map((task) => (
                           <div
                             key={task.id}
                             className="bg-zinc-800 rounded-md p-3"
                           >
                             <div className="flex justify-between items-start">
                               <div className="font-medium text-white text-base">
-                                {task.name}
+                                {task.title}
                               </div>
-                              <div className="flex items-center gap-1">
-                                {task.executeWorkflow && (
-                                  <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
-                                    Workflow
-                                  </span>
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <span className="text-[10px] uppercase tracking-wide bg-zinc-700 text-gray-200 px-2 py-0.5 rounded">
+                                {getTaskTypeLabel(
+                                  task.type as unknown as string
                                 )}
-                                {task.assignedAgent ? (
-                                  <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
-                                    {workspaceData.agents.find(
-                                      (a) => a.id === task.assignedAgent
-                                    )?.name || "Assigned"}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs bg-yellow-400 text-black px-2 py-0.5 rounded-full">
-                                    Auto-assign
-                                  </span>
-                                )}
-                              </div>
+                              </span>
+                              {getExecutorLabel(
+                                task.type as unknown as string,
+                                task.executorId as unknown as string | null
+                              ) && (
+                                <span className="text-[10px] bg-zinc-700/60 text-gray-300 px-2 py-0.5 rounded">
+                                  Exec:{" "}
+                                  {getExecutorLabel(
+                                    task.type as unknown as string,
+                                    task.executorId as unknown as string | null
+                                  )}
+                                </span>
+                              )}
                             </div>
 
                             {/* Task details */}
@@ -2819,32 +1852,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                   </span>
                                   <p className="text-sm text-gray-300 mt-0.5">
                                     {task.expectedOutput}
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Workflow information */}
-                              {task.executeWorkflow && task.workflowId && (
-                                <div>
-                                  <span className="text-xs text-gray-400 whitespace-nowrap">
-                                    Workflow:
-                                  </span>
-                                  <p className="text-sm text-gray-300 mt-0.5">
-                                    {task.workflowName || task.workflowId}
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Assigned agent */}
-                              {task.assignedAgent && (
-                                <div>
-                                  <span className="text-xs text-gray-400 whitespace-nowrap">
-                                    Assigned to:
-                                  </span>
-                                  <p className="text-sm text-yellow-400 mt-0.5">
-                                    {workspaceData.agents.find(
-                                      (a) => a.id === task.assignedAgent
-                                    )?.name || "Unknown Agent"}
                                   </p>
                                 </div>
                               )}

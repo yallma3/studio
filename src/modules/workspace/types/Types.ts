@@ -37,6 +37,7 @@ export interface ToolConfig {
 }
 
 export type Tool = {
+  id?: string;
   type: "function" | "workflow" | "mcp" | "basic";
   name: string;
   description: string;

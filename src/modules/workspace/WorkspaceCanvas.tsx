@@ -30,7 +30,7 @@ import {
 import { sidecarClient, SidecarCommand } from "../api/SidecarClient";
 import { useTranslation } from "react-i18next";
 
-import { WorkspaceData, ConsoleEvent } from "./types/Types";
+import { WorkspaceData, ConsoleEvent, Workflow } from "./types/Types";
 
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
@@ -177,16 +177,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   useEffect(() => {
     const handleSidecarCommand = async (command: SidecarCommand) => {
       try {
-        if (command.type === "run_workspace") {
-          // Check if the command is for this workspace or if no specific workspace is specified
-          if (
-            !command.workspaceId ||
-            command.workspaceId === workspaceData.id
-          ) {
-            handleRunWorkspace();
-          }
-        }
-        if (command.type === "console_input") {
+        if (command.type === "console_prompt") {
           console.log("Received console input event:", command.data);
           if (command.data && typeof command.data === "object") {
             const event = command.data as ConsoleEvent;
@@ -196,15 +187,11 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         }
 
         if (command.type == "message") {
-          if (command.data && typeof command.data == "string") {
-            addEvent({
-              id: crypto.randomUUID(),
-              type: "info",
-              message: command.data,
-              timestamp: Date.now(),
-            });
+          if (command.data && typeof command.data === "object") {
+            addEvent(command.data as ConsoleEvent);
           }
         }
+
         if (command.type == "run_workflow") {
           console.log("Running Workflow", command.data);
           if (typeof command.data == "string") {
@@ -243,6 +230,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         if (command.type === "ping") {
           console.log("Ping command:", command);
         }
+
         if (command.type === "pong") {
           console.log("Pong command:", command);
         }
@@ -410,6 +398,13 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     setHasUnsavedChanges(true);
   };
 
+  const handleImportWorkflow = (workflow: Workflow) => {
+    const exist = workspaceData.workflows.find((w) => w.id == workflow.id);
+    if (exist) return;
+    const newWorkflows = [...workspaceData.workflows, workflow];
+    setWorkspaceData({ ...workspaceData, workflows: newWorkflows });
+  };
+
   return (
     <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
       {/* Header */}
@@ -575,6 +570,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
             <AgentsTab
               workspaceData={workspaceData}
               onTabChanges={handleTabChanges}
+              handleImportWorkflow={handleImportWorkflow}
             />
           )}
           {activeTab === "aiflows" && (

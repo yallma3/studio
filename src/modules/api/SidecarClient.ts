@@ -8,6 +8,7 @@ export interface SidecarCommand {
     | "workflow_result"
     | "workflow_json"
     | "console_input"
+    | "console_prompt"
     | "message"
     | "ping"
     | "pong"
