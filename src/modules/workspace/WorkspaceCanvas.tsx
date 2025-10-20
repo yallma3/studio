@@ -177,8 +177,10 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   useEffect(() => {
     const handleSidecarCommand = async (command: SidecarCommand) => {
       try {
-        if (command.type === "console_prompt") {
-          console.log("Received console input event:", command.data);
+        if (
+          command.type === "console_prompt" ||
+          command.type === "console_input"
+        ) {
           if (command.data && typeof command.data === "object") {
             const event = command.data as ConsoleEvent;
             // Add to console display
@@ -365,7 +367,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
   const handleExportWorkspace = async () => {
     console.log("Exporting workspace...");
-    exportWorkspaceAsJs(workspaceData);
+    exportWorkspaceAsJs();
   };
 
   // Handle updating workspace data - only update state, don't save to file

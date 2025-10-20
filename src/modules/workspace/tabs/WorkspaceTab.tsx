@@ -33,6 +33,7 @@ import {
   X,
   Key,
   Check,
+  FileText,
 } from "lucide-react";
 
 import {
@@ -46,6 +47,7 @@ import { Button } from "../../../shared/components/ui/button";
 import { ScrollArea } from "../../../shared/components/ui/scroll-area";
 import Select from "../../../shared/components/ui/select";
 import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
+import EventResultDialog from "../components/EventResultDialog";
 
 interface WorkspaceTabProps {
   workspaceData: WorkspaceData;
@@ -70,6 +72,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   const [consoleInput, setConsoleInput] = useState("");
   const [isConsoleRunning, setIsConsoleRunning] = useState(true);
   const [isConsoleExpanded, setIsConsoleExpanded] = useState(false);
+
+  // Event result dialog state
+  const [selectedEvent, setSelectedEvent] = useState<ConsoleEvent | null>(null);
+  const [isResultDialogOpen, setIsResultDialogOpen] = useState(false);
 
   // Ref for scroll area
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -150,7 +156,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
       const newEvent: ConsoleEvent = {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         timestamp: Date.now(),
-        type: "info",
+        type: "user",
         message: consoleInput,
         details: "User input",
       };
@@ -251,15 +257,35 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
 
   const getEventColor = (type: string) => {
     switch (type) {
+      case "info":
+        return "text-blue-400";
       case "error":
         return "text-red-400";
       case "warning":
         return "text-yellow-400";
       case "success":
         return "text-green-400";
+      case "system":
+        return "text-[#9CA3AF]";
+      case "input":
+        return "text-[#06B6D4]";
+      case "user":
+        return "text-[#8B5CF6]";
       default:
         return "text-blue-400";
     }
+  };
+
+  // Handle opening result dialog
+  const handleViewResult = (event: ConsoleEvent) => {
+    setSelectedEvent(event);
+    setIsResultDialogOpen(true);
+  };
+
+  // Handle closing result dialog
+  const handleCloseResultDialog = () => {
+    setIsResultDialogOpen(false);
+    setSelectedEvent(null);
   };
 
   return (
@@ -632,7 +658,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                     key={event.id}
                     className="flex items-start gap-3 p-2 rounded hover:bg-zinc-800/50"
                   >
-                    <span className="text-zinc-500 text-xs mt-0.5 min-w-[60px] flex-shrink-0">
+                    <span className="text-zinc-500 text-xs min-w-[60px] flex-shrink-0">
                       {formatTimestamp(event.timestamp)}
                     </span>
                     <span
@@ -642,15 +668,27 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                     >
                       [{event.type.toUpperCase()}]
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-white break-words">
+                    <div className="flex items-start justify-between gap-4 w-full">
+                      <div className="text-white break-words flex-1">
                         {event.message}
                       </div>
-                      {event.details && (
-                        <div className="text-zinc-400 text-xs mt-1 break-words">
-                          {event.details}
-                        </div>
-                      )}
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {event.details && (
+                          <div className="text-zinc-400 text-[0.65rem] break-words">
+                            {event.details}
+                          </div>
+                        )}
+                        {event.results && (
+                          <button
+                            onClick={() => handleViewResult(event)}
+                            className="text-[#FFC72C] hover:text-[#FFB300] transition-colors p-1 rounded hover:bg-zinc-800 cursor-pointer"
+                            title="View result"
+                          >
+                            <FileText className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -680,6 +718,13 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
           </form>
         </CardContent>
       </Card>
+
+      {/* Event Result Dialog */}
+      <EventResultDialog
+        isOpen={isResultDialogOpen}
+        onClose={handleCloseResultDialog}
+        event={selectedEvent}
+      />
     </div>
   );
 };

@@ -87,9 +87,10 @@ export interface WorkspaceData {
 export interface ConsoleEvent {
   id: string;
   timestamp: number;
-  type: "info" | "warning" | "error" | "success";
+  type: "info" | "warning" | "error" | "success" | "system" | "input" | "user";
   message: string;
   details?: string;
+  results?: string;
 }
 
 export type ExecutionStepType = "agentic" | "workflow";
