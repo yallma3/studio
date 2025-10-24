@@ -4,7 +4,7 @@
  * Copyright (C) 2025 yaLLMa3
  
  * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
-   If a copy of the MPL was not distributed with this file, You can obtain one at https://www.mozilla.org/MPL/2.0/.
+   If a copy of the MPL was not distributed with this file, You can obtain one at [https://www.mozilla.org/MPL/2.0/](https://www.mozilla.org/MPL/2.0/).
  
  * This software is distributed on an "AS IS" basis,
    WITHOUT WARRANTY OF ANY KIND, either express or implied.
@@ -14,12 +14,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { Plus, Settings, Trash2, ChevronRight } from "lucide-react";
 import { nodeRegistry } from "../types/NodeRegistry";
 
+
 interface ContextMenuPosition {
   visible: boolean;
   x: number;
   y: number;
   targetNodeId?: number;
 }
+
 
 interface CanvasContextMenuProps {
   contextMenu: ContextMenuPosition;
@@ -31,6 +33,7 @@ interface CanvasContextMenuProps {
   onContextMenuAction: (action: string, e: React.MouseEvent) => void;
 }
 
+
 const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   contextMenu,
   onAddNode,
@@ -39,8 +42,10 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   const [submenuPath, setSubmenuPath] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const hoverTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
 
   //Clear hover timer on unmount to avoid late state updates.
   useEffect(() => {
@@ -51,6 +56,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     };
   }, []);
 
+
   useEffect(() => {
     if (contextMenu.visible) {
       // focus the input when menu opens
@@ -60,10 +66,12 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
       setSearchQuery("");
       setSelectedIndex(0);
       setSubmenuPath([]);
+      setHoveredNode(null);
     }
   }, [contextMenu.visible]);
   // Build a flat list of all node types (with category)
   const allNodes = nodeRegistry.listNodeDetails();
+
 
   // When there's a query, compute matches (startsWith first, then includes)
   const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -81,6 +89,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         })
     : [];
 
+
   // Keep keyboard selection in range
   useEffect(() => {
     setSelectedIndex((prev) => {
@@ -91,7 +100,9 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     });
   }, [matches.length]);
 
+
   if (!contextMenu.visible) return null;
+
 
   const menuStyle: React.CSSProperties = {
     position: "absolute",
@@ -107,6 +118,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     backdropFilter: "blur(10px)",
   };
 
+
   const subMenuStyle: React.CSSProperties = {
     position: "absolute",
     top: 0,
@@ -121,6 +133,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     backdropFilter: "blur(10px)",
   };
 
+
   const menuItemStyle: React.CSSProperties = {
     padding: "6px 14px",
     cursor: "pointer",
@@ -133,10 +146,12 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     whiteSpace: "nowrap",
   };
 
+
   const iconStyle: React.CSSProperties = {
     color: "#FFC72C",
     marginRight: "8px",
   };
+
 
   const inputStyle: React.CSSProperties = {
     width: "92%",
@@ -152,6 +167,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     boxSizing: "border-box",
   };
 
+
   const searchItemStyle: React.CSSProperties = {
     padding: "10px 14px",
     cursor: "pointer",
@@ -164,10 +180,33 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     color: "white",
   };
 
+
   const selectedStyle: React.CSSProperties = {
     backgroundColor: "#222",
     color: "#FFC72C",
   };
+
+
+  const tooltipStyle: React.CSSProperties = {
+    position: 'absolute',
+    left: '100%',
+    top: 0,
+    marginLeft: '8px',
+    backgroundColor: 'rgba(17, 17, 17, 0.98)',
+    border: '1px solid rgba(255, 199, 44, 0.3)',
+    borderRadius: '6px',
+    padding: '10px 14px',
+    minWidth: '200px',
+    maxWidth: '320px',
+    color: 'white',
+    fontSize: '13px',
+    lineHeight: '1.5',
+    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.4)',
+    zIndex: 1001,
+    whiteSpace: 'normal',
+    backdropFilter: 'blur(10px)',
+  };
+
 
   const handleHover = (path: string[]) => {
     if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
@@ -175,6 +214,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
       setSubmenuPath(path);
     }, 150);
   };
+
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
@@ -197,6 +237,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     }
   };
 
+
   const renderAddNodeSubmenu = () => (
     <div style={subMenuStyle}>
       <p className="text-xs text-[#FFC72C]/80 font-mono p-2">Categories</p>
@@ -216,25 +257,50 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
               </p>
               {Object.entries(
                 nodeRegistry.listNodeTypesByCategory(category)
-              ).map(([nodeType, title]) => (
-                <div
-                  key={nodeType}
-                  style={{
-                    ...menuItemStyle,
-                    justifyContent: "flex-start",
-                  }}
-                  onClick={(e) => onAddNode(nodeType, e)}
-                  className="hover:bg-[#222]"
-                >
-                  <span>{`${title} Node`}</span>
-                </div>
-              ))}
+              ).map(([nodeType, title]) => {
+                const nodeDetails = allNodes.find(n => n.nodeType === nodeType);
+                return (
+                  <div
+                    key={nodeType}
+                    style={{
+                      ...menuItemStyle,
+                      justifyContent: "flex-start",
+                      position: 'relative',
+                    }}
+                    onMouseEnter={() => setHoveredNode(nodeType)}
+                    onMouseLeave={() => setHoveredNode(null)}
+                    onClick={(e) => onAddNode(nodeType, e)}
+                    className="hover:bg-[#222]"
+                  >
+                    <span>{`${title} Node`}</span>
+                    
+                    {/* Tooltip for category menu items */}
+                    {hoveredNode === nodeType && nodeDetails?.description && (
+                      <div style={tooltipStyle}>
+                        <div style={{ 
+                          color: '#FFC72C', 
+                          fontSize: '12px', 
+                          fontWeight: 'bold',
+                          marginBottom: '6px',
+                          fontFamily: 'monospace'
+                        }}>
+                          {nodeType}
+                        </div>
+                        <div style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
+                          {nodeDetails.description}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       ))}
     </div>
   );
+
 
   const renderSettingsSubmenu = () => (
     <div style={subMenuStyle}>
@@ -254,6 +320,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     </div>
   );
 
+
   return (
     <div style={menuStyle} onClick={(e) => e.stopPropagation()}>
       {/* Search input */}
@@ -263,6 +330,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         onChange={(e) => {
           setSearchQuery(e.target.value);
           setSubmenuPath([]); // close submenus while searching
+          setHoveredNode(null); // clear hover state when typing
         }}
         onKeyDown={handleKeyDown}
         placeholder="Search..."
@@ -270,6 +338,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         style={inputStyle}
         onClick={(e) => e.stopPropagation()}
       />
+
 
       {/* If there's a non-empty query, show flat search results like Rivet */}
       {normalizedQuery ? (
@@ -279,25 +348,51 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
               <span style={{ color: "#888" }}>No results</span>
             </div>
           ) : (
-            matches.map((m, idx) => (
-              <div
-                key={`${m.category}.${m.nodeType}`}
-                role="listitem"
-                onMouseEnter={() => setSelectedIndex(idx)}
-                onClick={(e) => onAddNode(m.nodeType, e)}
-                style={{
-                  ...searchItemStyle,
-                  ...(idx === selectedIndex ? selectedStyle : {}),
-                }}
-              >
-                <span style={{ fontSize: "15px" }}>{m.nodeType}</span>
-                <small
-                  style={{ color: "rgba(255,255,255,0.45)", marginTop: "4px" }}
+            matches.map((m, idx) => {
+              const nodeDetails = allNodes.find(n => n.nodeType === m.nodeType);
+              return (
+                <div
+                  key={`${m.category}.${m.nodeType}`}
+                  role="listitem"
+                  onMouseEnter={() => {
+                    setSelectedIndex(idx);
+                    setHoveredNode(m.nodeType);
+                  }}
+                  onMouseLeave={() => setHoveredNode(null)}
+                  onClick={(e) => onAddNode(m.nodeType, e)}
+                  style={{
+                    ...searchItemStyle,
+                    ...(idx === selectedIndex ? selectedStyle : {}),
+                    position: 'relative',
+                  }}
                 >
-                  {m.category}
-                </small>
-              </div>
-            ))
+                  <span style={{ fontSize: "15px" }}>{m.nodeType}</span>
+                  <small
+                    style={{ color: "rgba(255,255,255,0.45)", marginTop: "4px" }}
+                  >
+                    {m.category}
+                  </small>
+                  
+                  {/* Tooltip for search results */}
+                  {hoveredNode === m.nodeType && nodeDetails?.description && (
+                    <div style={tooltipStyle}>
+                      <div style={{ 
+                        color: '#FFC72C', 
+                        fontSize: '12px', 
+                        fontWeight: 'bold',
+                        marginBottom: '6px',
+                        fontFamily: 'monospace'
+                      }}>
+                        {m.nodeType}
+                      </div>
+                      <div style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
+                        {nodeDetails.description}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       ) : (
@@ -316,6 +411,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
             {submenuPath[0] === "addNode" && renderAddNodeSubmenu()}
           </div>
 
+
           <div
             style={menuItemStyle}
             onMouseEnter={() => handleHover(["settings"])}
@@ -333,5 +429,6 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     </div>
   );
 };
+
 
 export default CanvasContextMenu;

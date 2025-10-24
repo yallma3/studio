@@ -76,6 +76,7 @@ export interface BaseNode {
   category: string;
   title: string;
   nodeType: string;
+  description?: string;
   nodeValue?: NodeValue;
   x: number;
   y: number;

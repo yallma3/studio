@@ -1,20 +1,13 @@
 /*
-* yaLLMa3 - Framework for building AI agents that are capable of learning from their environment and interacting with it.
+* yaLLMa3 - Framework for building AI agents
  
  * Copyright (C) 2025 yaLLMa3
- 
  * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
-   If a copy of the MPL was not distributed with this file, You can obtain one at https://www.mozilla.org/MPL/2.0/.
- 
- * This software is distributed on an "AS IS" basis,
-   WITHOUT WARRANTY OF ANY KIND, either express or implied.
-   See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 import React, {
   useState,
   useEffect,
   useCallback,
-  useMemo,
   useRef,
 } from "react";
 
@@ -34,6 +27,7 @@ import {
   Key,
   Check,
   FileText,
+  Send,
 } from "lucide-react";
 
 import {
@@ -48,6 +42,15 @@ import { ScrollArea } from "../../../shared/components/ui/scroll-area";
 import Select from "../../../shared/components/ui/select";
 import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
 import EventResultDialog from "../components/EventResultDialog";
+
+interface PendingPromptData {
+  promptId: string;
+  nodeId: number;
+  nodeName?: string;
+  message: string;
+  timestamp: number;
+  inputValue: string;
+}
 
 interface WorkspaceTabProps {
   workspaceData: WorkspaceData;
@@ -68,7 +71,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
 }) => {
   // Console state
   const [events, setEvents] = useState<ConsoleEvent[]>([]);
-
+  const [pendingPrompts, setPendingPrompts] = useState<PendingPromptData[]>([]);
   const [consoleInput, setConsoleInput] = useState("");
   const [isConsoleRunning, setIsConsoleRunning] = useState(true);
   const [isConsoleExpanded, setIsConsoleExpanded] = useState(false);
@@ -104,7 +107,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   // State for selected provider
   const [selectedProvider, setSelectedProvider] =
     useState<LLMOption["provider"]>("Groq");
-  // remove unused selectedModel state
 
   const [llmOptions, setLLMOptions] = useState<LLMModel[]>(
     AvailableLLMs["Groq"]
@@ -117,7 +119,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   // State for editing mode
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
-  // State for form values
   useEffect(() => {
     if (isEditing) {
       setSelectedProvider(workspaceData.mainLLM.provider);
@@ -149,10 +150,95 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     setIsEditing(false);
   };
 
-  //Handle console input submission via WebSocket
-  const handleConsoleInput = (e: React.FormEvent) => {
+  // Handle adding new pending prompts from console events - ONE AT A TIME
+  useEffect(() => {
+    // Only process if there are NO pending prompts (sequential)
+    if (pendingPrompts.length === 0) {
+      const newPrompts = events.filter(
+        (event) => 
+          event.type === "input" && 
+          event.promptId &&
+          event.details === "Waiting for user input" // Only unresolved prompts
+      );
+
+      if (newPrompts.length > 0) {
+        // Show only the FIRST waiting prompt
+        const firstPrompt = newPrompts[0];
+        setPendingPrompts([{
+          promptId: firstPrompt.promptId!,
+          nodeId: firstPrompt.nodeId || 0,
+          nodeName: firstPrompt.nodeName || "Unknown Node",
+          message: firstPrompt.message,
+          timestamp: firstPrompt.timestamp,
+          inputValue: "",
+        }]);
+      }
+    }
+  }, [events, pendingPrompts]);
+
+  // Handle console input submission for the current pending prompt
+  const handleConsoleInputSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (consoleInput.trim()) {
+    if (!consoleInput.trim()) return;
+
+    // If there's a pending prompt, send input for that prompt
+    if (pendingPrompts.length > 0) {
+      const currentPrompt = pendingPrompts[0];
+      
+      const newEvent: ConsoleEvent = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        timestamp: Date.now(),
+        type: "user",
+        message: consoleInput,
+        details: "User input",
+        promptId: currentPrompt.promptId,
+      };
+
+      console.log("Sending console input via WebSocket:", newEvent);
+
+      // Add the event locally first so it shows immediately
+      setEvents((prev) => [...prev, newEvent]);
+
+      // Send via WebSocket if callback is provided
+      if (onSendConsoleInput) {
+        onSendConsoleInput(newEvent);
+      } else {
+        console.warn("No WebSocket callback provided, adding locally only");
+        if (onAddEvent) {
+          onAddEvent(newEvent);
+        }
+      }
+
+      // Remove the prompt from pending list
+      setPendingPrompts(prev => prev.filter(p => p.promptId !== currentPrompt.promptId));
+
+      // Clear input immediately
+      setConsoleInput("");
+
+      // Check if there are more prompts waiting
+      setTimeout(() => {
+        const waitingPrompts = events.filter(
+          (event) => 
+            event.type === "input" && 
+            event.promptId && 
+            event.promptId !== currentPrompt.promptId &&
+            !pendingPrompts.some(p => p.promptId === event.promptId)
+        );
+
+        if (waitingPrompts.length > 0) {
+          const nextPrompt = waitingPrompts[0];
+          setPendingPrompts([{
+            promptId: nextPrompt.promptId!,
+            nodeId: nextPrompt.nodeId || 0,
+            nodeName: nextPrompt.nodeName || "Unknown Node",
+            message: nextPrompt.message,
+            timestamp: nextPrompt.timestamp,
+            inputValue: "",
+          }]);
+        }
+      }, 100);
+    } else {
+      // No pending prompt, just add as regular console input
       const newEvent: ConsoleEvent = {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         timestamp: Date.now(),
@@ -163,26 +249,30 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
 
       console.log("Sending console input via WebSocket:", newEvent);
 
-      // Send via WebSocket if callback is provided
+      // Add the event locally first
+      setEvents((prev) => [...prev, newEvent]);
+
       if (onSendConsoleInput) {
         onSendConsoleInput(newEvent);
       } else {
-        // Fallback to local add if no WebSocket callback
         console.warn("No WebSocket callback provided, adding locally only");
         if (onAddEvent) {
           onAddEvent(newEvent);
-        } else {
-          setEvents((prev) => [...prev, newEvent]);
         }
       }
 
+      // Clear input
       setConsoleInput("");
     }
   };
 
+  // Update input value for a specific prompt
+  const updatePromptInput = (promptId: string, value: string) => {
+    setConsoleInput(value);
+  };
+
   // Handle cancel
   const handleCancel = () => {
-    // Reset form values to original data
     setFormValues({
       name: workspaceData.name || "",
       description: workspaceData.description || "",
@@ -211,41 +301,19 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   // Scroll to bottom when new events are added
   useEffect(() => {
     if (events.length > 0) {
-      // Use setTimeout to ensure DOM is updated before scrolling
       setTimeout(() => {
         scrollToBottom();
       }, 0);
     }
   }, [events, scrollToBottom]);
 
-  // Simulate real-time events
   useEffect(() => {
     if (!isConsoleRunning) return;
-
-    // const eventTypes: ('info' | 'warning' | 'error' | 'success')[] = ['info', 'warning', 'error', 'success'];
-    // const messages = [
-    //   'Task executed successfully',
-    //   'Agent response received',
-    //   'Workflow step completed',
-    //   'Model inference completed',
-    //   'Data processed successfully'
-    // ];
-
-    // const newEvent: ConsoleEvent = {
-    //   id: Date.now().toString(),
-    //   timestamp: Date.now(),
-    //   type: eventTypes[Math.floor(Math.random() * eventTypes.length)],
-    //   message: messages[Math.floor(Math.random() * messages.length)],
-    //   details: Math.random() > 0.5 ? 'Additional context information' : undefined
-    // };
-
-    // setEvents(prev => [newEvent, ...prev].slice(0, 50)); // Keep only last 50 events
-
-    // return () => clearInterval(interval);
   }, [isConsoleRunning]);
 
   const clearEvents = () => {
     setEvents([]);
+    setPendingPrompts([]);
     if (onClearEvents) {
       onClearEvents();
     }
@@ -276,13 +344,11 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     }
   };
 
-  // Handle opening result dialog
   const handleViewResult = (event: ConsoleEvent) => {
     setSelectedEvent(event);
     setIsResultDialogOpen(true);
   };
 
-  // Handle closing result dialog
   const handleCloseResultDialog = () => {
     setIsResultDialogOpen(false);
     setSelectedEvent(null);
@@ -484,7 +550,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 </div>
               </div>
 
-              {/* API Key Section - Only show when editing */}
               {isEditing && formValues.mainLLM?.model && (
                 <>
                   <div className="col-span-2">
@@ -492,7 +557,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                       API Configuration
                     </label>
 
-                    {/* API Key Options */}
                     <div className="flex gap-2 mb-4">
                       <button
                         type="button"
@@ -528,10 +592,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                       </button>
                     </div>
 
-                    {/* API Key Input Container with fixed height */}
                     <div className="h-24">
-                      {" "}
-                      {/* Fixed height container */}
                       {!formValues.useSavedCredentials ? (
                         <div>
                           <div className="relative">
@@ -550,7 +611,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                           </p>
                         </div>
                       ) : (
-                        /* Keys Vault Selection */
                         <div>
                           <Select
                             id="savedKey"
@@ -674,12 +734,12 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                       </div>
 
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {event.details && (
+                        {event.details && typeof event.details === 'string' && (
                           <div className="text-zinc-400 text-[0.65rem] break-words">
                             {event.details}
                           </div>
                         )}
-                        {event.results && (
+                        {event.results !== undefined && event.results !== null && (
                           <button
                             onClick={() => handleViewResult(event)}
                             className="text-[#FFC72C] hover:text-[#FFB300] transition-colors p-1 rounded hover:bg-zinc-800 cursor-pointer"
@@ -695,16 +755,21 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
               )}
             </div>
           </ScrollArea>
+          
           {/* Console Input Form */}
           <form
-            onSubmit={handleConsoleInput}
+            onSubmit={handleConsoleInputSubmit}
             className="flex gap-2 border-t border-zinc-800 pt-3"
           >
             <input
               type="text"
               value={consoleInput}
               onChange={(e) => setConsoleInput(e.target.value)}
-              placeholder="Please enter your input:"
+              placeholder={
+                pendingPrompts.length > 0 && pendingPrompts[0].message
+                  ? pendingPrompts[0].message
+                  : "Please enter your input:"
+              }
               className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C] text-sm"
               disabled={!isConsoleRunning}
             />

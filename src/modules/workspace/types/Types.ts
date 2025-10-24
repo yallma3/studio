@@ -91,6 +91,9 @@ export interface ConsoleEvent {
   message: string;
   details?: string;
   results?: string;
+  promptId?: string;
+  nodeId?: number;
+  nodeName?: string;
 }
 
 export type ExecutionStepType = "agentic" | "workflow";

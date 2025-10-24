@@ -175,79 +175,91 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
   // Set up sidecar client command listener and status listener
   useEffect(() => {
-    const handleSidecarCommand = async (command: SidecarCommand) => {
-      try {
-        if (
-          command.type === "console_prompt" ||
-          command.type === "console_input"
-        ) {
-          if (command.data && typeof command.data === "object") {
-            const event = command.data as ConsoleEvent;
-            // Add to console display
-            addEvent(event);
-          }
-        }
+// Add this to the useEffect that sets up sidecar client command listener
+// Replace the existing handleSidecarCommand function with this updated version:
 
-        if (command.type == "message") {
-          if (command.data && typeof command.data === "object") {
-            addEvent(command.data as ConsoleEvent);
-          }
-        }
+const handleSidecarCommand = async (command: SidecarCommand) => {
+  try {
+    if (
+      command.type === "console_prompt" ||
+      command.type === "console_input"
+    ) {
+      if (command.data && typeof command.data === "object") {
+        const event = command.data as ConsoleEvent;
+        // Add to console display
+        addEvent(event);
+      }
+    }
 
-        if (command.type == "run_workflow") {
-          console.log("Running Workflow", command.data);
-          if (typeof command.data == "string") {
-            const workflowData = await getWorkflow(command.data);
-            if (workflowData?.canvasState) {
-              const workflow = createJson(
-                workflowData,
-                workflowData?.canvasState.nodes,
-                workflowData?.canvasState.connections
-              );
-              const workflowString = JSON.stringify(workflow, null, 2);
+    // Handle resolved console input
+    if (command.type === "console_input_resolved") {
+      if (command.data && typeof command.data === "object") {
+        const { promptId, message } = command.data as { promptId: string; message: string };
+        console.log(`Console input resolved for prompt ${promptId}: ${message}`);
+        // The event is already added to console, just log confirmation
+      }
+    }
 
-              const message: SidecarCommand = {
-                id: command.id,
-                type: "workflow_json",
-                workspaceId: workspaceData.id,
-                data: { data: workflowString },
-                timestamp: new Date().toISOString(),
-              };
-              sidecarClient.sendMessage(message);
-            }
-          } else {
-            console.error(
-              "Workflow not found or invalid canvas state:",
-              command.data
-            );
-            addEvent({
-              id: crypto.randomUUID(),
-              type: "error",
-              message: `Failed to load workflow: ${command.data}`,
-              timestamp: Date.now(),
-            });
-          }
-        }
+    if (command.type == "message") {
+      if (command.data && typeof command.data === "object") {
+        addEvent(command.data as ConsoleEvent);
+      }
+    }
 
-        if (command.type === "ping") {
-          console.log("Ping command:", command);
-        }
+    if (command.type == "run_workflow") {
+      console.log("Running Workflow", command.data);
+      if (typeof command.data == "string") {
+        const workflowData = await getWorkflow(command.data);
+        if (workflowData?.canvasState) {
+          const workflow = createJson(
+            workflowData,
+            workflowData?.canvasState.nodes,
+            workflowData?.canvasState.connections
+          );
+          const workflowString = JSON.stringify(workflow, null, 2);
 
-        if (command.type === "pong") {
-          console.log("Pong command:", command);
+          const message: SidecarCommand = {
+            id: command.id,
+            type: "workflow_json",
+            workspaceId: workspaceData.id,
+            data: { data: workflowString },
+            timestamp: new Date().toISOString(),
+          };
+          sidecarClient.sendMessage(message);
         }
-      } catch (error) {
-        console.error("Error handling sidecar command:", error);
+      } else {
+        console.error(
+          "Workflow not found or invalid canvas state:",
+          command.data
+        );
         addEvent({
           id: crypto.randomUUID(),
           type: "error",
-          message: `Command handler error: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          message: `Failed to load workflow: ${command.data}`,
           timestamp: Date.now(),
         });
       }
-    };
+    }
+
+    if (command.type === "ping") {
+      console.log("Ping command:", command);
+    }
+
+    if (command.type === "pong") {
+      console.log("Pong command:", command);
+    }
+  } catch (error) {
+    console.error("Error handling sidecar command:", error);
+    addEvent({
+      id: crypto.randomUUID(),
+      type: "error",
+      message: `Command handler error: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      timestamp: Date.now(),
+    });
+  }
+};
 
     const handleStatusChange = (status: string) => {
       setSidecarStatus(status);
