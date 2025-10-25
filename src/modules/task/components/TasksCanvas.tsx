@@ -352,7 +352,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     if (tasks.length > 0) {
       fitToView();
     }
-  }, []);
+  }, [tasks, fitToView]);
 
   const handleCanvasContextMenu = useCallback(
     (e: React.MouseEvent) => {

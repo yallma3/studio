@@ -154,7 +154,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     e.preventDefault();
     if (consoleInput.trim()) {
       const newEvent: ConsoleEvent = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        id: Date.now().toString() + Math.random().toString(36).substring(2, 11),
         timestamp: Date.now(),
         type: "user",
         message: consoleInput,
@@ -426,7 +426,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                             value={formValues.mainLLM.model.id}
                             onChange={(value) => {
                               const option = llmOptions.find(
-                                (m) => m.id == value
+                                (m) => m.id === value
                               );
                               if (!option) return;
 

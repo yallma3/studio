@@ -18,7 +18,7 @@ const OpenAIModels: LLMModel[] = [
   { name: "GPT 4.1", id: "gpt-4.1" },
   { name: "GPT 4.1 nano", id: "gpt-4.1-nano" },
   { name: "GPT 4.1 mini", id: "gpt-4.1-mini" },
-  { name: "GPT 4o", id: "gpt-40" },
+  { name: "GPT 4o", id: "gpt-4o" },
   { name: "GPT 4o mini", id: "gpt-4o-mini" },
 ];
 

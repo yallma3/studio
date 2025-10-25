@@ -144,16 +144,34 @@ export class SidecarClient {
     }
   }
 
-  onStatusChange(callback: (status: string) => void): void {
+  onStatusChange(callback: (status: string) => void): () => void {
     this.statusCallbacks.push(callback);
+    return () => {
+      const index = this.statusCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.statusCallbacks.splice(index, 1);
+      }
+    };
   }
 
-  onCommand(callback: (command: SidecarCommand) => void): void {
+  onCommand(callback: (command: SidecarCommand) => void): () => void {
     this.commandCallbacks.push(callback);
+    return () => {
+      const index = this.commandCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.commandCallbacks.splice(index, 1);
+      }
+    };
   }
 
-  onConsoleEvent(callback: (event: any) => void): void {
+  onConsoleEvent(callback: (event: any) => void): () => void {
     this.consoleEventCallbacks.push(callback);
+    return () => {
+      const index = this.consoleEventCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.consoleEventCallbacks.splice(index, 1);
+      }
+    };
   }
 
   getConnectionStatus(): string {

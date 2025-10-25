@@ -35,7 +35,6 @@ import { WorkspaceData, ConsoleEvent, Workflow } from "./types/Types";
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
 import { getWorkflow } from "./utils/runtimeUtils";
-import { exportWorkspaceAsJs } from "./utils/exportWorkspace";
 import { createJson } from "../flow/utils/flowRuntime";
 
 // Toast notification component
@@ -253,10 +252,9 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       setSidecarStatus(status);
     };
 
-    sidecarClient.onCommand(handleSidecarCommand);
-    sidecarClient.onStatusChange(handleStatusChange);
-
-    sidecarClient.onConsoleEvent((event: ConsoleEvent) => {
+    const offCommand = sidecarClient.onCommand(handleSidecarCommand);
+    const offStatus = sidecarClient.onStatusChange(handleStatusChange);
+    const offConsole = sidecarClient.onConsoleEvent((event: ConsoleEvent) => {
       console.log("Received workflow output event:", event);
       addEvent(event);
     });
@@ -264,8 +262,11 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     setSidecarStatus(sidecarClient.getConnectionStatus());
 
     return () => {
-      // Note: We don't remove the listeners as sidecarClient is a singleton
-      // and we want it to persist across component unmounts
+      // Clean up listeners on unmount, even though sidecarClient is a singleton,
+      // to prevent duplicate handlers if the component re-mounts
+      offCommand?.();
+      offStatus?.();
+      offConsole?.();
     };
   }, [workspaceData.id, handleRunWorkspace]);
 
@@ -367,7 +368,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
   const handleExportWorkspace = async () => {
     console.log("Exporting workspace...");
-    exportWorkspaceAsJs();
+    // TODO: Implement new export pipeline - exportWorkspaceAsJs is deprecated
+    showToast("Export functionality is temporarily disabled. Use save instead.", "error");
   };
 
   // Handle updating workspace data - only update state, don't save to file
