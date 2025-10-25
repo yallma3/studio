@@ -30,13 +30,12 @@ import {
 import { sidecarClient, SidecarCommand } from "../api/SidecarClient";
 import { useTranslation } from "react-i18next";
 
-import { WorkspaceData, ConsoleEvent } from "./types/Types";
+import { WorkspaceData, ConsoleEvent, Workflow } from "./types/Types";
 
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
 import { getWorkflow } from "./utils/runtimeUtils";
-import { exportWorkspaceAsJs } from "./utils/exportWorkspace";
-import { createFlowRuntime, createJson } from "../flow/utils/flowRuntime";
+import { createJson } from "../flow/utils/flowRuntime";
 
 // Toast notification component
 interface ToastProps {
@@ -139,6 +138,21 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   // Sidecar connection status
   const [sidecarStatus, setSidecarStatus] = useState<string>("disconnected");
 
+  // Expose a stable run handler used by effects and UI controls
+  const handleRunWorkspace = React.useCallback(async () => {
+    if (!workspaceData) return;
+
+    const message: SidecarCommand = {
+      id: crypto.randomUUID(),
+      type: "run_workspace",
+      workspaceId: workspaceData.id,
+      data: JSON.stringify(workspaceData),
+      timestamp: new Date().toISOString(),
+    };
+
+    sidecarClient.sendMessage(message);
+  }, [workspaceData]);
+
   // Check if workspace is imported (doesn't exist locally) and set unsaved flag
   useEffect(() => {
     const checkWorkspaceExists = async () => {
@@ -162,26 +176,23 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   useEffect(() => {
     const handleSidecarCommand = async (command: SidecarCommand) => {
       try {
-        if (command.type === "run_workspace") {
-          // Check if the command is for this workspace or if no specific workspace is specified
-          if (
-            !command.workspaceId ||
-            command.workspaceId === workspaceData.id
-          ) {
-            handleRunWorkspace();
+        if (
+          command.type === "console_prompt" ||
+          command.type === "console_input"
+        ) {
+          if (command.data && typeof command.data === "object") {
+            const event = command.data as ConsoleEvent;
+            // Add to console display
+            addEvent(event);
           }
         }
 
         if (command.type == "message") {
-          if (command.data && typeof command.data == "string") {
-            addEvent({
-              id: crypto.randomUUID(),
-              type: "info",
-              message: command.data,
-              timestamp: Date.now(),
-            });
+          if (command.data && typeof command.data === "object") {
+            addEvent(command.data as ConsoleEvent);
           }
         }
+
         if (command.type == "run_workflow") {
           console.log("Running Workflow", command.data);
           if (typeof command.data == "string") {
@@ -220,6 +231,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         if (command.type === "ping") {
           console.log("Ping command:", command);
         }
+
         if (command.type === "pong") {
           console.log("Pong command:", command);
         }
@@ -240,17 +252,23 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       setSidecarStatus(status);
     };
 
-    sidecarClient.onCommand(handleSidecarCommand);
-    sidecarClient.onStatusChange(handleStatusChange);
-
+    const offCommand = sidecarClient.onCommand(handleSidecarCommand);
+    const offStatus = sidecarClient.onStatusChange(handleStatusChange);
+    const offConsole = sidecarClient.onConsoleEvent((event: ConsoleEvent) => {
+      console.log("Received workflow output event:", event);
+      addEvent(event);
+    });
     // Set initial status
     setSidecarStatus(sidecarClient.getConnectionStatus());
 
     return () => {
-      // Note: We don't remove the listeners as sidecarClient is a singleton
-      // and we want it to persist across component unmounts
+      // Clean up listeners on unmount, even though sidecarClient is a singleton,
+      // to prevent duplicate handlers if the component re-mounts
+      offCommand?.();
+      offStatus?.();
+      offConsole?.();
     };
-  }, [workspaceData.id]);
+  }, [workspaceData.id, handleRunWorkspace]);
 
   // Handle clicks outside dropdown to close it
   useEffect(() => {
@@ -326,6 +344,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         updatedAt: Date.now(),
       };
 
+      console.log("STATE:", updatedWorkspace);
+
       // Update state
       setWorkspaceData(updatedWorkspace);
 
@@ -348,21 +368,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
   const handleExportWorkspace = async () => {
     console.log("Exporting workspace...");
-    exportWorkspaceAsJs(workspaceData);
-  };
-
-  const handleRunWorkspace = async () => {
-    if (!workspaceData) return;
-
-    const message: SidecarCommand = {
-      id: crypto.randomUUID(),
-      type: "run_workspace",
-      workspaceId: workspaceData.id,
-      data: JSON.stringify(workspaceData),
-      timestamp: new Date().toISOString(),
-    };
-
-    sidecarClient.sendMessage(message);
+    // TODO: Implement new export pipeline - exportWorkspaceAsJs is deprecated
+    showToast("Export functionality is temporarily disabled. Use save instead.", "error");
   };
 
   // Handle updating workspace data - only update state, don't save to file
@@ -393,6 +400,13 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   // Simple callback for tabs to signal they have changes (without updating workspace data)
   const handleTabChanges = () => {
     setHasUnsavedChanges(true);
+  };
+
+  const handleImportWorkflow = (workflow: Workflow) => {
+    const exist = workspaceData.workflows.find((w) => w.id == workflow.id);
+    if (exist) return;
+    const newWorkflows = [...workspaceData.workflows, workflow];
+    setWorkspaceData({ ...workspaceData, workflows: newWorkflows });
   };
 
   return (
@@ -501,10 +515,10 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                 label: t("workspaces.workspace", "Workspace"),
               },
               { key: "tasks", label: t("workspaces.tasks", "Tasks") },
-              { key: "agents", label: t("workspaces.agents", "Agents") },
+              { key: "agents", label: t("workspaces.agents", "Sub Agents") },
               {
                 key: "aiflows",
-                label: t("workspaces.aiFlows", "AI Workflows"),
+                label: t("workspaces.aiFlows", "Tools & AI Workflows"),
               },
             ].map((tab) => (
               <button
@@ -533,18 +547,34 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               onUpdateWorkspace={handleUpdateWorkspace}
               events={events}
               onClearEvents={() => setEvents([])}
+              onAddEvent={addEvent}
+              onSendConsoleInput={(event: ConsoleEvent) => {
+                // Send console input via WebSocket
+                const message: SidecarCommand = {
+                  id: crypto.randomUUID(),
+                  type: "console_input",
+                  workspaceId: workspaceData.id,
+                  data: event,
+                  timestamp: new Date().toISOString(),
+                };
+                sidecarClient.sendMessage(message);
+              }}
             />
           )}
           {activeTab === "tasks" && (
             <TasksTab
               workspaceData={workspaceData}
               onTabChanges={handleTabChanges}
+              onChange={({ tasks, connections }) =>
+                handleUpdateWorkspace({ tasks, connections })
+              }
             />
           )}
           {activeTab === "agents" && (
             <AgentsTab
               workspaceData={workspaceData}
               onTabChanges={handleTabChanges}
+              handleImportWorkflow={handleImportWorkflow}
             />
           )}
           {activeTab === "aiflows" && (

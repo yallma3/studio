@@ -11,78 +11,43 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { WorkspaceData, Agent, LLMOption } from "../types/Types";
+import { WorkspaceData, Agent, Workflow } from "../types/Types";
 import { X, Plus, Trash2, Edit } from "lucide-react";
+import AgentForm, { AgentFormValues } from "../components/AgentForm";
+import { Tool } from "../types/Types";
 
 interface AgentsTabProps {
   workspaceData: WorkspaceData;
   onTabChanges?: () => void;
+  handleImportWorkflow: (workflow: Workflow) => void;
 }
 
 const AgentsTab: React.FC<AgentsTabProps> = ({
   workspaceData,
   onTabChanges,
+  handleImportWorkflow,
 }) => {
   const { t } = useTranslation();
 
   const [agents, setAgents] = useState<Agent[]>(workspaceData.agents || []);
   const [showAgentDialog, setShowAgentDialog] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
+  const [agentToEdit, setAgentToEdit] = useState<Agent>();
 
-  // Available LLM options
-  const availableLLMs: LLMOption[] = [
-    {
-      id: "gpt-4",
-      name: "GPT-4",
-      provider: "OpenAI",
-      tokenLimit: 8192,
-    },
-    {
-      id: "gpt-3.5-turbo",
-      name: "GPT-3.5 Turbo",
-      provider: "OpenAI",
-      tokenLimit: 4096,
-    },
-    {
-      id: "claude-3-opus",
-      name: "Claude 3 Opus",
-      provider: "Anthropic",
-      tokenLimit: 200000,
-    },
-    {
-      id: "claude-3-sonnet",
-      name: "Claude 3 Sonnet",
-      provider: "Anthropic",
-      tokenLimit: 100000,
-    },
-    {
-      id: "gemini-pro",
-      name: "Gemini Pro",
-      provider: "Google",
-      tokenLimit: 32768,
-    },
-    {
-      id: "llama-3-70b",
-      name: "Llama 3 (70B)",
-      provider: "Meta",
-      tokenLimit: 8192,
-    },
-    {
-      id: "mixtral-8x7b",
-      name: "Mixtral 8x7B",
-      provider: "Groq",
-      tokenLimit: 32768,
-    },
-    {
-      id: "llama-2-70b",
-      name: "Llama 2 (70B)",
-      provider: "Groq",
-      tokenLimit: 4096,
-    },
-  ];
+  // Create available tools from workflows
+  const availableTools = useMemo(() => {
+    const workflowTools: Tool[] =
+      workspaceData.workflows?.map((workflow) => ({
+        id: workflow.id,
+        type: "workflow" as const,
+        name: workflow.name,
+        description: workflow.description,
+      })) || [];
+
+    return workflowTools;
+  }, [workspaceData.workflows]);
 
   const [agentForm, setAgentForm] = useState<Omit<Agent, "id">>({
     name: "",
@@ -91,9 +56,29 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
     background: "",
     capabilities: "",
     tools: [],
-    llmId: workspaceData.mainLLM || "", // Default to workspace's main LLM
+    llm: workspaceData.mainLLM, // Default to workspace's main LLM
     apiKey: "",
+    variables: {}, // Initialize empty variables object
   });
+
+  // LLM provider/model control moved into AgentForm
+
+  // State for form values
+  useEffect(() => {
+    if (isEditing) {
+      setAgentForm({
+        name: agentToEdit?.name || "",
+        role: agentToEdit?.role || "",
+        objective: agentToEdit?.objective || "",
+        background: agentToEdit?.background || "",
+        capabilities: agentToEdit?.capabilities || "",
+        tools: [...(agentToEdit?.tools || [])],
+        llm: agentToEdit?.llm || workspaceData.mainLLM,
+        apiKey: agentToEdit?.apiKey || "",
+        variables: agentToEdit?.variables,
+      });
+    }
+  }, [isEditing, agentToEdit, workspaceData.mainLLM]);
 
   // Generate a simple ID based on timestamp and random number
   const generateId = (): string => {
@@ -102,26 +87,24 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
 
   const handleShowAgentDialog = (
     isEdit: boolean = false,
-    agentId: string | null = null
+    agent: Agent | null = null
   ) => {
-    setIsEditing(isEdit);
-    setCurrentAgentId(agentId);
-
-    if (isEdit && agentId) {
+    if (isEdit && agent) {
       // Find the agent to edit
-      const agentToEdit = agents.find((agent) => agent.id === agentId);
-      if (agentToEdit) {
-        setAgentForm({
-          name: agentToEdit.name,
-          role: agentToEdit.role,
-          objective: agentToEdit.objective,
-          background: agentToEdit.background,
-          capabilities: agentToEdit.capabilities,
-          tools: [...agentToEdit.tools],
-          llmId: agentToEdit.llmId,
-          apiKey: agentToEdit.apiKey,
-        });
-      }
+      setIsEditing(isEdit);
+      setAgentToEdit(agent);
+
+      setAgentForm({
+        name: agent.name,
+        role: agent.role,
+        objective: agent.objective,
+        background: agent.background,
+        capabilities: agent.capabilities,
+        tools: [...agent.tools],
+        llm: agent.llm,
+        apiKey: agent.apiKey,
+        variables: agent.variables,
+      });
     } else {
       // Reset form for new agent
       setAgentForm({
@@ -131,8 +114,9 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         background: "",
         capabilities: "",
         tools: [],
-        llmId: workspaceData.mainLLM || "",
+        llm: workspaceData.mainLLM,
         apiKey: "",
+        variables: {}, // Initialize empty variables object
       });
     }
 
@@ -158,10 +142,10 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
 
     let updatedAgents;
 
-    if (isEditing && currentAgentId) {
+    if (isEditing && agentToEdit) {
       // Update existing agent
       updatedAgents = agents.map((agent) => {
-        if (agent.id === currentAgentId) {
+        if (agent.id === agentToEdit.id) {
           return {
             ...agent,
             name: agentForm.name,
@@ -170,7 +154,9 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
             background: agentForm.background,
             capabilities: agentForm.capabilities,
             tools: agentForm.tools,
-            llmId: agentForm.llmId,
+            llm: agentForm.llm,
+            apiKey: agentForm.apiKey,
+            variables: agentForm.variables,
           };
         }
         return agent;
@@ -185,7 +171,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         background: agentForm.background,
         capabilities: agentForm.capabilities,
         tools: agentForm.tools,
-        llmId: agentForm.llmId,
+        llm: agentForm.llm,
         apiKey: agentForm.apiKey,
       };
 
@@ -274,7 +260,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                     <div className="flex gap-1 ml-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <button
                         className="flex items-center justify-center w-8 h-8 text-[#FFC72C] hover:text-[#FFD65C] hover:bg-[#FFC72C]/10 rounded-lg transition-all duration-200"
-                        onClick={() => handleShowAgentDialog(true, agent.id)}
+                        onClick={() => handleShowAgentDialog(true, agent)}
                         title="Edit agent"
                       >
                         <Edit size={14} />
@@ -293,7 +279,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                   <div className="mb-4 relative z-10">
                     <span
                       className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full ${
-                        agent.llmId
+                        agent.llm
                           ? "bg-gradient-to-r from-[#FFC72C]/30 to-[#E6B428]/30 text-[#FFC72C] border border-[#FFC72C]/40"
                           : "bg-gradient-to-r from-zinc-700/30 to-zinc-800/30 text-zinc-400 border border-zinc-700/40"
                       } backdrop-blur-sm`}
@@ -313,11 +299,8 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                         <path d="M21 12c.552 0 1-.448 1-1V5c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1" />
                         <path d="M3 19h18" />
                       </svg>
-                      {agent.llmId
-                        ? `${
-                            availableLLMs.find((llm) => llm.id === agent.llmId)
-                              ?.name || agent.llmId
-                          }`
+                      {agent.llm?.model
+                        ? agent.llm.model.name
                         : `Workspace Default`}
                     </span>
                   </div>
@@ -429,147 +412,40 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
               </div>
             </div>
 
-            <div className="space-y-4 p-6">
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  {t("workspaces.agentName", "Agent Name")} *
-                </label>
-                <input
-                  type="text"
-                  className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                  value={agentForm.name}
-                  onChange={(e) =>
-                    setAgentForm({ ...agentForm, name: e.target.value })
-                  }
-                  placeholder={t(
-                    "workspaces.enterAgentName",
-                    "Enter agent name"
-                  )}
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  {t("workspaces.role", "Role")}
-                </label>
-                <input
-                  type="text"
-                  className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                  value={agentForm.role}
-                  onChange={(e) =>
-                    setAgentForm({ ...agentForm, role: e.target.value })
-                  }
-                  placeholder={t("workspaces.enterRole", "Enter agent role")}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  {t("workspaces.objective", "Objective")}
-                </label>
-                <textarea
-                  className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C] min-h-[80px] sm:min-h-[100px]"
-                  value={agentForm.objective}
-                  onChange={(e) =>
-                    setAgentForm({ ...agentForm, objective: e.target.value })
-                  }
-                  placeholder={t(
-                    "workspaces.enterObjective",
-                    "Enter agent objective"
-                  )}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  {t("workspaces.background", "Background")}
-                </label>
-                <textarea
-                  className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C] min-h-[80px]"
-                  value={agentForm.background}
-                  onChange={(e) =>
-                    setAgentForm({ ...agentForm, background: e.target.value })
-                  }
-                  placeholder={t(
-                    "workspaces.enterBackground",
-                    "Enter agent background"
-                  )}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  {t("workspaces.capabilities", "Capabilities")}
-                </label>
-                <textarea
-                  className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C] min-h-[80px]"
-                  value={agentForm.capabilities}
-                  onChange={(e) =>
-                    setAgentForm({ ...agentForm, capabilities: e.target.value })
-                  }
-                  placeholder={t(
-                    "workspaces.enterCapabilities",
-                    "Enter agent capabilities"
-                  )}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  {t("workspaces.agentLLM", "Language Model")}
-                </label>
-                <select
-                  className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                  value={agentForm.llmId}
-                  onChange={(e) =>
-                    setAgentForm({ ...agentForm, llmId: e.target.value })
-                  }
-                >
-                  <option value="">
-                    {t("workspaces.useWorkspaceLLM", "Use workspace default")}
-                  </option>
-                  {availableLLMs.map((llm) => (
-                    <option key={llm.id} value={llm.id}>
-                      {llm.name} ({llm.provider})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-zinc-400 mt-1">
-                  {agentForm.llmId
-                    ? t(
-                        "workspaces.customLLMSelected",
-                        "Custom LLM selected for this agent"
-                      )
-                    : t(
-                        "workspaces.usingWorkspaceLLM",
-                        `Using workspace's main LLM: ${
-                          availableLLMs.find(
-                            (llm) => llm.id === workspaceData.mainLLM
-                          )?.name || "None selected"
-                        }`
-                      )}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  {t("workspaces.agentApiKey", "Api Key")}
-                </label>
-
-                <input
-                  type="password"
-                  className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                  value={agentForm.apiKey}
-                  onChange={(e) =>
-                    setAgentForm({ ...agentForm, apiKey: e.target.value })
-                  }
-                  placeholder={t(
-                    "workspaces.enterApiKey",
-                    "Enter agent Api Key"
-                  )}
-                />
-              </div>
+            <div className="space-y-6 p-6">
+              <AgentForm
+                value={{
+                  name: agentForm.name,
+                  role: agentForm.role,
+                  background: agentForm.background,
+                  llm: agentForm.llm,
+                  apiKey: agentForm.apiKey,
+                  tools: agentForm.tools,
+                  variables: agentForm.variables,
+                }}
+                onChange={(val: AgentFormValues) => {
+                  setAgentForm({
+                    ...agentForm,
+                    name: val.name,
+                    role: val.role,
+                    background: val.background,
+                    llm: {
+                      provider: val.llm.provider,
+                      model:
+                        val.llm.model ??
+                        agentForm.llm.model ??
+                        workspaceData.mainLLM.model,
+                    },
+                    apiKey: val.apiKey,
+                    tools: val.tools,
+                    variables: val.variables,
+                  });
+                }}
+                handleImportWorkflow={handleImportWorkflow}
+                availableTools={availableTools}
+                enableVariables={false}
+                workspaceMainLLMName={workspaceData.mainLLM.model?.name}
+              />
             </div>
 
             <div className="flex justify-end gap-3 mt-6 sticky bottom-0 pt-2 bg-[#1d1d1d] border-t border-zinc-800 p-6">

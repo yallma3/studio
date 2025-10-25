@@ -10,7 +10,7 @@
    WITHOUT WARRANTY OF ANY KIND, either express or implied.
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { WorkspaceData } from "../types/Types";
 import NodeCanvas from "../../flow/NodeCanvas";
@@ -23,6 +23,7 @@ import {
   Download,
   Upload,
   FolderOpen,
+  Edit,
 } from "lucide-react";
 import {
   WorkflowFile,
@@ -41,6 +42,136 @@ interface AiFlowsTabProps {
   workspaceData: WorkspaceData;
   onTabChanges?: () => void;
 }
+
+// Workflow Edit Dialog Component
+const WorkflowEditDialog: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (name: string, description: string) => void;
+  workflow: WorkflowFile | null;
+}> = ({ isOpen, onClose, onSave, workflow }) => {
+  const { t } = useTranslation();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Initialize form when dialog opens or workflow changes
+  useEffect(() => {
+    if (isOpen && workflow) {
+      setName(workflow.name || "");
+      setDescription(workflow.description || "");
+      setIsSubmitting(false);
+    }
+  }, [isOpen, workflow]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    setIsSubmitting(true);
+    onSave(name.trim(), description.trim());
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      onClose();
+    }
+  };
+
+  if (!isOpen || !workflow) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-gradient-to-br from-[#1a1a1a] to-[#151515] rounded-xl shadow-2xl border border-zinc-800/50 p-6 max-w-md w-full mx-4">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600/20 to-blue-700/20 border border-blue-600/30 flex items-center justify-center">
+              <Edit size={16} className="text-blue-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white">
+              {t("workspaces.editWorkflow", "Edit Workflow")}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-zinc-400 hover:text-white transition-colors p-1"
+            disabled={isSubmitting}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="edit-workflow-name"
+              className="block text-sm font-medium text-zinc-300 mb-2"
+            >
+              {t("workspaces.workflowName", "Workflow Name")} *
+            </label>
+            <input
+              id="edit-workflow-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t(
+                "workspaces.enterWorkflowName",
+                "Enter workflow name..."
+              )}
+              className="w-full px-3 py-2 bg-[#0a0a0a] border border-zinc-700 rounded-md text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+              disabled={isSubmitting}
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="edit-workflow-description"
+              className="block text-sm font-medium text-zinc-300 mb-2"
+            >
+              {t("workspaces.workflowDescription", "Description")}
+            </label>
+            <textarea
+              id="edit-workflow-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t(
+                "workspaces.enterWorkflowDescription",
+                "Enter workflow description..."
+              )}
+              className="w-full px-3 py-2 bg-[#0a0a0a] border border-zinc-700 rounded-md text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              rows={3}
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-zinc-300 hover:text-white transition-colors"
+              disabled={isSubmitting}
+            >
+              {t("common.cancel", "Cancel")}
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!name.trim() || isSubmitting}
+            >
+              {isSubmitting
+                ? t("common.saving", "Saving...")
+                : t("common.save", "Save")}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 // Workflow Creation Dialog Component
 const WorkflowCreationDialog: React.FC<{
@@ -186,15 +317,7 @@ const WorkflowImportDialog: React.FC<{
   const [isLoading, setIsLoading] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
-  // Load available workflows when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      loadAvailableWorkflows();
-      setSelectedWorkflows([]);
-    }
-  }, [isOpen, currentWorkspaceWorkflows]);
-
-  const loadAvailableWorkflows = async () => {
+  const loadAvailableWorkflows = useCallback(async () => {
     try {
       setIsLoading(true);
       const allWorkflows = await loadAllWorkflowsFromFiles();
@@ -208,7 +331,15 @@ const WorkflowImportDialog: React.FC<{
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentWorkspaceWorkflows]);
+
+  // Load available workflows when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      loadAvailableWorkflows();
+      setSelectedWorkflows([]);
+    }
+  }, [isOpen, currentWorkspaceWorkflows, loadAvailableWorkflows]);
 
   const handleWorkflowToggle = (workflowId: string) => {
     setSelectedWorkflows((prev) =>
@@ -460,6 +591,10 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
   const [deleteCompletely, setDeleteCompletely] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingWorkflow, setEditingWorkflow] = useState<WorkflowFile | null>(
+    null
+  );
   const [workflows, setWorkflows] = useState<WorkflowFile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -594,7 +729,45 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
       // Keep dialog open on error so user can retry
     }
   };
+  const editWorkflowMeta = (workflow: WorkflowFile) => {
+    setEditingWorkflow(workflow);
+    setShowEditDialog(true);
+  };
 
+  const handleEditWorkflow = async (name: string, description: string) => {
+    if (!editingWorkflow) return;
+
+    try {
+      // Update workflow file with new metadata
+      const updatedWorkflow = await updateWorkflowFile(editingWorkflow.id, {
+        name,
+        description,
+      });
+
+      if (updatedWorkflow) {
+        // Update local state
+        const updatedWorkflows = workflows.map((w) =>
+          w.id === updatedWorkflow.id ? updatedWorkflow : w
+        );
+        setWorkflows(updatedWorkflows);
+
+        // Update workspace data
+        await updateWorkspaceWorkflows(updatedWorkflows);
+
+        // Close dialog
+        setShowEditDialog(false);
+        setEditingWorkflow(null);
+      }
+    } catch (error) {
+      console.error("Error editing workflow:", error);
+      // Keep dialog open on error so user can retry
+    }
+  };
+
+  const handleCloseEditDialog = () => {
+    setShowEditDialog(false);
+    setEditingWorkflow(null);
+  };
   const handleEditFlow = (workflow: WorkflowFile) => {
     setSelectedWorkflow(workflow.canvasState);
     setSelectedWorkflowMeta(workflow);
@@ -765,6 +938,13 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
                     {/* Action buttons */}
                     <div className="flex gap-1 ml-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <button
+                        onClick={() => editWorkflowMeta(workflow)}
+                        className="flex items-center justify-center w-8 h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded-lg transition-all duration-200"
+                        title={t("workspaces.editFlow", "Edit Flow")}
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
                         onClick={() => handleEditFlow(workflow)}
                         className="flex items-center justify-center w-8 h-8 text-purple-400 hover:text-purple-300 hover:bg-purple-400/10 rounded-lg transition-all duration-200"
                         title={t("workspaces.editFlow", "Edit Flow")}
@@ -878,6 +1058,14 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
         isOpen={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
         onSave={handleCreateWorkflow}
+      />
+
+      {/* Workflow Edit Dialog */}
+      <WorkflowEditDialog
+        isOpen={showEditDialog}
+        onClose={handleCloseEditDialog}
+        onSave={handleEditWorkflow}
+        workflow={editingWorkflow}
       />
 
       {/* Workflow Import Dialog */}

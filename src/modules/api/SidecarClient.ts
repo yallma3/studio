@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface SidecarCommand {
   id?: string;
   type:
@@ -6,9 +7,13 @@ export interface SidecarCommand {
     | "run_workflow"
     | "workflow_result"
     | "workflow_json"
+    | "console_input"
+    | "console_prompt"
     | "message"
     | "ping"
-    | "pong";
+    | "pong"
+    | "workflow_output";
+
   workspaceId?: string;
   data?: unknown;
   timestamp?: string;
@@ -34,6 +39,7 @@ export class SidecarClient {
     | "error" = "disconnected";
   private statusCallbacks: ((status: string) => void)[] = [];
   private commandCallbacks: ((command: SidecarCommand) => void)[] = [];
+  private consoleEventCallbacks: ((event: any) => void)[] = [];
 
   constructor(private wsUrl: string = "ws://localhost:3001") {}
 
@@ -117,6 +123,9 @@ export class SidecarClient {
   private handleCommand(command: SidecarCommand): void {
     console.log("Received command from sidecar:", command);
     this.commandCallbacks.forEach((callback) => callback(command));
+    if (command.type === "workflow_output" && command.data) {
+      this.consoleEventCallbacks.forEach((cb) => cb(command.data));
+    }
   }
 
   sendMessage(message: SidecarCommand): void {
@@ -135,12 +144,34 @@ export class SidecarClient {
     }
   }
 
-  onStatusChange(callback: (status: string) => void): void {
+  onStatusChange(callback: (status: string) => void): () => void {
     this.statusCallbacks.push(callback);
+    return () => {
+      const index = this.statusCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.statusCallbacks.splice(index, 1);
+      }
+    };
   }
 
-  onCommand(callback: (command: SidecarCommand) => void): void {
+  onCommand(callback: (command: SidecarCommand) => void): () => void {
     this.commandCallbacks.push(callback);
+    return () => {
+      const index = this.commandCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.commandCallbacks.splice(index, 1);
+      }
+    };
+  }
+
+  onConsoleEvent(callback: (event: any) => void): () => void {
+    this.consoleEventCallbacks.push(callback);
+    return () => {
+      const index = this.consoleEventCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.consoleEventCallbacks.splice(index, 1);
+      }
+    };
   }
 
   getConnectionStatus(): string {
