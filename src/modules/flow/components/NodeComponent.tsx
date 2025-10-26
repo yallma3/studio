@@ -15,6 +15,8 @@ import React, { MouseEvent, useState, useEffect, useRef } from "react";
 import { NodeType, Connection, NodeValue, Socket } from "../types/NodeTypes";
 import { Loader2, Settings, FileText } from "lucide-react";
 import { SOCKET_SPACING, SOCKET_SIZE } from "../vars";
+import { useTranslation } from "react-i18next";
+
 // Node Component Props
 export interface NodeComponentProps {
   node: NodeType;
@@ -42,6 +44,8 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
   onShowResult,
   isBeingEdited = false,
 }) => {
+  const { t } = useTranslation();
+  
   // Add state for animation
   const [isAnimating, setIsAnimating] = useState(false);
   const prevResultRef = useRef<unknown>(node.result);
@@ -119,7 +123,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
         return (
           <div className="flex items-center justify-center m-2.5">
             <span className="text-[#FFC72C] font-mono text-sm bg-[#FFC72C11] p-2 rounded w-full">
-              {boolValue ? "TRUE" : "FALSE"}
+              {boolValue ? t("nodeComponent.true", "TRUE") : t("nodeComponent.false", "FALSE")}
             </span>
           </div>
         );
@@ -130,9 +134,9 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
               ? String(
                   (node.nodeValue as Record<number, NodeValue>)[
                     node.id * 100 + 3
-                  ] || "Start typing..."
+                  ] || t("nodeComponent.startTyping", "Start typing...")
                 )
-              : String(node.nodeValue || "Start typing...")}
+              : String(node.nodeValue || t("nodeComponent.startTyping", "Start typing..."))}
           </div>
         );
       case "Image":
@@ -152,7 +156,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
               </div>
             ) : (
               <div className="w-full h-[120px] bg-[#FFC72C11] rounded flex items-center justify-center text-[#FFC72C66]">
-                No image
+                {t("nodeComponent.noImage", "No image")}
               </div>
             )}
           </div>
@@ -184,7 +188,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
             className={`bg-[#FFC72C] hover:bg-[#FFB300] text-black rounded-full w-7 h-7 flex items-center justify-center shadow-md border border-[#FFB300] ${
               isAnimating ? "animate-ping-once scale-110" : "animate-pulse-once"
             } relative`}
-            title="View Result"
+            title={t("nodeComponent.viewResult", "View Result")}
             data-testid="view-result-button"
           >
             <FileText
@@ -387,7 +391,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
                   ? "text-[#FFC72C]"
                   : "text-[#FFC72C88] hover:text-[#FFC72C]"
               } ml-1 cursor-pointer`}
-              title="Edit Node"
+              title={t("nodeComponent.editNode", "Edit Node")}
             >
               {node.processing ? (
                 <Loader2 className="animate-spin" size={14} />

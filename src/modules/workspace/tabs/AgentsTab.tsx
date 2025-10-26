@@ -261,14 +261,14 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                       <button
                         className="flex items-center justify-center w-8 h-8 text-[#FFC72C] hover:text-[#FFD65C] hover:bg-[#FFC72C]/10 rounded-lg transition-all duration-200"
                         onClick={() => handleShowAgentDialog(true, agent)}
-                        title="Edit agent"
+                        title={t("agentsTab.editAgent", "Edit agent")}
                       >
                         <Edit size={14} />
                       </button>
                       <button
                         className="flex items-center justify-center w-8 h-8 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-all duration-200"
                         onClick={() => handleAgentDelete(agent.id)}
-                        title="Delete agent"
+                        title={t("agentsTab.deleteAgent", "Delete agent")}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -301,7 +301,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                       </svg>
                       {agent.llm?.model
                         ? agent.llm.model.name
-                        : `Workspace Default`}
+                        : t("agentsTab.workspaceDefault", "Workspace Default")}
                     </span>
                   </div>
 
@@ -336,7 +336,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                             <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
                           </svg>
                           <span className="text-zinc-400 text-xs font-medium uppercase tracking-wide">
-                            {t("workspaces.background", "Background")}
+                            {t("agentsTab.background", "Background")}
                           </span>
                         </div>
                         <p className="text-zinc-200 text-sm leading-relaxed">
@@ -364,7 +364,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                           </svg>
                           <span className="text-zinc-400 text-xs font-medium uppercase tracking-wide">
-                            {t("workspaces.capabilities", "Capabilities")}
+                            {t("agentsTab.capabilities", "Capabilities")}
                           </span>
                         </div>
                         <p className="text-zinc-200 text-sm leading-relaxed">
@@ -405,7 +405,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                 <button
                   className="text-zinc-400 hover:text-white"
                   onClick={() => setShowAgentDialog(false)}
-                  aria-label="Close"
+                  aria-label={t("common.close", "Close")}
                 >
                   <X size={18} />
                 </button>

@@ -42,6 +42,7 @@ import { ScrollArea } from "../../../shared/components/ui/scroll-area";
 import Select from "../../../shared/components/ui/select";
 import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
 import EventResultDialog from "../components/EventResultDialog";
+import { useTranslation } from "react-i18next";
 
 interface PendingPromptData {
   promptId: string;
@@ -69,6 +70,8 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   onAddEvent,
   onSendConsoleInput,
 }) => {
+  const { t } = useTranslation();
+  
   // Console state
   const [events, setEvents] = useState<ConsoleEvent[]>([]);
   const [pendingPrompts, setPendingPrompts] = useState<PendingPromptData[]>([]);
@@ -167,14 +170,14 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
         setPendingPrompts([{
           promptId: firstPrompt.promptId!,
           nodeId: firstPrompt.nodeId || 0,
-          nodeName: firstPrompt.nodeName || "Unknown Node",
+          nodeName: firstPrompt.nodeName || t("workspaceTab.unknownNode", "Unknown Node"),
           message: firstPrompt.message,
           timestamp: firstPrompt.timestamp,
           inputValue: "",
         }]);
       }
     }
-  }, [events, pendingPrompts]);
+  }, [events, pendingPrompts, t]);
 
   // Handle console input submission for the current pending prompt
   const handleConsoleInputSubmit = (e: React.FormEvent) => {
@@ -190,7 +193,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
         timestamp: Date.now(),
         type: "user",
         message: consoleInput,
-        details: "User input",
+        details: t("workspaceTab.userInput", "User input"),
         promptId: currentPrompt.promptId,
       };
 
@@ -230,7 +233,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
           setPendingPrompts([{
             promptId: nextPrompt.promptId!,
             nodeId: nextPrompt.nodeId || 0,
-            nodeName: nextPrompt.nodeName || "Unknown Node",
+            nodeName: nextPrompt.nodeName || t("workspaceTab.unknownNode", "Unknown Node"),
             message: nextPrompt.message,
             timestamp: nextPrompt.timestamp,
             inputValue: "",
@@ -244,7 +247,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
         timestamp: Date.now(),
         type: "user",
         message: consoleInput,
-        details: "User input",
+        details: t("workspaceTab.userInput", "User input"),
       };
 
       console.log("Sending console input via WebSocket:", newEvent);
@@ -370,10 +373,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                     value={formValues.name}
                     onChange={handleInputChange}
                     className="bg-zinc-800 border border-zinc-600 rounded px-2 py-1 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                    placeholder="Workspace name"
+                    placeholder={t("workspaceTab.workspaceName", "Workspace name")}
                   />
                 ) : (
-                  workspaceData.name || "Content Creation"
+                  workspaceData.name || t("workspaceTab.contentCreation", "Content Creation")
                 )}
               </CardTitle>
               <CardDescription className="text-zinc-400 text-sm leading-relaxed">
@@ -384,10 +387,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                     onChange={handleInputChange}
                     className="w-full bg-zinc-800 border border-zinc-600 rounded px-2 py-1 text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#FFC72C] resize-none"
                     rows={3}
-                    placeholder="Workspace description"
+                    placeholder={t("workspaceTab.workspaceDescription", "Workspace description")}
                   />
                 ) : (
-                  workspaceData.description || "No description provided"
+                  workspaceData.description || t("workspaceTab.noDescription", "No description provided")
                 )}
               </CardDescription>
             </div>
@@ -401,7 +404,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                     className="border-green-600 hover:bg-green-700 text-green-400"
                   >
                     <Check className="h-4 w-4 mr-2" />
-                    Confirm
+                    {t("workspaceTab.confirm", "Confirm")}
                   </Button>
                   <Button
                     variant="outline"
@@ -410,7 +413,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                     className="border-zinc-700 hover:bg-zinc-800 text-zinc-300"
                   >
                     <X className="h-4 w-4 mr-2" />
-                    Cancel
+                    {t("common.cancel", "Cancel")}
                   </Button>
                 </>
               ) : (
@@ -421,7 +424,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                   className="border-zinc-700 hover:bg-zinc-800 text-zinc-300"
                 >
                   <Edit className="h-4 w-4 mr-2" />
-                  Edit
+                  {t("common.edit", "Edit")}
                 </Button>
               )}
             </div>
@@ -430,7 +433,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
             <div className="grid grid-cols-2 gap-x-12 gap-y-6">
               <div>
                 <label className="text-sm text-zinc-400 block mb-2">
-                  Workspace ID
+                  {t("workspaceTab.workspaceId", "Workspace ID")}
                 </label>
                 <div className="flex items-center gap-2">
                   <Hash className="h-4 w-4 text-zinc-500" />
@@ -442,7 +445,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
 
               <div>
                 <label className="text-sm text-zinc-400 block mb-2">
-                  Created
+                  {t("workspaceTab.created", "Created")}
                 </label>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-zinc-500" />
@@ -463,7 +466,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
 
               <div>
                 <label className="text-sm text-zinc-400 block mb-2">
-                  Main LLM
+                  {t("workspaceTab.mainLLM", "Main LLM")}
                 </label>
                 <div className="flex items-center gap-2">
                   <Brain className="h-4 w-4 text-zinc-500" />
@@ -483,7 +486,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                               value: p,
                               label: p,
                             }))}
-                            label="Provider"
+                            label={t("workspaceTab.provider", "Provider")}
                           />
                         </div>
                         <div className="col-span-3">
@@ -507,7 +510,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                             options={[
                               {
                                 value: "",
-                                label: "Select a model...",
+                                label: t("workspaceTab.selectModel", "Select a model..."),
                                 disabled: true,
                               },
                               ...llmOptions.map((m) => ({
@@ -516,14 +519,14 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                               })),
                             ]}
                             disabled={!selectedProvider}
-                            label="Model"
+                            label={t("workspaceTab.model", "Model")}
                           />
                         </div>
                       </div>
                     </div>
                   ) : (
                     <span className="text-sm text-[#FFC72C] font-medium">
-                      {workspaceData.mainLLM?.model.name || "No model selected"}
+                      {workspaceData.mainLLM?.model.name || t("workspaceTab.noModelSelected", "No model selected")}
                     </span>
                   )}
                 </div>
@@ -531,7 +534,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
 
               <div>
                 <label className="text-sm text-zinc-400 block mb-2">
-                  Last Updated
+                  {t("workspaceTab.lastUpdated", "Last Updated")}
                 </label>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-zinc-500" />
@@ -554,7 +557,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 <>
                   <div className="col-span-2">
                     <label className="text-sm text-zinc-400 block mb-2">
-                      API Configuration
+                      {t("workspaceTab.apiConfiguration", "API Configuration")}
                     </label>
 
                     <div className="flex gap-2 mb-4">
@@ -572,7 +575,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                             : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
                         }`}
                       >
-                        New Key
+                        {t("workspaceTab.newKey", "New Key")}
                       </button>
                       <button
                         type="button"
@@ -588,7 +591,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                             : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
                         }`}
                       >
-                        Keys Vault
+                        {t("workspaceTab.keysVault", "Keys Vault")}
                       </button>
                     </div>
 
@@ -602,12 +605,12 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                               value={formValues.apiKey}
                               onChange={handleInputChange}
                               className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                              placeholder="Enter API key"
+                              placeholder={t("workspaceTab.enterApiKey", "Enter API key")}
                             />
                             <Key className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
                           </div>
                           <p className="text-xs text-zinc-400 mt-1">
-                            Your API key is stored locally and never shared
+                            {t("workspaceTab.apiKeyInfo", "Your API key is stored locally and never shared")}
                           </p>
                         </div>
                       ) : (
@@ -624,7 +627,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                             options={[
                               {
                                 value: "",
-                                label: "Select a saved key...",
+                                label: t("workspaceTab.selectSavedKey", "Select a saved key..."),
                                 disabled: true,
                               },
                               { value: "key1", label: "Groq API Key" },
@@ -632,10 +635,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                               { value: "key3", label: "Anthropic API Key" },
                               { value: "key4", label: "Google API Key" },
                             ]}
-                            label="Saved Key"
+                            label={t("workspaceTab.savedKey", "Saved Key")}
                           />
                           <p className="text-xs text-zinc-400 mt-1">
-                            Use a previously saved API key from your vault
+                            {t("workspaceTab.savedKeyInfo", "Use a previously saved API key from your vault")}
                           </p>
                         </div>
                       )}
@@ -652,9 +655,11 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
       <Card className="bg-zinc-900 border-zinc-800 flex-1 flex flex-col min-h-0">
         <CardHeader className="flex flex-row items-center justify-between flex-shrink-0">
           <div>
-            <CardTitle className="text-white">Event Console</CardTitle>
+            <CardTitle className="text-white">
+              {t("workspaceTab.eventConsole", "Event Console")}
+            </CardTitle>
             <CardDescription className="text-zinc-400">
-              Real-time workspace events and system logs
+              {t("workspaceTab.eventConsoleDescription", "Real-time workspace events and system logs")}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -667,12 +672,12 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
               {isConsoleExpanded ? (
                 <>
                   <Minimize className="h-4 w-4 mr-2" />
-                  Minimize
+                  {t("workspaceTab.minimize", "Minimize")}
                 </>
               ) : (
                 <>
                   <Expand className="h-4 w-4 mr-2" />
-                  Expand
+                  {t("workspaceTab.expand", "Expand")}
                 </>
               )}
             </Button>
@@ -685,12 +690,12 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
               {isConsoleRunning ? (
                 <>
                   <Pause className="h-4 w-4 mr-2" />
-                  Pause
+                  {t("workspaceTab.pause", "Pause")}
                 </>
               ) : (
                 <>
                   <Play className="h-4 w-4 mr-2" />
-                  Resume
+                  {t("workspaceTab.resume", "Resume")}
                 </>
               )}
             </Button>
@@ -701,7 +706,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
               className="border-zinc-700 hover:bg-zinc-800"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Clear
+              {t("workspaceTab.clear", "Clear")}
             </Button>
           </div>
         </CardHeader>
@@ -710,7 +715,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
             <div className="space-y-2 font-mono text-sm">
               {events.length === 0 ? (
                 <div className="text-zinc-500 text-center py-8">
-                  No events to display. Events will appear here as they occur.
+                  {t("workspaceTab.noEvents", "No events to display. Events will appear here as they occur.")}
                 </div>
               ) : (
                 events.map((event) => (
@@ -743,7 +748,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                           <button
                             onClick={() => handleViewResult(event)}
                             className="text-[#FFC72C] hover:text-[#FFB300] transition-colors p-1 rounded hover:bg-zinc-800 cursor-pointer"
-                            title="View result"
+                            title={t("workspaceTab.viewResult", "View result")}
                           >
                             <FileText className="h-3 w-3" />
                           </button>
@@ -768,7 +773,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
               placeholder={
                 pendingPrompts.length > 0 && pendingPrompts[0].message
                   ? pendingPrompts[0].message
-                  : "Please enter your input:"
+                  : t("workspaceTab.enterInput", "Please enter your input:")
               }
               className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C] text-sm"
               disabled={!isConsoleRunning}
@@ -778,7 +783,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
               className="bg-[#FFC72C] hover:bg-[#E6B428] text-black px-4 py-2 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!isConsoleRunning || !consoleInput.trim()}
             >
-              Send
+              {t("workspaceTab.send", "Send")}
             </button>
           </form>
         </CardContent>

@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { Task, TaskConnection } from "../types/types";
 import { Edit } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface TaskNodeProps {
   task: Task;
@@ -27,6 +28,7 @@ const TaskNode: React.FC<TaskNodeProps> = ({
   onSocketMouseUp,
   onEdit,
 }) => {
+  const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
@@ -258,7 +260,7 @@ const TaskNode: React.FC<TaskNodeProps> = ({
                   onEdit(task);
                 }
               }}
-              title="Edit Task"
+              title={t("taskNode.editTask", "Edit Task")}
             >
               <Edit className="w-4 text-[#FFC72C]/80 hover:text-[#FFC72C] cursor-pointer" />
             </button>
@@ -282,7 +284,7 @@ const TaskNode: React.FC<TaskNodeProps> = ({
         {task.expectedOutput && (
           <div className="mb-2">
             <h4 className="text-xs font-medium text-[#FFC72C]/80 mb-1">
-              Expected Output:
+              {t("taskNode.expectedOutput", "Expected Output")}:
             </h4>
             <p className="text-sm text-[#FFC72C] font-mono bg-[#FFC72C11] p-2 rounded border border-[#FFC72C33] line-clamp-1">
               {task.expectedOutput.slice(0, 75)}
@@ -294,7 +296,7 @@ const TaskNode: React.FC<TaskNodeProps> = ({
         {/* Executor Info */}
         {task.executorId && (
           <div className="text-xs text-[#FFC72C66] font-mono">
-            Executor: {task.executorId}
+            {t("taskNode.executor", "Executor")}: {task.executorId}
           </div>
         )}
       </div>

@@ -15,8 +15,8 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import { WorkspaceData } from "../types/Types";
 import TasksCanvas from "../../task/components/TasksCanvas";
 import TaskModal from "../../task/components/TaskModal";
-// import { ContextMenuItem } from "../../task/components/ContextMenu";
 import { Task, TaskConnection } from "../../task/types/types";
+import { useTranslation } from "react-i18next";
 
 interface TasksTabProps {
   workspaceData: WorkspaceData;
@@ -25,6 +25,7 @@ interface TasksTabProps {
 }
 
 const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>(() => workspaceData.tasks);
   const [connections, setConnections] = useState<TaskConnection[]>(
     () => workspaceData.connections
@@ -35,7 +36,6 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
     x: number;
     y: number;
   } | null>(null);
-  // Context menu state reserved for future use
 
   const handleTaskPositionChange = useCallback(
     (taskId: string, position: { x: number; y: number }) => {
@@ -157,7 +157,7 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveTask}
         task={editingTask}
-        title={editingTask ? "Edit Task" : "Add New Task"}
+        title={editingTask ? t("tasksTab.editTask", "Edit Task") : t("tasksTab.addNewTask", "Add New Task")}
         tasksCount={tasks.length}
         agents={workspaceData.agents}
         workflows={workspaceData.workflows}

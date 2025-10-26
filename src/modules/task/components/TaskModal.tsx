@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Task, TaskSocket } from "../types/types";
 import { Agent, Workflow } from "../../workspace/types/Types";
+import { useTranslation } from "react-i18next";
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -18,11 +19,12 @@ const TaskModal: React.FC<TaskModalProps> = ({
   onClose,
   onSave,
   task,
-  title = "Add Task",
+  title,
   tasksCount,
   agents,
   workflows,
 }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -97,12 +99,12 @@ const TaskModal: React.FC<TaskModalProps> = ({
         <div className="px-6 pt-5 pb-4 border-b border-[#FFC72C]/25 bg-[#FFC72C]/15 rounded-t-lg">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold text-gray-100">
-              {task ? "Edit Task" : title}
+              {task ? t("taskModal.editTask", "Edit Task") : (title || t("taskModal.addTask", "Add Task"))}
             </h2>
             <button
               onClick={onClose}
               className="text-[#FFC72Caa] hover:text-[#FFC72C] text-2xl leading-none"
-              title="Close"
+              title={t("common.close", "Close")}
             >
               ×
             </button>
@@ -118,7 +120,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   htmlFor="title"
                   className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
                 >
-                  Title *
+                  {t("taskModal.title", "Title")} *
                 </label>
                 <input
                   type="text"
@@ -128,7 +130,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent placeholder:text-gray-400"
-                  placeholder="Enter task title"
+                  placeholder={t("taskModal.enterTaskTitle", "Enter task title")}
                 />
               </div>
 
@@ -137,7 +139,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   htmlFor="description"
                   className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
                 >
-                  Description
+                  {t("taskModal.description", "Description")}
                 </label>
                 <textarea
                   id="description"
@@ -146,7 +148,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   onChange={handleInputChange}
                   rows={3}
                   className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent placeholder:text-gray-400"
-                  placeholder="Describe what this task does"
+                  placeholder={t("taskModal.describeTask", "Describe what this task does")}
                 />
               </div>
 
@@ -155,7 +157,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   htmlFor="expectedOutput"
                   className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
                 >
-                  Expected Output
+                  {t("taskModal.expectedOutput", "Expected Output")}
                 </label>
                 <textarea
                   id="expectedOutput"
@@ -164,7 +166,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   onChange={handleInputChange}
                   rows={2}
                   className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent placeholder:text-gray-400"
-                  placeholder="Describe the expected output"
+                  placeholder={t("taskModal.describeOutput", "Describe the expected output")}
                 />
               </div>
               <div>
@@ -172,7 +174,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   htmlFor="type"
                   className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
                 >
-                  Type
+                  {t("taskModal.type", "Type")}
                 </label>
                 <select
                   id="type"
@@ -181,10 +183,10 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent"
                 >
-                  <option value="agentic">Agentic (Auto)</option>
-                  <option value="specific-agent">Specific Agent</option>
-                  <option value="workflow">Workflow</option>
-                  <option value="MCP">MCP</option>
+                  <option value="agentic">{t("taskModal.agenticAuto", "Agentic (Auto)")}</option>
+                  <option value="specific-agent">{t("taskModal.specificAgent", "Specific Agent")}</option>
+                  <option value="workflow">{t("taskModal.workflow", "Workflow")}</option>
+                  <option value="MCP">{t("taskModal.mcp", "MCP")}</option>
                 </select>
               </div>
               {formData.type === "specific-agent" ||
@@ -194,7 +196,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     htmlFor="executorId"
                     className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
                   >
-                    {formData.type === "specific-agent" ? "Agent" : "Workflow"}
+                    {formData.type === "specific-agent" ? t("taskModal.agent", "Agent") : t("taskModal.workflow", "Workflow")}
                   </label>
                   <select
                     id="executorId"
@@ -203,7 +205,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent"
                   >
-                    <option value="">None</option>
+                    <option value="">{t("taskModal.none", "None")}</option>
                     {formData.type === "specific-agent"
                       ? agents.map((agent) => (
                           <option key={agent.id} value={agent.id}>
@@ -229,13 +231,13 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 onClick={onClose}
                 className="px-4 py-2 text-sm text-zinc-300 hover:text-white transition-colors cursor-pointer"
               >
-                Cancel
+                {t("common.cancel", "Cancel")}
               </button>
               <button
                 type="submit"
                 className="px-4 py-2 bg-[#FFC72C] text-black rounded-md hover:bg-[#FFB300] transition-colors border border-[#FFB300] cursor-pointer"
               >
-                {task ? "Update Task" : "Create Task"}
+                {task ? t("taskModal.updateTask", "Update Task") : t("taskModal.createTask", "Create Task")}
               </button>
             </div>
           </form>

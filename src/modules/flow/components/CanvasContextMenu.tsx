@@ -279,9 +279,11 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                       <div style={tooltipStyle}>
                         <div style={{ 
                           color: '#FFC72C', 
-                          fontSize: '12px', 
-                          fontWeight: 'bold',
-                          marginBottom: '6px',
+                          fontSize: '18px',
+                          fontWeight: '700',
+                          textTransform: 'uppercase',
+                          textShadow: '0 0 4px rgba(255, 199, 44, 0.4)',
+                          marginBottom: '8px',
                           fontFamily: 'monospace'
                         }}>
                           {nodeType}
@@ -377,12 +379,14 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                   {hoveredNode === m.nodeType && nodeDetails?.description && (
                     <div style={tooltipStyle}>
                       <div style={{ 
-                        color: '#FFC72C', 
-                        fontSize: '12px', 
-                        fontWeight: 'bold',
-                        marginBottom: '6px',
-                        fontFamily: 'monospace'
-                      }}>
+                          color: '#FFC72C', 
+                          fontSize: '18px',
+                          fontWeight: '700',
+                          textTransform: 'uppercase',
+                          textShadow: '0 0 4px rgba(255, 199, 44, 0.4)',
+                          marginBottom: '8px',
+                          fontFamily: 'monospace'
+                        }}>
                         {m.nodeType}
                       </div>
                       <div style={{ color: 'rgba(255, 255, 255, 0.85)' }}>

@@ -45,6 +45,7 @@ interface ToastProps {
   onClose: () => void;
   isClosing?: boolean;
 }
+
 // Toast notification component
 const Toast: React.FC<ToastProps> = ({
   message,
@@ -175,91 +176,91 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
   // Set up sidecar client command listener and status listener
   useEffect(() => {
-// Add this to the useEffect that sets up sidecar client command listener
-// Replace the existing handleSidecarCommand function with this updated version:
-
-const handleSidecarCommand = async (command: SidecarCommand) => {
-  try {
-    if (
-      command.type === "console_prompt" ||
-      command.type === "console_input"
-    ) {
-      if (command.data && typeof command.data === "object") {
-        const event = command.data as ConsoleEvent;
-        // Add to console display
-        addEvent(event);
-      }
-    }
-
-    // Handle resolved console input
-    if (command.type === "console_input_resolved") {
-      if (command.data && typeof command.data === "object") {
-        const { promptId, message } = command.data as { promptId: string; message: string };
-        console.log(`Console input resolved for prompt ${promptId}: ${message}`);
-        // The event is already added to console, just log confirmation
-      }
-    }
-
-    if (command.type == "message") {
-      if (command.data && typeof command.data === "object") {
-        addEvent(command.data as ConsoleEvent);
-      }
-    }
-
-    if (command.type == "run_workflow") {
-      console.log("Running Workflow", command.data);
-      if (typeof command.data == "string") {
-        const workflowData = await getWorkflow(command.data);
-        if (workflowData?.canvasState) {
-          const workflow = createJson(
-            workflowData,
-            workflowData?.canvasState.nodes,
-            workflowData?.canvasState.connections
-          );
-          const workflowString = JSON.stringify(workflow, null, 2);
-
-          const message: SidecarCommand = {
-            id: command.id,
-            type: "workflow_json",
-            workspaceId: workspaceData.id,
-            data: { data: workflowString },
-            timestamp: new Date().toISOString(),
-          };
-          sidecarClient.sendMessage(message);
+    const handleSidecarCommand = async (command: SidecarCommand) => {
+      try {
+        if (
+          command.type === "console_prompt" ||
+          command.type === "console_input"
+        ) {
+          if (command.data && typeof command.data === "object") {
+            const event = command.data as ConsoleEvent;
+            // Add to console display
+            addEvent(event);
+          }
         }
-      } else {
-        console.error(
-          "Workflow not found or invalid canvas state:",
-          command.data
-        );
+
+        // Handle resolved console input
+        if (command.type === "console_input_resolved") {
+          if (command.data && typeof command.data === "object") {
+            const { promptId, message } = command.data as { 
+              promptId: string; 
+              message: string 
+            };
+            console.log(`Console input resolved for prompt ${promptId}: ${message}`);
+            // The event is already added to console, just log confirmation
+          }
+        }
+
+        if (command.type == "message") {
+          if (command.data && typeof command.data === "object") {
+            addEvent(command.data as ConsoleEvent);
+          }
+        }
+
+        if (command.type == "run_workflow") {
+          console.log("Running Workflow", command.data);
+          if (typeof command.data == "string") {
+            const workflowData = await getWorkflow(command.data);
+            if (workflowData?.canvasState) {
+              const workflow = createJson(
+                workflowData,
+                workflowData?.canvasState.nodes,
+                workflowData?.canvasState.connections
+              );
+              const workflowString = JSON.stringify(workflow, null, 2);
+
+              const message: SidecarCommand = {
+                id: command.id,
+                type: "workflow_json",
+                workspaceId: workspaceData.id,
+                data: { data: workflowString },
+                timestamp: new Date().toISOString(),
+              };
+              sidecarClient.sendMessage(message);
+            }
+          } else {
+            console.error(
+              "Workflow not found or invalid canvas state:",
+              command.data
+            );
+            addEvent({
+              id: crypto.randomUUID(),
+              type: "error",
+              message: `Failed to load workflow: ${command.data}`,
+              timestamp: Date.now(),
+            });
+          }
+        }
+
+        if (command.type === "ping") {
+          console.log("Ping command:", command);
+        }
+
+        if (command.type === "pong") {
+          console.log("Pong command:", command);
+        }
+      } catch (error) {
+        console.error("Error handling sidecar command:", error);
         addEvent({
           id: crypto.randomUUID(),
           type: "error",
-          message: `Failed to load workflow: ${command.data}`,
+          message: `Command handler error: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
           timestamp: Date.now(),
         });
       }
-    }
-
-    if (command.type === "ping") {
-      console.log("Ping command:", command);
-    }
-
-    if (command.type === "pong") {
-      console.log("Pong command:", command);
-    }
-  } catch (error) {
-    console.error("Error handling sidecar command:", error);
-    addEvent({
-      id: crypto.randomUUID(),
-      type: "error",
-      message: `Command handler error: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-      timestamp: Date.now(),
-    });
-  }
-};
+    };
 
     const handleStatusChange = (status: string) => {
       setSidecarStatus(status);
@@ -341,7 +342,10 @@ const handleSidecarCommand = async (command: SidecarCommand) => {
       );
     } catch (error) {
       console.error("Error saving workspace:", error);
-      showToast(t("workspaces.saveError", "Failed to save workspace"), "error");
+      showToast(
+        t("workspaces.saveError", "Failed to save workspace"), 
+        "error"
+      );
     }
   };
 
@@ -430,7 +434,7 @@ const handleSidecarCommand = async (command: SidecarCommand) => {
               onClick={onReturnToHome}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              {t("common.back", "Back")}
             </button>
 
             <div>
@@ -454,12 +458,12 @@ const handleSidecarCommand = async (command: SidecarCommand) => {
               />
 
               <span className="text-zinc-400 text-xs">
-                API{" "}
+                {t("workspaces.api", "API")}{" "}
                 {sidecarStatus === "connected"
-                  ? "Connected"
+                  ? t("workspaces.connected", "Connected")
                   : sidecarStatus === "connecting"
-                  ? "Connecting"
-                  : "Disconnected"}
+                  ? t("workspaces.connecting", "Connecting")
+                  : t("workspaces.disconnected", "Disconnected")}
               </span>
             </div>
 
@@ -498,14 +502,14 @@ const handleSidecarCommand = async (command: SidecarCommand) => {
                         onClick={handleShareWorkspace}
                       >
                         <Share className="h-4 w-4" />
-                        Share Workspace
+                        {t("workspaces.shareWorkspace", "Share Workspace")}
                       </button>
                       <button
                         className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center gap-2"
                         onClick={handleExportWorkspace}
                       >
                         <Download className="h-4 w-4" />
-                        Export Executable Workspace
+                        {t("workspaces.exportExecutable", "Export Executable Workspace")}
                       </button>
                       {/* Future options can be added here */}
                     </div>
@@ -524,11 +528,17 @@ const handleSidecarCommand = async (command: SidecarCommand) => {
                 key: "workspace",
                 label: t("workspaces.workspace", "Workspace"),
               },
-              { key: "tasks", label: t("workspaces.tasks", "Tasks") },
-              { key: "agents", label: t("workspaces.agents", "Sub Agents") },
+              { 
+                key: "tasks", 
+                label: t("workspaces.tasks", "Tasks") 
+              },
+              { 
+                key: "agents", 
+                label: t("workspaces.subAgents", "Sub Agents") 
+              },
               {
                 key: "aiflows",
-                label: t("workspaces.aiFlows", "Tools & AI Workflows"),
+                label: t("workspaces.toolsAndWorkflows", "Tools & AI Workflows"),
               },
             ].map((tab) => (
               <button
