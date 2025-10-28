@@ -49,6 +49,10 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
     return workflowTools;
   }, [workspaceData.workflows]);
 
+  const availableMcpTools = useMemo(() => {
+    return workspaceData.mcpTools;
+  }, [workspaceData.mcpTools]);
+
   const [agentForm, setAgentForm] = useState<Omit<Agent, "id">>({
     name: "",
     role: "",
@@ -440,6 +444,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                 }}
                 handleImportWorkflow={handleImportWorkflow}
                 availableTools={availableTools}
+                availableMcpTools={availableMcpTools}
                 enableVariables={false}
                 workspaceMainLLMName={workspaceData.mainLLM.model?.name}
               />

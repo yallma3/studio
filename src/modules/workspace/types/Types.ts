@@ -82,6 +82,9 @@ export interface WorkspaceData {
 
   // Workflows
   workflows: Workflow[];
+
+  //MCP tools:
+  mcpTools: Tool[];
 }
 
 export interface ConsoleEvent {

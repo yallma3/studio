@@ -184,7 +184,6 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   <option value="agentic">Agentic (Auto)</option>
                   <option value="specific-agent">Specific Agent</option>
                   <option value="workflow">Workflow</option>
-                  <option value="MCP">MCP</option>
                 </select>
               </div>
               {formData.type === "specific-agent" ||

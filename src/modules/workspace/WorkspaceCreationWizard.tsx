@@ -82,6 +82,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
 
     // Workflows
     workflows: [],
+    mcpTools: [],
   });
 
   // Initialize unique workspace ID when component mounts
@@ -212,6 +213,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         connections: [],
         agents: [],
         workflows: [],
+        mcpTools: [],
       });
       setSelectedProvider("Groq");
       setCurrentStep(1);
@@ -500,8 +502,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         return "Specific Agent";
       case "workflow":
         return "Workflow";
-      case "MCP":
-        return "MCP";
       default:
         return type || "Unknown";
     }
@@ -604,6 +604,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
       })) || [];
     return workflowTools;
   }, [workspaceData.workflows]);
+
+  const availableMcpTools = useMemo(() => {
+    return workspaceData.mcpTools;
+  }, [workspaceData.mcpTools]);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -987,6 +991,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       }
                       handleImportWorkflow={handleImportWorkflow}
                       availableTools={availableTools}
+                      availableMcpTools={availableMcpTools}
                       enableVariables={false}
                       workspaceMainLLMName={workspaceData.mainLLM.model?.name}
                     />
@@ -1422,7 +1427,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           <option value="agentic">Agentic (Auto)</option>
                           <option value="specific-agent">Specific Agent</option>
                           <option value="workflow">Workflow</option>
-                          <option value="MCP">MCP</option>
                         </select>
                       </div>
                       {newTask.type === "specific-agent" ||

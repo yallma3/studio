@@ -253,21 +253,25 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       setSidecarStatus(status);
     };
 
-    sidecarClient.onCommand(handleSidecarCommand);
-    sidecarClient.onStatusChange(handleStatusChange);
-
-    sidecarClient.onConsoleEvent((event: ConsoleEvent) => {
+    const handleConsoleEvent = (event: ConsoleEvent) => {
       console.log("Received workflow output event:", event);
       addEvent(event);
-    });
+    };
+
+    sidecarClient.onCommand(handleSidecarCommand);
+    sidecarClient.onStatusChange(handleStatusChange);
+    sidecarClient.onConsoleEvent(handleConsoleEvent);
+
     // Set initial status
     setSidecarStatus(sidecarClient.getConnectionStatus());
 
     return () => {
-      // Note: We don't remove the listeners as sidecarClient is a singleton
-      // and we want it to persist across component unmounts
+      // Clean up listeners to prevent duplicates
+      sidecarClient.offCommand(handleSidecarCommand);
+      sidecarClient.offStatusChange(handleStatusChange);
+      sidecarClient.offConsoleEvent(handleConsoleEvent);
     };
-  }, [workspaceData.id, handleRunWorkspace]);
+  }, [workspaceData.id]);
 
   // Handle clicks outside dropdown to close it
   useEffect(() => {

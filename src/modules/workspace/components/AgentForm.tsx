@@ -25,6 +25,7 @@ interface AgentFormProps {
   onChange: (next: AgentFormValues) => void;
   handleImportWorkflow: (workflow: Workflow) => void;
   availableTools: Tool[];
+  availableMcpTools: Tool[];
   enableVariables?: boolean;
   workspaceMainLLMName?: string; // for hint text
 }
@@ -34,6 +35,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
   onChange,
   handleImportWorkflow,
   availableTools,
+  availableMcpTools,
   enableVariables = false,
   workspaceMainLLMName,
 }) => {
@@ -373,6 +375,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
               )}
         </p>
       </div>
+      {/* <div>{availableMcpTools.map((m) => m.name)}</div> */}
 
       <div>
         <label className="block text-sm font-medium text-zinc-300 mb-1">
@@ -437,6 +440,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
         onAddTool={handleAddTool}
         handleImportWorkflow={handleImportWorkflow}
         availableTools={availableTools}
+        availableMcpTools={availableMcpTools}
         existingTools={value.tools}
         editingTool={null}
       />
