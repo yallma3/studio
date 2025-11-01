@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Task } from "../types/types";
 import TaskNode from "./TaskNode";
 import ContextMenu, { type ContextMenuItem } from "./ContextMenu";
-import { Edit, Fullscreen, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Edit, Fullscreen, Plus, Trash2 } from "lucide-react";
 
 import { TaskConnection } from "../types/types";
 import { MinusIcon, PlusIcon } from "lucide-react";

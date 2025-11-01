@@ -23,7 +23,6 @@ import {
 import { join } from "@tauri-apps/api/path";
 import { appDataDir } from "@tauri-apps/api/path";
 import { WorkspaceData } from "../types/Types";
-import { workerData } from "worker_threads";
 
 export interface WorkspaceState {
   workspaceId: string;

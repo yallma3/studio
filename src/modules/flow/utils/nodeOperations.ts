@@ -12,7 +12,6 @@
 */
 
 import { createNode, NodeType } from "../types/NodeTypes";
-import { nodeRegistry } from "../types/NodeRegistry";
 
 /**
  * Duplicate a node with new ID and slightly offset position

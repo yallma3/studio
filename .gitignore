@@ -34,3 +34,4 @@ dist
 node_modules/
 .env
 
+/release

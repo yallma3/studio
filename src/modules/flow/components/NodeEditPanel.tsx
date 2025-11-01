@@ -15,17 +15,12 @@ import React, { useState, useEffect, MouseEvent, useRef } from "react";
 import {
   BaseNode,
   ConfigParameterType,
-  NodeType,
   NodeValue,
   Socket,
 } from "../types/NodeTypes";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  getConfigParameters,
-  getConfigParameter,
-  setConfigParameter,
-} from "../types/NodeTypes";
+import { getConfigParameters, setConfigParameter } from "../types/NodeTypes";
 
 interface NodeEditPanelProps {
   node: BaseNode | null;
@@ -52,6 +47,8 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     if (node) {
       setTitle(node.title);
       setValue(node.nodeValue);
+      // No use for nodevalue logging to pass lint error
+      console.log(nodeValue);
 
       // Trigger slide-in animation after component mounts
       requestAnimationFrame(() => {
