@@ -8,6 +8,7 @@
     "start": "vite",
     "preview": "vite preview",
     "build": "tsc -b && vite build",
+    "pretauri:build": "node scripts/build-core.js",
     "tauri-build": "tauri build",
     "build-macos-both": "bash scripts/build-macos-both.sh",
     "release": "tsx scripts/release.ts",

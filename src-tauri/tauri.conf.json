@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": "yarn start",
-    "beforeBuildCommand": "yarn build"
+    "beforeBuildCommand": "yarn pretauri:build"
   },
   "app": {
     "windows": [

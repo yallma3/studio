@@ -10,9 +10,28 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            // Spawn Bun server and log output
-            let server_process = spawn_server(app)?;
-            app.manage(server_process);
+            // Load .env file
+            if let Err(e) = dotenvy::dotenv() {
+                println!("⚠️ Could not load .env file: {}", e);
+            }
+
+            // Check environment variable to conditionally spawn server
+            let should_spawn_server = std::env::var("VITE_SPAWN_CORE")
+                .unwrap_or_else(|_| "true".to_string())
+                .parse::<bool>()
+                .unwrap_or(true);
+
+            println!("VITE_SPAWN_CORE = {}", should_spawn_server);
+
+            if should_spawn_server {
+                println!("VITE_SPAWN_CORE=true, spawning server...");
+                let server_process = spawn_server(app)?;
+                app.manage(server_process);
+            } else {
+                println!("VITE_SPAWN_CORE=false, skipping server spawn");
+                // Manage an empty server process for consistency
+                app.manage(Arc::new(Mutex::new(None::<Child>)));
+            }
 
             if cfg!(debug_assertions) {
                 app.handle().plugin(
