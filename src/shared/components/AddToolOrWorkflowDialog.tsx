@@ -113,7 +113,8 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
     };
 
     try {
-      const res = await fetch("http://localhost:3001/mcp/health", {
+      const coreUrl = import.meta.env.VITE_CORE_URL ?? "http://localhost:3001";
+      const res = await fetch(`${coreUrl}/mcp/health`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

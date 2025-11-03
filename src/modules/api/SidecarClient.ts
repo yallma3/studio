@@ -41,7 +41,10 @@ export class SidecarClient {
   private commandCallbacks: ((command: SidecarCommand) => void)[] = [];
   private consoleEventCallbacks: ((event: any) => void)[] = [];
 
-  constructor(private wsUrl: string = "ws://localhost:3001") {}
+  constructor(
+    private wsUrl: string = import.meta.env.VITE_CORE_WS ??
+      "ws://localhost:3001"
+  ) {}
 
   connect(): void {
     console.log("Connecting");
