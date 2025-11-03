@@ -63,8 +63,15 @@ pub fn run() {
 fn spawn_server(app: &tauri::App) -> Result<Arc<Mutex<Option<Child>>>, Box<dyn std::error::Error>> {
     let server_process = Arc::new(Mutex::new(None));
 
+    // Determine server binary name based on OS
+    let server_binary = if cfg!(target_os = "windows") {
+        "server.exe"
+    } else {
+        "server"
+    };
+
     // Resolve server binary inside the packaged bundle
-    let server_path = app.path().resolve("bin/server", tauri::path::BaseDirectory::Resource)?;
+    let server_path = app.path().resolve(format!("bin/{}", server_binary), tauri::path::BaseDirectory::Resource)?;
     println!("🚀 Launching Bun server at {:?}", server_path);
 
     // Create log file for packaged app (macOS hides stdout)
