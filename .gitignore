@@ -1,5 +1,6 @@
 # testing
-/coverage
+coverage/
+test/coverage/
 
 # production
 /build
