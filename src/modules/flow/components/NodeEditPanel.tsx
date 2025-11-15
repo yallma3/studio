@@ -50,10 +50,8 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
       // No use for nodevalue logging to pass lint error
       console.log(nodeValue);
 
-      // Trigger slide-in animation after component mounts
-      requestAnimationFrame(() => {
-        setIsVisible(true);
-      });
+      // Trigger slide-in animation
+      setIsVisible(true);
     }
   }, [node]);
 

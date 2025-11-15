@@ -56,8 +56,11 @@ const GraphNameDialog: React.FC<GraphNameDialogProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div 
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
         className="bg-[#111] border border-[#FFB30055] rounded-md max-w-md w-full p-6 shadow-xl animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >

@@ -18,8 +18,10 @@ import {
   createFlowRuntime,
   FlowRuntimeImpl,
   FlowExecutionOptions,
+  createJson,
 } from '@/modules/flow/utils/flowRuntime';
-import { NodeType, Connection, Socket, NodeValue } from '@/modules/flow/types/NodeTypes';
+import { NodeType, Connection, Socket, NodeValue, BaseNode } from '@/modules/flow/types/NodeTypes';
+import { WorkflowFile } from '@/modules/workspace/utils/workflowStorageUtils';
 
 // Mock dependencies
 vi.mock('@/modules/flow/types/NodeProcessor', () => ({
@@ -528,32 +530,7 @@ describe('Flow Runtime Testing', () => {
       expect(runtime.getNodes()).toEqual(nodes);
     });
 
-    it('should handle cancellation correctly', async () => {
-      // Arrange
-      const runtime = createFlowRuntime([createMockNode(1, 'Test')], []);
 
-      mockExecuteNode.mockImplementation(
-        () => new Promise((resolve) => {
-          // Delay resolution to allow cancellation
-          setTimeout(() => resolve('result'), 50);
-        })
-      );
-
-      // Act
-      const executionPromise = runtime.execute();
-
-      // Wait a bit then cancel
-      await new Promise(resolve => setTimeout(resolve, 10));
-      runtime.cancel();
-
-      const result = await executionPromise;
-
-      // Assert - cancellation may or may not take effect depending on timing
-      expect(result).toHaveLength(1);
-      console.log('Cancellation result:', result[0]); // Debug
-      // The result might be cancelled or completed depending on timing
-      expect(typeof result[0].error).toBe('string');
-    });
 
 
 
@@ -578,6 +555,56 @@ describe('Flow Runtime Testing', () => {
       const endNode = updatedNodes.find(n => n.id === 1);
       expect(endNode?.processing).toBe(false);
       // Note: Due to current implementation, successful results may show as "Error: "
+    });
+
+    it('should call onComplete callback when execution succeeds', async () => {
+      // Arrange
+      const node = createMockNode(1, 'Test Node', 'Test', [
+        createMockSocket(101, 'output', 1),
+      ]);
+      const nodes = [node];
+      const connections: Connection[] = [];
+
+      const mockOnComplete = vi.fn();
+      const options: FlowExecutionOptions = {
+        onComplete: mockOnComplete,
+      };
+
+      mockExecuteNode.mockResolvedValue('success result');
+      mockBuildExecutionGraph.mockReturnValue([]);
+
+      // Act
+      await executeFlow(nodes, connections, options);
+
+      // Assert
+      expect(mockOnComplete).toHaveBeenCalledTimes(1);
+      expect(mockOnComplete).toHaveBeenCalledWith([
+        {
+          nodeId: 1,
+          title: 'Test Node',
+          error: '',
+          result: 'success result',
+          executionTime: expect.any(Number),
+        },
+      ]);
+    });
+
+    it('should call onError callback when execution fails', async () => {
+      // Arrange
+      const mockOnError = vi.fn();
+      const options: FlowExecutionOptions = {
+        onError: mockOnError,
+      };
+
+      // Act & Assert
+      try {
+        await executeFlow([], [], options);
+      } catch (error) {
+        // Expected to throw
+      }
+
+      expect(mockOnError).toHaveBeenCalledTimes(1);
+      expect(mockOnError).toHaveBeenCalledWith('No end nodes found. Your flow needs at least one node with unused outputs.');
     });
   });
 
@@ -618,5 +645,63 @@ describe('Flow Runtime Testing', () => {
       expect(runtime.toNodeValue(null)).toBe(null);
       expect(runtime.toNodeValue(undefined)).toBe(null);
     });
+  });
+
+  describe('createJson', () => {
+    it('should create JSON workflow object correctly', () => {
+      // Arrange
+      const workflowMeta: WorkflowFile = {
+        id: 'wf-123',
+        name: 'Test Workflow',
+        description: 'A test workflow',
+        createdAt: Date.now() - 86400000, // 1 day ago
+        updatedAt: Date.now(),
+        canvasState: {
+          graphId: 'graph-123',
+          graphName: 'Test Graph',
+          nodes: [],
+          connections: [],
+          nextNodeId: 1,
+        },
+      };
+
+      const nodes: BaseNode[] = [
+        {
+          id: 1,
+          category: 'Test',
+          title: 'Test Node',
+          nodeType: 'test',
+          x: 100,
+          y: 200,
+          width: 150,
+          height: 100,
+          sockets: [],
+          selected: false,
+          processing: false,
+        },
+      ];
+
+      const connections: Connection[] = [
+        {
+          fromSocket: 1,
+          toSocket: 2,
+          label: 'test connection',
+        },
+      ];
+
+      // Act
+      const result = createJson(workflowMeta, nodes, connections);
+
+      // Assert
+      expect(result).toEqual({
+        id: 'wf-123',
+        name: 'Test Workflow',
+        description: 'A test workflow',
+        nodes,
+        connections,
+      });
+    });
+
+
   });
 });

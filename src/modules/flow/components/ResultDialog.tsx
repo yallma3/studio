@@ -43,16 +43,13 @@ export const ResultDialog: React.FC<ResultDialogProps> = ({
   return (
     <div
       className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="result-dialog-title"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClose();
-      }}
+      onClick={onClose}
     >
       <div
         className="bg-[#111] border border-[#FFC72C]/50 rounded-md max-w-2xl max-h-[80vh] w-full mx-4 overflow-hidden animate-slide-up shadow-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="result-dialog-title"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 bg-gradient-to-r from-[#111] to-[#FFC72C22] border-b border-[#FFC72C]/30">

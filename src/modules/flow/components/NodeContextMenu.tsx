@@ -57,7 +57,7 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
   };
 
   return (
-    <div style={menuStyle} onClick={e => e.stopPropagation()}>
+    <div style={menuStyle} onClick={(e) => e.stopPropagation()}>
       <div 
         style={menuItemStyle}
         onClick={(e) => onContextMenuAction('copyNode', e)}

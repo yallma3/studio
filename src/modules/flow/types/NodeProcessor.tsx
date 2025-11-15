@@ -169,9 +169,9 @@ export function topologicalSort(nodes: NodeType[], connections: Connection[]): N
     }
   }
   
-  // Convert node IDs back to nodes in reverse order (to get dependencies first)
+  // Convert node IDs back to nodes (dependencies first order)
   const nodeMap = new Map(nodes.map(node => [node.id, node]));
-  const sortedNodes = result.map(id => nodeMap.get(id)!).reverse();
+  const sortedNodes = result.map(id => nodeMap.get(id)!);
   
   console.log(`Topological sort order: ${sortedNodes.map(n => `${n.title} (${n.id})`).join(' -> ')}`);
   
