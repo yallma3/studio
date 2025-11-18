@@ -9,6 +9,9 @@ export interface SidecarCommand {
     | "workflow_json"
     | "console_input"
     | "console_prompt"
+    | "console_input_resolved"
+    | "get_pending_prompts"
+    | "pending_prompts"
     | "message"
     | "ping"
     | "pong"
@@ -17,6 +20,7 @@ export interface SidecarCommand {
   workspaceId?: string;
   data?: unknown;
   timestamp?: string;
+  promptId?: string;
 }
 
 export interface SidecarResponse {
@@ -24,6 +28,16 @@ export interface SidecarResponse {
   success: boolean;
   message: string;
   data?: unknown;
+}
+
+export interface PendingPrompt {
+  promptId: string;
+  nodeId: number;
+  timestamp: number;
+  resolved: boolean;
+  response?: string;
+  message?: string;
+  nodeName?: string;
 }
 
 export class SidecarClient {
@@ -40,6 +54,7 @@ export class SidecarClient {
   private statusCallbacks: ((status: string) => void)[] = [];
   private commandCallbacks: ((command: SidecarCommand) => void)[] = [];
   private consoleEventCallbacks: ((event: any) => void)[] = [];
+  private pendingPromptsCallbacks: ((prompts: PendingPrompt[]) => void)[] = [];
 
   constructor(
     private wsUrl: string = import.meta.env.VITE_CORE_WS ??
@@ -129,6 +144,11 @@ export class SidecarClient {
     if (command.type === "workflow_output" && command.data) {
       this.consoleEventCallbacks.forEach((cb) => cb(command.data));
     }
+
+    if (command.type === "pending_prompts" && command.data) {
+      const prompts = command.data as PendingPrompt[];
+      this.pendingPromptsCallbacks.forEach((cb) => cb(prompts));
+    }
   }
 
   sendMessage(message: SidecarCommand): void {
@@ -161,7 +181,7 @@ export class SidecarClient {
   onCommand(callback: (command: SidecarCommand) => void): void {
     this.commandCallbacks.push(callback);
   }
-
+  
   offCommand(callback: (command: SidecarCommand) => void): void {
     const index = this.commandCallbacks.indexOf(callback);
     if (index > -1) {
@@ -180,12 +200,24 @@ export class SidecarClient {
     }
   }
 
+  onPendingPrompts(callback: (prompts: PendingPrompt[]) => void): void {
+    this.pendingPromptsCallbacks.push(callback);
+  }
+
   getConnectionStatus(): string {
     return this.connectionStatus;
   }
 
   private notifyStatusChange(): void {
     this.statusCallbacks.forEach((callback) => callback(this.connectionStatus));
+  }
+
+  // Request current pending prompts from server
+  requestPendingPrompts(): void {
+    this.sendMessage({
+      type: "get_pending_prompts",
+      timestamp: new Date().toISOString(),
+    });
   }
 }
 

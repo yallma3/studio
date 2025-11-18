@@ -25,7 +25,7 @@ interface AgentFormProps {
   onChange: (next: AgentFormValues) => void;
   handleImportWorkflow: (workflow: Workflow) => void;
   availableTools: Tool[];
-  availableMcpTools: Tool[];
+   availableMcpTools: Tool[];
   enableVariables?: boolean;
   workspaceMainLLMName?: string; // for hint text
 }
@@ -82,7 +82,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
     if (value.variables && value.variables[trimmedKey] !== undefined) {
       setVariableError(
         t(
-          "workspaces.duplicateVariable",
+          "agentForm.duplicateVariable",
           "A variable with this name already exists"
         )
       );
@@ -126,7 +126,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           htmlFor="agentName"
           className="block text-sm font-medium text-gray-300 mb-1 "
         >
-          {t("workspaces.agentName", "Name")}
+          {t("agentForm.name", "Name")}
         </label>
         <input
           type="text"
@@ -134,7 +134,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           value={value.name}
           onChange={(e) => onChange({ ...value, name: e.target.value })}
           className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          placeholder={t("workspaces.enterAgentName", "Enter agent name")}
+          placeholder={t("agentForm.enterAgentName", "Enter agent name")}
         />
       </div>
 
@@ -143,7 +143,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           htmlFor="agentRole"
           className="block text-sm font-medium text-gray-300 mb-1 "
         >
-          {t("workspaces.agentRole", "Role")}
+          {t("agentForm.role", "Role")}
         </label>
         <input
           type="text"
@@ -151,7 +151,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           value={value.role}
           onChange={(e) => onChange({ ...value, role: e.target.value })}
           className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          placeholder={t("workspaces.enterAgentRole", "Enter agent role")}
+          placeholder={t("agentForm.enterAgentRole", "Enter agent role")}
         />
       </div>
 
@@ -161,17 +161,17 @@ const AgentForm: React.FC<AgentFormProps> = ({
             htmlFor="agentBackground"
             className="block text-sm font-medium text-gray-300 mb-1 "
           >
-            {t("workspaces.agentDescription", "Background")}
+            {t("agentForm.background", "Background")}
           </label>
           {enableVariables && (
             <button
               onClick={() => setShowVariablePopup(true)}
               className="text-yellow-400 hover:text-yellow-500 transition-colors flex items-center gap-1 text-sm cursor-pointer"
-              title={t("workspaces.addVariable", "Add variable")}
+              title={t("agentForm.addVariable", "Add variable")}
               type="button"
             >
               <Plus className="h-4 w-4 " />
-              {t("workspaces.addVariable", "Add Variable")}
+              {t("agentForm.addVariable", "Add Variable")}
             </button>
           )}
         </div>
@@ -183,11 +183,11 @@ const AgentForm: React.FC<AgentFormProps> = ({
           placeholder={
             enableVariables
               ? t(
-                  "workspaces.enterAgentBackground",
+                  "agentForm.enterAgentBackgroundWithVariables",
                   "Enter agent background with {{variables}} like: You are an expert in {{expertise}} with {{years}} years of experience"
                 )
               : t(
-                  "workspaces.enterAgentBackground",
+                  "agentForm.enterAgentBackground",
                   "You are a helpful assistant."
                 )
           }
@@ -198,7 +198,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           Object.keys(value.variables).length > 0 && (
             <div className="mt-2">
               <p className="text-xs text-gray-400 mb-1">
-                {t("workspaces.definedVariables", "Defined Variables:")}
+                {t("agentForm.definedVariables", "Defined Variables:")}
               </p>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(value.variables).map(([key, val]) => (
@@ -213,7 +213,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     <button
                       onClick={() => handleRemoveVariable(key)}
                       className="text-gray-400 hover:text-red-500 transition-colors"
-                      title={t("workspaces.removeVariable", "Remove variable")}
+                      title={t("agentForm.removeVariable", "Remove variable")}
                       type="button"
                     >
                       <X className="h-3 w-3" />
@@ -230,7 +230,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           Object.keys(value.variables).length > 0 && (
             <div className="mt-3 p-3 bg-zinc-900 border border-zinc-700 rounded-md">
               <p className="text-xs text-gray-400 mb-1">
-                {t("workspaces.backgroundPreview", "Background Preview:")}
+                {t("agentForm.backgroundPreview", "Background Preview:")}
               </p>
               <p className="text-sm text-gray-300">
                 {replaceVariables(value.background, value.variables)}
@@ -243,7 +243,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
             <div className="bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full max-w-md shadow-xl animate-in fade-in duration-200">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-white">
-                  {t("workspaces.addVariable", "Add Variable")}
+                  {t("agentForm.addVariable", "Add Variable")}
                 </h3>
                 <button
                   onClick={() => setShowVariablePopup(false)}
@@ -256,7 +256,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t("workspaces.variableName", "Variable Name")}
+                  {t("agentForm.variableName", "Variable Name")}
                 </label>
                 <input
                   type="text"
@@ -272,7 +272,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                     variableError ? "border-red-500" : "border-zinc-700"
                   } rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500`}
                   placeholder={t(
-                    "workspaces.enterVariableName",
+                    "agentForm.enterVariableName",
                     "Enter variable name (e.g. expertise)"
                   )}
                 />
@@ -283,7 +283,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  {t("workspaces.variableValue", "Default Value")}
+                  {t("agentForm.variableValue", "Default Value")}
                 </label>
                 <input
                   type="text"
@@ -296,7 +296,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                   }
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
                   placeholder={t(
-                    "workspaces.enterVariableValue",
+                    "agentForm.enterVariableValue",
                     "Enter default value (e.g. JavaScript)"
                   )}
                 />
@@ -324,7 +324,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
       <div>
         <label className="block text-sm font-medium text-zinc-300 mb-1">
-          {t("workspaces.agentLLM", "Language Model")}
+          {t("agentForm.languageModel", "Language Model")}
         </label>
         <div className="grid grid-cols-5 gap-4">
           <div className="col-span-2">
@@ -338,7 +338,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 value: provider,
                 label: provider,
               }))}
-              label={t("workspaces.selectProvider", "Provider")}
+              label={t("agentForm.provider", "Provider")}
             />
           </div>
           <div className="col-span-3">
@@ -354,50 +354,49 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 });
               }}
               options={[
-                { value: "", label: "Select a model...", disabled: true },
+                { 
+                  value: "", 
+                  label: t("agentForm.selectModel", "Select a model..."), 
+                  disabled: true 
+                },
                 ...llmOptions.map((m) => ({ value: m.id, label: m.name })),
               ]}
-              label={t("workspaces.selectModel", "Model")}
+              label={t("agentForm.model", "Model")}
             />
           </div>
         </div>
         <p className="text-xs text-zinc-400 mt-2">
           {value.llm.model
             ? t(
-                "workspaces.customLLMSelected",
+                "agentForm.customLLMSelected",
                 "Custom LLM selected for this agent"
               )
             : t(
-                "workspaces.usingWorkspaceLLM",
+                "agentForm.usingWorkspaceLLM",
                 `Using workspace's main LLM: ${
                   workspaceMainLLMName || "None selected"
                 }`
               )}
         </p>
       </div>
-      {/* <div>{availableMcpTools.map((m) => m.name)}</div> */}
 
       <div>
-        <label
-          htmlFor="agentApiKey"
-          className="block text-sm font-medium text-zinc-300 mb-1"
-        >
-          {t("workspaces.agentApiKey", "Api Key")}
+        <label htmlFor="agentApiKey" className="block text-sm font-medium text-zinc-300 mb-1">
+          {t("agentForm.apiKey", "API Key")}
         </label>
         <input
-          type="password"
           id="agentApiKey"
+          type="password"
           className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
           value={value.apiKey}
           onChange={(e) => onChange({ ...value, apiKey: e.target.value })}
-          placeholder={t("workspaces.enterApiKey", "Enter agent Api Key")}
+          placeholder={t("agentForm.enterApiKey", "Enter agent API Key")}
         />
       </div>
-
       <div className="flex flex-col space-y-2">
         <div className="flex items-center justify-between gap-2">
           <label className="block text-sm font-medium text-zinc-300 mb-1">
-            {t("workspaces.tools", "Tools")}
+            {t("agentForm.tools", "Tools")}
           </label>
           <button
             onClick={() => setShowToolPopup(true)}
@@ -405,7 +404,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
             type="button"
           >
             <Plus size={16} />
-            {t("workspaces.addTool", "Add Tool")}
+            {t("agentForm.addTool", "Add Tool")}
           </button>
         </div>
         {value.tools.length > 0 && (
@@ -419,7 +418,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 <button
                   className="text-zinc-500 hover:text-red-400 cursor-pointer rounded-sm p-0.5"
                   onClick={() => handleRemoveTool(tool.name)}
-                  title="Remove tool"
+                  title={t("agentForm.removeTool", "Remove tool")}
                   type="button"
                 >
                   <X size={12} />
@@ -431,7 +430,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
         {value.tools.length === 0 && (
           <p className="text-sm text-zinc-400">
             {t(
-              "workspaces.noToolsSelected",
+              "agentForm.noToolsSelected",
               "No tools selected - Press the plus button to add tools"
             )}
           </p>

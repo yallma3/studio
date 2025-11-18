@@ -21,16 +21,21 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
-        'nodeEdit.title': 'Edit Node',
-        'nodeEdit.nodeTitle': 'Node Title',
-        'nodeEdit.socketInfo': 'Socket Information',
-        'nodeEdit.input': 'Input',
-        'nodeEdit.output': 'Output',
-        'nodeEdit.valueLabels.default': 'Value',
-        'nodeEdit.valueLabels.string': 'Text',
-        'nodeEdit.valueLabels.number': 'Number',
-        'nodeEdit.valueLabels.boolean': 'Boolean',
-        'nodeEdit.valueLabels.text': 'Text Area',
+        'nodeEditPanel.title': 'Node Edit Panel',
+        'nodeEditPanel.nodeTitle': 'Node Title',
+        'nodeEditPanel.socketInfo': 'Socket Information',
+        'nodeEditPanel.input': 'Input',
+        'nodeEditPanel.output': 'Output',
+        'nodeEditPanel.id': 'ID',
+        'nodeEditPanel.textValuePlaceholder': 'Text value...',
+        'nodeEditPanel.true': 'TRUE',
+        'nodeEditPanel.false': 'FALSE',
+        'nodeEditPanel.valueLabels.default': 'Value',
+        'nodeEditPanel.valueLabels.string': 'Text',
+        'nodeEditPanel.valueLabels.number': 'Number',
+        'nodeEditPanel.valueLabels.boolean': 'Boolean',
+        'nodeEditPanel.valueLabels.text': 'Text Area',
+        'common.close': 'Close',
       };
       return translations[key] || key;
     },
@@ -89,13 +94,13 @@ describe('NodeEditPanel Component', () => {
     it('should not render when node is null', () => {
       render(<NodeEditPanel {...defaultProps} node={null} />);
 
-      expect(screen.queryByText('Edit Node')).not.toBeInTheDocument();
+      expect(screen.queryByText('Node Edit Panel')).not.toBeInTheDocument();
     });
 
     it('should render when node is provided', () => {
       render(<NodeEditPanel {...defaultProps} />);
 
-      expect(screen.getByText('Edit Node')).toBeInTheDocument();
+      expect(screen.getByText('Node Edit Panel')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Test Node')).toBeInTheDocument();
       expect(screen.getByText('TextNode')).toBeInTheDocument();
       expect(screen.getByText('ID: 1')).toBeInTheDocument();
@@ -159,7 +164,7 @@ describe('NodeEditPanel Component', () => {
     it('should not call onClose when clicking inside the panel', () => {
       render(<NodeEditPanel {...defaultProps} />);
 
-      const panel = screen.getByText('Edit Node').closest('div');
+      const panel = screen.getByText('Node Edit Panel').closest('div');
       fireEvent.mouseDown(panel!);
 
       expect(mockOnClose).not.toHaveBeenCalled();
@@ -170,7 +175,7 @@ describe('NodeEditPanel Component', () => {
     it('should have slide-in animation when visible', async () => {
       render(<NodeEditPanel {...defaultProps} />);
 
-      const panel = screen.getByText('Edit Node').closest('.fixed');
+      const panel = screen.getByText('Node Edit Panel').closest('.fixed');
       await waitFor(() => {
         expect(panel).toHaveStyle({ transform: 'translateX(0)' });
       });

@@ -16,6 +16,20 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { ResultDialog } from "@/modules/flow/components/ResultDialog";
 import { NodeType } from "@/modules/flow/types/NodeTypes";
 
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string, defaultValue?: string, options?: any) => {
+      if (key === "resultDialog.title") {
+        const nodeName = options?.nodeName || "Unknown";
+        return `${nodeName} Result`;
+      }
+      if (key === "resultDialog.noData") return "No result data available";
+      if (key === "common.close") return "Close";
+      return defaultValue || key;
+    },
+  }),
+}));
+
 describe("ResultDialog Component", () => {
   const mockOnClose = vi.fn();
 

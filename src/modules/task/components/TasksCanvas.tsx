@@ -3,6 +3,7 @@ import { Task } from "../types/types";
 import TaskNode from "./TaskNode";
 import ContextMenu, { type ContextMenuItem } from "./ContextMenu";
 import { Edit, Fullscreen, Plus, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { TaskConnection } from "../types/types";
 import { MinusIcon, PlusIcon } from "lucide-react";
@@ -37,6 +38,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
   onTaskDelete,
   onTaskAdd,
 }) => {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState<ViewportState>({
     x: 50, // Start with a small offset to show tasks
@@ -373,12 +375,12 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
 
       const items: ContextMenuItem[] = [
         {
-          label: "Add Task",
+          label: t("tasksCanvas.addTask", "Add Task"),
           onClick: addTask,
           icon: <Plus size={16} className="text-[#FFC72C]" />,
         },
         {
-          label: "Fit To View",
+          label: t("tasksCanvas.fitToView", "Fit To View"),
           onClick: () => fitToView(),
           icon: <Fullscreen size={16} className="text-[#FFC72C]" />,
         },
@@ -388,7 +390,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
       setContextMenuPosition({ x: e.clientX, y: e.clientY });
       setIsContextMenuOpen(true);
     },
-    [fitToView, onTaskAdd, viewport.zoom]
+    [fitToView, onTaskAdd, viewport.zoom, t]
   );
 
   return (
@@ -498,12 +500,12 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
                   e.stopPropagation();
                   const items: ContextMenuItem[] = [
                     {
-                      label: "Edit",
+                      label: t("common.edit", "Edit"),
                       onClick: () => onTaskEdit?.(task),
                       icon: <Edit size={16} className="text-[#FFC72C]" />,
                     },
                     {
-                      label: "Delete",
+                      label: t("common.delete", "Delete"),
                       onClick: () => onTaskDelete?.(task.id),
                       icon: <Trash2 size={16} className="text-[#FF6B6B]" />,
                     },
@@ -556,7 +558,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
 
       {/* Zoom Indicator */}
       <div className="absolute bottom-4 right-4 bg-gray-900 rounded-lg shadow-lg px-3 py-2 text-sm text-gray-600">
-        Zoom: {Math.round(viewport.zoom * 100)}%
+        {t("tasksCanvas.zoom", "Zoom")}: {Math.round(viewport.zoom * 100)}%
       </div>
 
       {/* Context Menu */}

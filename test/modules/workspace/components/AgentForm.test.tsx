@@ -89,7 +89,7 @@ describe('AgentForm Component', () => {
       expect(screen.getByLabelText('Name')).toBeInTheDocument();
       expect(screen.getByLabelText('Role')).toBeInTheDocument();
       expect(screen.getByLabelText('Background')).toBeInTheDocument();
-      expect(screen.getByLabelText('Api Key')).toBeInTheDocument();
+      expect(screen.getByLabelText('API Key')).toBeInTheDocument();
       expect(screen.getByText('Language Model')).toBeInTheDocument();
       expect(screen.getByText('Tools')).toBeInTheDocument();
     });
@@ -167,7 +167,7 @@ describe('AgentForm Component', () => {
 
     it('should call onChange when api key changes', () => {
       render(<AgentForm {...defaultProps} />);
-      const apiKeyInput = screen.getByLabelText('Api Key');
+      const apiKeyInput = screen.getByLabelText('API Key');
 
       fireEvent.change(apiKeyInput, { target: { value: 'new-api-key' } });
 
