@@ -167,10 +167,15 @@ export class SidecarClient {
     }
   }
 
-  onStatusChange(callback: (status: string) => void): void {
+  onStatusChange(callback: (status: string) => void): () => void {
     this.statusCallbacks.push(callback);
+    return () => {
+      const index = this.statusCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.statusCallbacks.splice(index, 1);
+      }
+    };
   }
-
   offStatusChange(callback: (status: string) => void): void {
     const index = this.statusCallbacks.indexOf(callback);
     if (index > -1) {
@@ -180,6 +185,12 @@ export class SidecarClient {
 
   onCommand(callback: (command: SidecarCommand) => void): void {
     this.commandCallbacks.push(callback);
+    return () => {
+      const index = this.commandCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.commandCallbacks.splice(index, 1);
+      }
+    };
   }
   
   offCommand(callback: (command: SidecarCommand) => void): void {
@@ -189,8 +200,14 @@ export class SidecarClient {
     }
   }
 
-  onConsoleEvent(callback: (event: any) => void): void {
+  onConsoleEvent(callback: (event: any) => void): () => void {
     this.consoleEventCallbacks.push(callback);
+    return () => {
+      const index = this.consoleEventCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.consoleEventCallbacks.splice(index, 1);
+      }
+    };
   }
 
   offConsoleEvent(callback: (event: any) => void): void {

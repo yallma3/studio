@@ -180,9 +180,19 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
             className="text-[#FFC72C] font-mono text-sm bg-[#FFC72C11] p-2 rounded text-left m-2.5"
             data-testid="text-value"
           >
-            {typeof node.nodeValue === "object"
-              ? JSON.stringify(node.nodeValue, null, 2).slice(0, 100)
-              : String(node.nodeValue).slice(0, 100)}
+          {typeof node.nodeValue === "object"
+            ? (() => {
+                const stringified = JSON.stringify(node.nodeValue, null, 2);
+                return stringified.length > 100
+                  ? stringified.slice(0, 100) + "..."
+                  : stringified;
+              })()
+            : (() => {
+                const strValue = String(node.nodeValue);
+                return strValue.length > 100
+                  ? strValue.slice(0, 100) + "..."
+                  : strValue;
++              })()}
           </div>
         );
     }

@@ -64,11 +64,12 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
 
   // Helper function to transform workflow name to tool name
   const transformWorkflowName = (name: string): string => {
-    return name
+    const slug = name
       .toLowerCase()
       .replace(/\s+/g, "_")
       .replace(/[^a-z0-9_\-.:]/g, "")
       .replace(/^[^a-z_]+/, "");
+    return slug || `wf_${Date.now()}`;
   };
 
   // Reset state when popup opens/closes

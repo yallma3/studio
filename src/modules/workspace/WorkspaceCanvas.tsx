@@ -36,7 +36,6 @@ import { WorkspaceData, ConsoleEvent, Workflow } from "./types/Types";
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
 import { getWorkflow } from "./utils/runtimeUtils";
-import { exportWorkspaceAsJs } from "./utils/exportWorkspace";
 import { createJson } from "../flow/utils/flowRuntime";
 
 // Toast notification component
@@ -389,7 +388,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
   const handleExportWorkspace = async () => {
     console.log("Exporting workspace...");
-    exportWorkspaceAsJs();
+    // TODO: Implement new export pipeline - exportWorkspaceAsJs is deprecated
+    showToast("Export functionality is temporarily disabled. Use save instead.", "error");
   };
 
   // Handle updating workspace data - only update state, don't save to file

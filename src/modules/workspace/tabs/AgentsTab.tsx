@@ -435,7 +435,10 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                     background: val.background,
                     llm: {
                       provider: val.llm.provider,
-                      model: val.llm.model || agentForm.llm.model!,
+                      model:
+                        val.llm.model ??
+                        agentForm.llm.model ??
+                        workspaceData.mainLLM.model,
                     },
                     apiKey: val.apiKey,
                     tools: val.tools,
