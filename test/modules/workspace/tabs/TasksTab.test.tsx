@@ -55,12 +55,12 @@ vi.mock('@/modules/task/components/TasksCanvas', () => ({
       >
         Change Position
       </button>
-      <button
-        data-testid="create-connection-btn"
-        onClick={() => onConnectionCreate({ fromSocket: 1, toSocket: 2 })}
-      >
-        Create Connection
-      </button>
+       <button
+         data-testid="create-connection-btn"
+         onClick={() => onConnectionCreate({ fromSocket: 1, toSocket: 3 })}
+       >
+         Create Connection
+       </button>
       <button
         data-testid="remove-connection-btn"
         onClick={() => onConnectionRemove(connections[0])}
@@ -94,6 +94,12 @@ vi.mock('@/modules/task/components/TaskModal', () => ({
       </button>
     </div>
   ),
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, fallback?: string) => fallback || key,
+  }),
 }));
 
 describe('TasksTab', () => {
@@ -296,13 +302,13 @@ describe('TasksTab', () => {
     fireEvent.click(createButton);
 
     await waitFor(() => {
-      expect(mockOnChange).toHaveBeenCalledWith({
-        tasks: mockWorkspaceData.tasks,
-        connections: expect.arrayContaining([
-          mockWorkspaceData.connections[0],
-          { fromSocket: 1, toSocket: 2 },
-        ]),
-      });
+       expect(mockOnChange).toHaveBeenCalledWith({
+         tasks: mockWorkspaceData.tasks,
+         connections: expect.arrayContaining([
+           mockWorkspaceData.connections[0],
+           { fromSocket: 1, toSocket: 3 },
+         ]),
+       });
     });
   });
 

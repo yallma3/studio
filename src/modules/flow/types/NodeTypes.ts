@@ -200,6 +200,9 @@ export function createNode(
         (param) => param.parameterName === parameterName
       );
       if (parameter) {
+        if (value !== undefined && typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
+          throw new Error(`Invalid type for paramValue: ${typeof value}. Must be string, number, boolean, or undefined.`);
+        }
         parameter.paramValue = value;
       }
     },

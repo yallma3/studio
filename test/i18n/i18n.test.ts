@@ -31,14 +31,14 @@ vi.mock('i18next-browser-languagedetector', () => ({
 }));
 
 // Mock translation files
-vi.mock('../src/i18n/locales/en/translation.json', () => ({
+vi.mock('../../src/i18n/locales/en/translation.json', () => ({
   default: {
     app: { title: 'yaLLMa3' },
     home: { createNewGraph: 'Create flow' },
   },
 }));
 
-vi.mock('../src/i18n/locales/ar/translation.json', () => ({
+vi.mock('../../src/i18n/locales/ar/translation.json', () => ({
   default: {
     app: { title: 'yaLLMa3' },
     home: { createNewGraph: 'إنشاء تدفق' },
@@ -59,7 +59,7 @@ describe('i18n Configuration', () => {
     // vi.resetModules(); // Removed to keep mocks across tests
   });
 
-  it('should initialize i18n with correct configuration', async () => {
+  it('should initialize i18n with correct configuration and plugins', async () => {
     // Wait for the module to load and initialization to complete
     await new Promise(resolve => setTimeout(resolve, 0));
 
@@ -81,35 +81,6 @@ describe('i18n Configuration', () => {
         },
       })
     );
-  });
-
-  it('should use LanguageDetector and initReactI18next plugins', async () => {
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-    expect(mockI18n.use).toHaveBeenCalledTimes(2);
-    expect(mockI18n.init).toHaveBeenCalledTimes(1);
-
-    const initConfig = mockI18n.init.mock.calls[0][0];
-
-    expect(initConfig).toEqual(
-      expect.objectContaining({
-        fallbackLng: 'en',
-        debug: false,
-        saveMissing: false,
-        missingKeyHandler: false,
-        supportedLngs: ['en', 'ar'],
-        load: 'languageOnly',
-        interpolation: {
-          escapeValue: false,
-        },
-      })
-    );
-  });
-
-  it('should use LanguageDetector and initReactI18next plugins', async () => {
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-    expect(mockI18n.use).toHaveBeenCalledTimes(2);
   });
 
   it('should export the i18n instance', async () => {

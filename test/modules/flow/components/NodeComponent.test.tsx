@@ -146,7 +146,7 @@ describe('NodeComponent', () => {
       );
 
       // Should show loading spinner
-      const spinner = document.querySelector('.lucide-loader-circle');
+      const spinner = document.querySelector('svg.animate-spin');
       expect(spinner).toBeInTheDocument();
     });
 
@@ -389,8 +389,8 @@ describe('NodeComponent', () => {
       const nodeElement = document.querySelector('[style*="width: 200px"][style*="height: 100px"]');
       fireEvent.mouseDown(nodeElement!);
 
-      // Should not call onMouseDown when being edited
-      expect(defaultProps.onMouseDown).toHaveBeenCalled();
+       // Should not call onMouseDown when being edited
+       expect(defaultProps.onMouseDown).not.toHaveBeenCalled();
     });
   });
 

@@ -233,6 +233,7 @@
     "noEvents": "No events to display. Events will appear here as they occur.",
     "viewResult": "View result",
     "enterInput": "Please enter your input:",
+    "waitingForInput": "Waiting for user input",
     "send": "Send"
   },
   "tasksTab": {

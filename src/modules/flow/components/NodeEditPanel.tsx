@@ -15,16 +15,12 @@ import React, { useState, useEffect, MouseEvent, useRef } from "react";
 import {
   BaseNode,
   ConfigParameterType,
-  NodeType,
   NodeValue,
   Socket,
 } from "../types/NodeTypes";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  getConfigParameters,
-  setConfigParameter,
-} from "../types/NodeTypes";
+import { getConfigParameters, setConfigParameter } from "../types/NodeTypes";
 
 interface NodeEditPanelProps {
   node: BaseNode | null;
@@ -57,7 +53,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
       // Trigger slide-in animation
       setIsVisible(true);
     }
-  }, [node]);
+  }, [node, nodeValue]);
 
   useEffect(() => {
     if (!node) {
@@ -192,7 +188,10 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
             className={`w-full h-32 bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none resize-none ${textAlignClass}`}
             value={String(renderValue)}
             onChange={handleChange}
-            placeholder={t("nodeEditPanel.textValuePlaceholder", "Text value...")}
+            placeholder={t(
+              "nodeEditPanel.textValuePlaceholder",
+              "Text value..."
+            )}
           />
         );
       case "number":
@@ -216,7 +215,9 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
                 checked={Boolean(formValues[param.parameterName])}
                 onChange={handleChange}
               />
-              {formValues[param.parameterName] ? t("nodeEditPanel.true", "TRUE") : t("nodeEditPanel.false", "FALSE")}
+              {formValues[param.parameterName]
+                ? t("nodeEditPanel.true", "TRUE")
+                : t("nodeEditPanel.false", "FALSE")}
             </label>
           </div>
         );

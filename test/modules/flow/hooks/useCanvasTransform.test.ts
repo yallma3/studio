@@ -13,6 +13,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import type React from 'react';
 import { useCanvasTransform } from '@/modules/flow/hooks/useCanvasTransform';
 
 // Mock the canvasTransforms utilities
@@ -108,7 +109,7 @@ describe('useCanvasTransform', () => {
             height: 300,
           }),
         },
-      } as any;
+      } as unknown as React.WheelEvent<HTMLDivElement>;
 
       act(() => {
         result.current.handleWheel(mockEvent);
@@ -135,7 +136,7 @@ describe('useCanvasTransform', () => {
             height: 300,
           }),
         },
-      } as any;
+      } as unknown as React.WheelEvent<HTMLDivElement>;
 
       act(() => {
         result.current.handleWheel(mockEvent);
@@ -167,7 +168,7 @@ describe('useCanvasTransform', () => {
             height: 300,
           }),
         },
-      } as any;
+      } as unknown as React.WheelEvent<HTMLDivElement>;
 
       act(() => {
         result.current.handleWheel(mockEvent);
@@ -198,7 +199,7 @@ describe('useCanvasTransform', () => {
             height: 300,
           }),
         },
-      } as any;
+      } as unknown as React.WheelEvent<HTMLDivElement>;
 
       act(() => {
         result.current.handleWheel(mockEvent);
@@ -224,7 +225,7 @@ describe('useCanvasTransform', () => {
             height: 300,
           }),
         },
-      } as any;
+      } as unknown as React.WheelEvent<HTMLDivElement>;
 
       act(() => {
         result.current.handleWheel(mockEvent);
@@ -243,7 +244,7 @@ describe('useCanvasTransform', () => {
       const mockEvent = {
         clientX: 100,
         clientY: 200,
-      } as any;
+      } as unknown as React.MouseEvent<HTMLDivElement>;
 
       act(() => {
         result.current.startPanning(mockEvent);
@@ -259,7 +260,7 @@ describe('useCanvasTransform', () => {
       const startEvent = {
         clientX: 100,
         clientY: 200,
-      } as any;
+      } as unknown as React.MouseEvent<HTMLDivElement>;
 
       act(() => {
         result.current.startPanning(startEvent);
@@ -269,7 +270,7 @@ describe('useCanvasTransform', () => {
       const moveEvent = {
         clientX: 150,
         clientY: 250,
-      } as any;
+      } as unknown as React.MouseEvent<HTMLDivElement>;
 
       act(() => {
         result.current.updatePanning(moveEvent);
@@ -285,7 +286,7 @@ describe('useCanvasTransform', () => {
       const moveEvent = {
         clientX: 150,
         clientY: 250,
-      } as any;
+      } as unknown as React.MouseEvent<HTMLDivElement>;
 
       act(() => {
         result.current.updatePanning(moveEvent);
@@ -302,7 +303,7 @@ describe('useCanvasTransform', () => {
       const startEvent = {
         clientX: 100,
         clientY: 200,
-      } as any;
+      } as unknown as React.MouseEvent<HTMLDivElement>;
 
       act(() => {
         result.current.startPanning(startEvent);
@@ -322,8 +323,8 @@ describe('useCanvasTransform', () => {
 
       // First pan
       act(() => {
-        result.current.startPanning({ clientX: 100, clientY: 200 } as any);
-        result.current.updatePanning({ clientX: 120, clientY: 220 } as any);
+        result.current.startPanning({ clientX: 100, clientY: 200 } as unknown as React.MouseEvent<HTMLDivElement>);
+        result.current.updatePanning({ clientX: 120, clientY: 220 } as unknown as React.MouseEvent<HTMLDivElement>);
       });
 
       expect(result.current.transform.translateX).toBe(20);
@@ -331,7 +332,7 @@ describe('useCanvasTransform', () => {
 
       // Second pan (should accumulate)
       act(() => {
-        result.current.updatePanning({ clientX: 140, clientY: 240 } as any);
+        result.current.updatePanning({ clientX: 140, clientY: 240 } as unknown as React.MouseEvent<HTMLDivElement>);
       });
 
       expect(result.current.transform.translateX).toBe(40); // 20 + 20
