@@ -76,6 +76,7 @@ export interface BaseNode {
   category: string;
   title: string;
   nodeType: string;
+  description?: string;
   nodeValue?: NodeValue;
   x: number;
   y: number;
@@ -86,12 +87,17 @@ export interface BaseNode {
   processing?: boolean;
   result?: NodeValue;
   process?: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
-  configParameters?: ConfigParameterType[]; // Configuration parameters for the node
+  configParameters?: ConfigParameterType[];
+  i18n?: Record<string, {
+    category?: string;
+    title?: string;
+    description?: string;
+     nodeType?: string; 
+  }>; 
   getConfigParameters?: () => Array<ConfigParameterType>;
   getConfigParameter?: (
     parameterName: string
   ) => ConfigParameterType | undefined;
-
   setConfigParameter?: (
     parameterName: string,
     value: string | number | boolean
@@ -177,6 +183,7 @@ export function createNode(
     height: node.height,
     selected: false,
     processing: false,
+    i18n: node.i18n,
 
     configParameters: configParam as ConfigParameterType[] | undefined,
     getConfigParameters: function (): ConfigParameterType[] {

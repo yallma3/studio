@@ -15,6 +15,8 @@ import React, { MouseEvent, useState, useEffect, useRef } from "react";
 import { NodeType, Connection, NodeValue, Socket } from "../types/NodeTypes";
 import { Loader2, Settings, FileText } from "lucide-react";
 import { SOCKET_SPACING, SOCKET_SIZE } from "../vars";
+import { useTranslation } from "react-i18next";
+
 // Node Component Props
 export interface NodeComponentProps {
   node: NodeType;
@@ -42,6 +44,20 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
   onShowResult,
   isBeingEdited = false,
 }) => {
+  const { t, i18n } = useTranslation();
+  const currentLanguage = i18n.language; // Get current language for node translations
+  
+  // Helper function to get translated fields from node's i18n
+  const getTranslatedFields = (node: NodeType, lang: string) => {
+    const i18nData = (node as any).i18n?.[lang] || (node as any).i18n?.en;
+    return {
+      translatedTitle: i18nData?.title || node.title,
+      translatedNodeType: i18nData?.nodeType || node.nodeType,
+    };
+  };
+
+  const translatedFields = getTranslatedFields(node, currentLanguage);
+  
   // Add state for animation
   const [isAnimating, setIsAnimating] = useState(false);
   const prevResultRef = useRef<unknown>(node.result);
@@ -119,7 +135,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
         return (
           <div className="flex items-center justify-center m-2.5">
             <span className="text-[#FFC72C] font-mono text-sm bg-[#FFC72C11] p-2 rounded w-full">
-              {boolValue ? "TRUE" : "FALSE"}
+              {boolValue ? t("nodeComponent.true", "TRUE") : t("nodeComponent.false", "FALSE")}
             </span>
           </div>
         );
@@ -130,9 +146,9 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
               ? String(
                   (node.nodeValue as Record<number, NodeValue>)[
                     node.id * 100 + 3
-                  ] || "Start typing..."
+                  ] || t("nodeComponent.startTyping", "Start typing...")
                 )
-              : String(node.nodeValue || "Start typing...")}
+              : String(node.nodeValue || t("nodeComponent.startTyping", "Start typing..."))}
           </div>
         );
       case "Image":
@@ -152,7 +168,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
               </div>
             ) : (
               <div className="w-full h-[120px] bg-[#FFC72C11] rounded flex items-center justify-center text-[#FFC72C66]">
-                No image
+                {t("nodeComponent.noImage", "No image")}
               </div>
             )}
           </div>
@@ -186,31 +202,31 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
     if (node.result) {
       return (
         <div className="absolute -bottom-3 -right-3 z-50">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onShowResult(node);
-            }}
-            className={`bg-[#FFC72C] hover:bg-[#FFB300] text-black rounded-full w-7 h-7 flex items-center justify-center shadow-md border border-[#FFB300] ${
-              isAnimating ? "animate-ping-once scale-110" : "animate-pulse-once"
-            } relative`}
-            title="View Result"
-            data-testid="view-result-button"
-          >
-            <FileText
-              size={14}
-              className={isAnimating ? "animate-spin-slow" : ""}
-            />
+         <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onShowResult(node);
+          }}
+          className={`bg-[#FFC72C] hover:bg-[#FFB300] text-black rounded-full w-7 h-7 flex items-center justify-center shadow-md border border-[#FFB300] ${
+            isAnimating ? "animate-ping-once scale-110" : "animate-pulse-once"
+          } relative`}
+          title={t("nodeComponent.viewResult", "View Result")}
+          data-testid="view-result-button"
+        >
+          <FileText
+            size={14}
+            className={isAnimating ? "animate-spin-slow" : ""}
+          />
 
-            {/* Multiple animated rings for a more pronounced effect */}
-            {isAnimating && (
-              <>
-                <span className="absolute w-full h-full rounded-full bg-[#FFC72C]/40 animate-ripple"></span>
-                <span className="absolute w-full h-full rounded-full bg-[#FFC72C]/30 animate-ripple-delayed"></span>
-                <span className="absolute w-16 h-16 -top-4 -left-4 rounded-full border-2 border-[#FFC72C]/20 animate-ping"></span>
-              </>
-            )}
-          </button>
+          {/* Multiple animated rings for a more pronounced effect */}
+          {isAnimating && (
+            <>
+              <span className="absolute w-full h-full rounded-full bg-[#FFC72C]/40 animate-ripple"></span>
+              <span className="absolute w-full h-full rounded-full bg-[#FFC72C]/30 animate-ripple-delayed"></span>
+              <span className="absolute w-16 h-16 -top-4 -left-4 rounded-full border-2 border-[#FFC72C]/20 animate-ping"></span>
+            </>
+          )}
+        </button>
         </div>
       );
     } else {
@@ -368,13 +384,13 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
       <div className="z-3 rounded-md">
         <div
           className={`flex items-center justify-between px-4 py-3 
-        ${
-          isBeingEdited
-            ? "bg-[#FFC72C]/25"
-            : node.selected
-            ? "bg-[#FFC72C]/30"
-            : "bg-[#FFC72C]/20"
-        } border-b border-[#FFC72C]/30 rounded-t-md`}
+          ${
+            isBeingEdited
+              ? "bg-[#FFC72C]/25"
+              : node.selected
+              ? "bg-[#FFC72C]/30"
+              : "bg-[#FFC72C]/20"
+          } border-b border-[#FFC72C]/30 rounded-t-md`}
         >
           <div className="flex items-center gap-2">
             <div
@@ -384,11 +400,11 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
                   : "shadow-[0_0_10px_rgba(255,199,44,0.7)]"
               }`}
             />
-            <h3 className="font-bold text-sm text-white">{node.title}</h3>
+            <h3 className="font-bold text-sm text-white">{translatedFields.translatedTitle}</h3>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-xs text-[#FFC72C]/80 uppercase font-mono">
-              {node.nodeType}
+              {translatedFields.translatedNodeType}
             </div>
             <button
               onClick={handleEditClick}
@@ -397,7 +413,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
                   ? "text-[#FFC72C]"
                   : "text-[#FFC72C88] hover:text-[#FFC72C]"
               } ml-1 cursor-pointer`}
-              title="Edit Node"
+              title={t("nodeComponent.editNode", "Edit Node")}
             >
               {node.processing ? (
                 <Loader2 className="animate-spin" size={14} />

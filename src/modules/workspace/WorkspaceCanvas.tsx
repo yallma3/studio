@@ -21,6 +21,7 @@ import {
   Play,
   MoreVertical,
   Download,
+  ArrowRight, 
 } from "lucide-react";
 import {
   saveWorkspaceToDefaultLocation,
@@ -97,7 +98,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   workspaceData: initialWorkspaceData,
   onReturnToHome,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation(); 
   const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
   const initEvents: ConsoleEvent[] = [];
 
@@ -187,6 +188,19 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
           }
         }
 
+        // Handle resolved console input
+        if (command.type === "console_input_resolved") {
+          if (command.data && typeof command.data === "object") {
+            const { promptId, message } = command.data as { 
+              promptId: string; 
+              message: string 
+            };
+            console.log(`Console input resolved for prompt ${promptId}: ${message}`);
+            // The event is already added to console, just log confirmation
+          }
+        }
+
+
         if (command.type == "message") {
           if (command.data && typeof command.data === "object") {
             addEvent(command.data as ConsoleEvent);
@@ -252,9 +266,16 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       setSidecarStatus(status);
     };
 
-    const offCommand = sidecarClient.onCommand(handleSidecarCommand);
-    const offStatus = sidecarClient.onStatusChange(handleStatusChange);
-    const offConsole = sidecarClient.onConsoleEvent((event: ConsoleEvent) => {
+    const handleConsoleEvent = (event: ConsoleEvent) => {
+      console.log("Received workflow output event:", event);
+      addEvent(event);
+    };
+
+    sidecarClient.onCommand(handleSidecarCommand);
+    sidecarClient.onStatusChange(handleStatusChange);
+
+
+    sidecarClient.onConsoleEvent((event: ConsoleEvent) => {
       console.log("Received workflow output event:", event);
       addEvent(event);
     });
@@ -262,12 +283,11 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     setSidecarStatus(sidecarClient.getConnectionStatus());
 
     return () => {
-      // Clean up listeners on unmount, even though sidecarClient is a singleton,
-      // to prevent duplicate handlers if the component re-mounts
-      offCommand?.();
-      offStatus?.();
-      offConsole?.();
-    };
+      // Clean up listeners to prevent duplicates
+      sidecarClient.offCommand(handleSidecarCommand);
+      sidecarClient.offStatusChange(handleStatusChange);
+      sidecarClient.offConsoleEvent(handleConsoleEvent);   
+     };
   }, [workspaceData.id, handleRunWorkspace]);
 
   // Handle clicks outside dropdown to close it
@@ -330,7 +350,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       );
     } catch (error) {
       console.error("Error saving workspace:", error);
-      showToast(t("workspaces.saveError", "Failed to save workspace"), "error");
+ showToast(t("workspaces.saveError", "Failed to save workspace"), "error");
     }
   };
 
@@ -408,6 +428,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     const newWorkflows = [...workspaceData.workflows, workflow];
     setWorkspaceData({ ...workspaceData, workflows: newWorkflows });
   };
+  const isRTL = i18n.language === 'ar';
+
 
   return (
     <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
@@ -419,8 +441,12 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               className="text-zinc-400 hover:text-white p-2 rounded flex items-center"
               onClick={onReturnToHome}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              {isRTL ? (
+                <ArrowRight className="h-4 w-4 mr-2" />
+              ) : (
+                <ArrowLeft className="h-4 w-4 mr-2" />
+              )}
+              {t("common.back", "Back")}
             </button>
 
             <div>
@@ -444,14 +470,15 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               />
 
               <span className="text-zinc-400 text-xs">
-                API{" "}
+                {t("workspaces.api", "API")}{" "}
                 {sidecarStatus === "connected"
-                  ? "Connected"
+                  ? t("workspaces.connected", "Connected")
                   : sidecarStatus === "connecting"
-                  ? "Connecting"
-                  : "Disconnected"}
+                  ? t("workspaces.connecting", "Connecting")
+                  : t("workspaces.disconnected", "Disconnected")}
               </span>
             </div>
+
 
             {hasUnsavedChanges && (
               <div className="text-zinc-500 text-sm font-medium">
@@ -488,14 +515,14 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                         onClick={handleShareWorkspace}
                       >
                         <Share className="h-4 w-4" />
-                        Share Workspace
+                        {t("workspaces.shareWorkspace", "Share Workspace")}
                       </button>
                       <button
                         className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center gap-2"
                         onClick={handleExportWorkspace}
                       >
                         <Download className="h-4 w-4" />
-                        Export Executable Workspace
+                        {t("workspaces.exportExecutable", "Export Executable Workspace")}
                       </button>
                       {/* Future options can be added here */}
                     </div>
@@ -514,11 +541,17 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                 key: "workspace",
                 label: t("workspaces.workspace", "Workspace"),
               },
-              { key: "tasks", label: t("workspaces.tasks", "Tasks") },
-              { key: "agents", label: t("workspaces.agents", "Sub Agents") },
+              { 
+                key: "tasks", 
+                label: t("workspaces.tasks", "Tasks") 
+              },
+              { 
+                key: "agents", 
+                label: t("workspaces.subAgents", "Sub Agents") 
+              },
               {
                 key: "aiflows",
-                label: t("workspaces.aiFlows", "Tools & AI Workflows"),
+                label: t("workspaces.toolsAndWorkflows", "Tools & AI Workflows"),
               },
             ].map((tab) => (
               <button
@@ -536,6 +569,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
           </div>
         </div>
       </div>
+
 
       {/* Main canvas area */}
       <div className="flex-1 bg-[#0a0a0a] overflow-hidden">
@@ -586,6 +620,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         </div>
       </div>
 
+
       {/* Toast notification */}
       {toast.visible && (
         <Toast
@@ -598,5 +633,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     </div>
   );
 };
+
 
 export default WorkspaceCanvas;

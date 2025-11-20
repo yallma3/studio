@@ -2,18 +2,19 @@
  * DOM Parser utility that works in both browser and Node.js environments
  */
 
+import { DOMParser as XmldomParser } from "@xmldom/xmldom";
+
 // Check if we're in a browser environment
 const isBrowser =
   typeof window !== "undefined" && typeof window.DOMParser !== "undefined";
 
 // DOMParser implementation for Node.js
-let DOMParserImpl: any;
+let DOMParserImpl: new () => { parseFromString(text: string, mimeType: string): Document };
 
 if (!isBrowser) {
   // In Node.js, use the xmldom implementation
   try {
-    const { DOMParser } = require("@xmldom/xmldom");
-    DOMParserImpl = DOMParser;
+    DOMParserImpl = XmldomParser;
   } catch (error) {
     console.error("Failed to import @xmldom/xmldom:", error);
     throw new Error(
@@ -28,7 +29,7 @@ if (!isBrowser) {
 /**
  * Create a DOMParser instance that works in both browser and Node.js
  */
-export function createDOMParser(): any {
+export function createDOMParser(): { parseFromString(text: string, mimeType: string): Document } {
   return new DOMParserImpl();
 }
 

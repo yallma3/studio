@@ -19,6 +19,10 @@ import {
   loadAllWorkflowsFromFiles,
   type WorkflowFile,
 } from "../../modules/workspace/utils/workflowStorageUtils";
+import {
+  loadAllMcpToolsFromFiles,
+  type McpToolFile,
+} from "../../modules/workspace/utils/mcpStorageUtils";
 import { Tool, Workflow } from "../../modules/workspace/types/Types";
 
 export interface ToolSelectionPopupProps {
@@ -29,6 +33,7 @@ export interface ToolSelectionPopupProps {
   availableTools: Tool[];
   existingTools: Tool[];
   editingTool?: Tool | null;
+  availableMcpTools?: Tool[];
 }
 
 const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
@@ -39,18 +44,23 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
   availableTools,
   existingTools,
   editingTool,
+  availableMcpTools = [],
 }) => {
   const { t } = useTranslation();
   const popupRef = useRef<HTMLDivElement>(null);
   const [toolPickerStep, setToolPickerStep] = React.useState<
-    "root" | "workflow"
+    "root" | "workflow" | "mcp"
   >("root");
   const [workflowTab, setWorkflowTab] = React.useState<"workspace" | "all">(
     "workspace"
   );
+  const [mcpTab, setMcpTab] = React.useState<"workspace" | "all">("workspace");
   const [allWorkflows, setAllWorkflows] = React.useState<WorkflowFile[]>([]);
+  const [allMcpTools, setAllMcpTools] = React.useState<McpToolFile[]>([]);
   const [isLoadingAll, setIsLoadingAll] = React.useState<boolean>(false);
+  const [isLoadingAllMcp, setIsLoadingAllMcp] = React.useState<boolean>(false);
   const hasRequestedAllRef = React.useRef<boolean>(false);
+  const hasRequestedAllMcpRef = React.useRef<boolean>(false);
 
   // Helper function to transform workflow name to tool name
   const transformWorkflowName = (name: string): string => {
@@ -67,9 +77,13 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
     if (isOpen) {
       setToolPickerStep("root");
       setWorkflowTab("workspace");
+      setMcpTab("workspace");
       setAllWorkflows([]);
+      setAllMcpTools([]);
       setIsLoadingAll(false);
+      setIsLoadingAllMcp(false);
       hasRequestedAllRef.current = false;
+      hasRequestedAllMcpRef.current = false;
       // Lock background scroll when popup opens
       const previousOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
@@ -130,6 +144,31 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
     }
   }, [isOpen, toolPickerStep, workflowTab, allWorkflows.length]);
 
+  // Load all MCP tools when switching to the "all" tab in MCP step
+  useEffect(() => {
+    const fetchAllMcp = async () => {
+      try {
+        if (allMcpTools.length === 0) {
+          setIsLoadingAllMcp(true);
+        }
+        const items = await loadAllMcpToolsFromFiles();
+        setAllMcpTools(items);
+      } finally {
+        setIsLoadingAllMcp(false);
+      }
+    };
+
+    if (
+      isOpen &&
+      toolPickerStep === "mcp" &&
+      mcpTab === "all" &&
+      !hasRequestedAllMcpRef.current
+    ) {
+      hasRequestedAllMcpRef.current = true;
+      fetchAllMcp();
+    }
+  }, [isOpen, toolPickerStep, mcpTab, allMcpTools.length]);
+
   const handleAddWorkflowTool = (workflowId: string) => {
     const workflowTool: Tool | undefined = availableTools.find(
       (tool) => tool.type === "workflow" && tool.name === workflowId
@@ -141,8 +180,10 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
     const tool: Tool = {
       type: "workflow",
       name: toolName,
-      description:
-        workflowTool.description + " -- WorkflowId: " + workflowTool.id,
+      description: workflowTool.description,
+      parameters: {
+        workflowId: workflowTool.id,
+      },
     };
 
     onAddTool(tool);
@@ -160,17 +201,47 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
     const tool: Tool = {
       type: "workflow",
       name: toolName,
-      description: workflow.description + " -- WorkflowId: " + workflow.id,
+      description: workflow.description,
+      parameters: {
+        workflowId: workflow.id,
+      },
     };
     onAddTool(tool);
     onClose();
   };
 
-  const handleAddMcpTool = () => {
+  const handleAddMcpTool = (mcpToolId: string | undefined) => {
+    const mcpTool = availableMcpTools.find((tool) => tool.id === mcpToolId);
+    if (!mcpTool) return;
+
     const tool: Tool = {
       type: "mcp",
-      name: "MCP",
-      description: "",
+      name: mcpTool.name,
+      description: mcpTool.description,
+      parameters: mcpTool.parameters,
+    };
+
+    onAddTool(tool);
+    onClose();
+  };
+
+  const handleAddMcpToolFromAll = (mcpTool: McpToolFile) => {
+    const tool: Tool = {
+      type: "mcp",
+      name: mcpTool.name,
+      description: mcpTool.description,
+      parameters: {
+        type: mcpTool.type,
+        ...(mcpTool.type === "STDIO"
+          ? {
+              command: mcpTool.parameters.command,
+              args: mcpTool.parameters.args,
+            }
+          : {
+              url: mcpTool.parameters.url,
+              headers: mcpTool.parameters.headers,
+            }),
+      },
     };
 
     onAddTool(tool);
@@ -188,7 +259,9 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
       <div
         ref={popupRef}
         className={`bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full shadow-xl animate-in fade-in duration-200 transition-[max-width] ${
-          toolPickerStep === "workflow" ? "max-w-xl" : "max-w-md"
+          toolPickerStep === "workflow" || toolPickerStep === "mcp"
+            ? "max-w-xl"
+            : "max-w-md"
         }`}
       >
         <div className="flex justify-between items-center mb-4">
@@ -217,16 +290,14 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
                     Workflow <ArrowRight className="w-4" />
                   </div>
                 </button>
-                {!existingTools.some((t) => t.name === "MCP") && (
-                  <button
-                    onClick={handleAddMcpTool}
-                    className="py-3 px-4 rounded-md text-sm bg-zinc-700 text-gray-300 hover:bg-zinc-600 text-left cursor-pointer"
-                  >
-                    <div className="font-medium flex justify-between">
-                      MCP <ArrowRight className="w-4" />
-                    </div>
-                  </button>
-                )}
+                <button
+                  onClick={() => setToolPickerStep("mcp")}
+                  className="py-3 px-4 rounded-md text-sm bg-zinc-700 text-gray-300 hover:bg-zinc-600 text-left cursor-pointer"
+                >
+                  <div className="font-medium flex justify-between">
+                    MCP Tool <ArrowRight className="w-4" />
+                  </div>
+                </button>
               </div>
             </div>
           </div>
@@ -352,6 +423,161 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
                         : t("workspaces.noWorkflows", "No workflows available")}
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {toolPickerStep === "mcp" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <button
+                onClick={() => setToolPickerStep("root")}
+                className="text-gray-400 hover:text-white cursor-pointer"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <h4 className="text-md font-medium text-white">
+                Select MCP Tool
+              </h4>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex items-center gap-2 border-b border-zinc-700">
+              <button
+                className={`px-3 py-2 text-sm rounded-t-md ${
+                  mcpTab === "workspace"
+                    ? "bg-zinc-800 text-white"
+                    : "text-zinc-300 hover:text-white"
+                }`}
+                onClick={() => setMcpTab("workspace")}
+              >
+                In this workspace
+              </button>
+              <button
+                className={`px-3 py-2 text-sm rounded-t-md ${
+                  mcpTab === "all"
+                    ? "bg-zinc-800 text-white"
+                    : "text-zinc-300 hover:text-white"
+                }`}
+                onClick={() => setMcpTab("all")}
+              >
+                All MCP tools
+              </button>
+            </div>
+
+            {/* Tab content: fixed height, absolute children to avoid vertical layout changes */}
+            <div className="relative h-84">
+              {mcpTab === "workspace" && (
+                <div className="absolute inset-0 overflow-y-auto animate-in fade-in duration-150">
+                  {(() => {
+                    const availableMcpToolsFiltered = availableMcpTools.filter(
+                      (tool) => {
+                        const isAlreadyAdded = existingTools.some(
+                          (t) => t.name === tool.name
+                        );
+                        return !isAlreadyAdded;
+                      }
+                    );
+
+                    if (availableMcpTools.length === 0) {
+                      return (
+                        <div className="px-3 py-4 text-sm text-zinc-400 text-center">
+                          {t("workspaces.noMcpTools", "No MCP tools available")}
+                        </div>
+                      );
+                    }
+
+                    if (availableMcpToolsFiltered.length === 0) {
+                      return (
+                        <div className="px-3 py-4 text-sm text-zinc-400 text-center">
+                          {t(
+                            "workspaces.allMcpToolsAdded",
+                            "All MCP tools have been added"
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2">
+                        {availableMcpToolsFiltered.map((tool) => (
+                          <button
+                            key={tool.id}
+                            className="w-full text-left px-3 py-3 text-sm text-white hover:bg-zinc-800 rounded-md border border-zinc-700 cursor-pointer"
+                            onClick={() => handleAddMcpTool(tool.id)}
+                            title={tool.description}
+                          >
+                            <div className="font-medium">{tool.name}</div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              {tool.type} •{" "}
+                              {tool.description || "No description"}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {mcpTab === "all" && (
+                <div className="absolute inset-0 overflow-y-auto animate-in fade-in duration-150">
+                  {(() => {
+                    const allMcpToolsFiltered = allMcpTools.filter((tool) => {
+                      const isAlreadyAdded = existingTools.some(
+                        (t) => t.name === tool.name
+                      );
+                      return !isAlreadyAdded;
+                    });
+
+                    if (isLoadingAllMcp) {
+                      return (
+                        <div className="px-3 py-4 text-sm text-zinc-400 text-center">
+                          Loading...
+                        </div>
+                      );
+                    }
+
+                    if (allMcpTools.length === 0) {
+                      return (
+                        <div className="px-3 py-4 text-sm text-zinc-400 text-center">
+                          {t("workspaces.noMcpTools", "No MCP tools available")}
+                        </div>
+                      );
+                    }
+
+                    if (allMcpToolsFiltered.length === 0) {
+                      return (
+                        <div className="px-3 py-4 text-sm text-zinc-400 text-center">
+                          {t(
+                            "workspaces.allMcpToolsAdded",
+                            "All MCP tools have been added"
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2">
+                        {allMcpToolsFiltered.map((tool) => (
+                          <button
+                            key={tool.id}
+                            className="w-full text-left px-3 py-3 text-sm text-white hover:bg-zinc-800 rounded-md border border-zinc-700 cursor-pointer"
+                            onClick={() => handleAddMcpToolFromAll(tool)}
+                            title={tool.description}
+                          >
+                            <div className="font-medium">{tool.name}</div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              {tool.type} •{" "}
+                              {tool.description || "No description"}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>

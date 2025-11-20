@@ -123,7 +123,7 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
     setConfirmDelete({
       isOpen: true,
       workspaceId,
-      workspaceName: workspace?.name || workspace?.id || "Unknown Workspace",
+      workspaceName: workspace?.name || workspace?.id || t("workspaces.unknownWorkspace", "Unknown Workspace"),
     });
   };
 
@@ -246,7 +246,7 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
                   : "text-zinc-400 hover:text-white hover:bg-zinc-800"
               }`}
             >
-              All Workspaces
+              {t("workspaces.allWorkspaces", "All Workspaces")}
             </button>
             <button
               onClick={() => setActiveTab("recent")}
@@ -256,7 +256,7 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
                   : "text-zinc-400 hover:text-white hover:bg-zinc-800"
               }`}
             >
-              Recent
+              {t("workspaces.recent", "Recent")}
             </button>
             <button
               onClick={() => setActiveTab("favorites")}
@@ -266,7 +266,7 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
                   : "text-zinc-400 hover:text-white hover:bg-zinc-800"
               }`}
             >
-              Favorites
+              {t("workspaces.favorites", "Favorites")}
             </button>
           </div>
         </div>
@@ -276,7 +276,7 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
               <div className="bg-zinc-800 rounded-full p-4 mb-6">
                 <Layers className="h-12 w-12 text-zinc-400 animate-pulse" />
               </div>
-              <p className="text-zinc-400">Loading workspaces...</p>
+              <p className="text-zinc-400">{t("workspaces.loadingWorkspaces", "Loading workspaces...")}</p>
             </div>
           ) : getFilteredWorkspaces().length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -284,17 +284,17 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
                 <Layers className="h-12 w-12 text-zinc-400" />
               </div>
               <h2 className="text-xl font-bold mb-2">
-                {activeTab === "recent" && "No recent workspaces"}
-                {activeTab === "favorites" && "No favorite workspaces"}
-                {activeTab === "all" && "No workspaces yet"}
+                {activeTab === "recent" && t("workspaces.noRecentWorkspaces", "No recent workspaces")}
+                {activeTab === "favorites" && t("workspaces.noFavoriteWorkspaces", "No favorite workspaces")}
+                {activeTab === "all" && t("workspaces.noWorkspacesYet", "No workspaces yet")}
               </h2>
               <p className="text-zinc-400 mb-6">
                 {activeTab === "recent" &&
-                  "Workspaces you open will appear here"}
+                  t("workspaces.recentWorkspacesDescription", "Workspaces you open will appear here")}
                 {activeTab === "favorites" &&
-                  "Star workspaces to add them to favorites"}
+                  t("workspaces.favoriteWorkspacesDescription", "Star workspaces to add them to favorites")}
                 {activeTab === "all" &&
-                  "Create a new workspace to get started with your AI development journey"}
+                  t("workspaces.noWorkspacesDescription", "Create a new workspace to get started with your AI development journey")}
               </p>
               {activeTab === "all" && (
                 <button
@@ -302,7 +302,7 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
                   onClick={() => onCreateNew()}
                 >
                   <Plus className="h-4 w-4" />
-                  Create New Workspace
+                  {t("workspaces.createNew", "Create New Workspace")}
                 </button>
               )}
             </div>
@@ -364,7 +364,8 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
         title={t("workspaces.confirmDelete", "Confirm Delete")}
         message={t(
           "workspaces.deleteWorkspaceConfirmation",
-          `Are you sure you want to delete "${confirmDelete.workspaceName}"? This action cannot be undone.`
+          `Are you sure you want to delete "{{workspaceName}}"? This action cannot be undone.`,
+          { workspaceName: confirmDelete.workspaceName }
         )}
         confirmText={t("common.delete", "Delete")}
         cancelText={t("common.cancel", "Cancel")}

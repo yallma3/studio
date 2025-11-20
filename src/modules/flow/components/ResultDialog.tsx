@@ -14,6 +14,7 @@
 import { FileText } from "lucide-react";
 import { NodeType } from "../types/NodeTypes";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 // Result Dialog Component
 interface ResultDialogProps {
@@ -25,6 +26,8 @@ export const ResultDialog: React.FC<ResultDialogProps> = ({
   node,
   onClose,
 }) => {
+  const { t } = useTranslation();
+
   // Add escape key handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -38,21 +41,18 @@ export const ResultDialog: React.FC<ResultDialogProps> = ({
   }, [onClose]);
 
   // Safely access the result
-  const result = node.result || "No result data available";
+  const result = node.result || t("resultDialog.noData", "No result data available");
 
-  return (
+return (
     <div
       className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="result-dialog-title"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClose();
-      }}
+      onClick={onClose}
     >
       <div
         className="bg-[#111] border border-[#FFC72C]/50 rounded-md max-w-2xl max-h-[80vh] w-full mx-4 overflow-hidden animate-slide-up shadow-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="result-dialog-title"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 bg-gradient-to-r from-[#111] to-[#FFC72C22] border-b border-[#FFC72C]/30">
@@ -61,12 +61,12 @@ export const ResultDialog: React.FC<ResultDialogProps> = ({
             className="text-[#FFC72C] font-bold flex gap-2 items-center"
           >
             <FileText size={16} />
-            {node.title} Result
+            {t("resultDialog.title", "{{nodeName}} Result", { nodeName: node.title })}
           </h3>
           <button
             className="text-gray-400 hover:text-white hover:bg-[#FFC72C33] rounded-full w-6 h-6 flex items-center justify-center transition-colors"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close", "Close")}
           >
             &times;
           </button>
@@ -85,7 +85,7 @@ export const ResultDialog: React.FC<ResultDialogProps> = ({
             className="bg-[#FFC72C33] hover:bg-[#FFC72C44] text-[#FFC72C] px-4 py-2 rounded transition-colors"
             onClick={onClose}
           >
-            Close
+            {t("common.close", "Close")}
           </button>
         </div>
       </div>

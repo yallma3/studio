@@ -82,6 +82,9 @@ export interface WorkspaceData {
 
   // Workflows
   workflows: Workflow[];
+
+  //MCP tools:
+  mcpTools: Tool[];
 }
 
 export interface ConsoleEvent {
@@ -91,6 +94,9 @@ export interface ConsoleEvent {
   message: string;
   details?: string;
   results?: string;
+  promptId?: string;
+  nodeId?: number;
+  nodeName?: string;
 }
 
 export type ExecutionStepType = "agentic" | "workflow";

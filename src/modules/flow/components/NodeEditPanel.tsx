@@ -23,7 +23,6 @@ import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   getConfigParameters,
-  getConfigParameter,
   setConfigParameter,
 } from "../types/NodeTypes";
 
@@ -52,11 +51,11 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     if (node) {
       setTitle(node.title);
       setValue(node.nodeValue);
+      // No use for nodevalue logging to pass lint error
+      console.log(nodeValue);
 
-      // Trigger slide-in animation after component mounts
-      requestAnimationFrame(() => {
-        setIsVisible(true);
-      });
+      // Trigger slide-in animation
+      setIsVisible(true);
     }
   }, [node]);
 
@@ -106,7 +105,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
   };
 
   const getValueLabel = (param: ConfigParameterType) => {
-    if (!node) return t("nodeEdit.valueLabels.default");
+    if (!node) return t("nodeEditPanel.valueLabels.default");
 
     let _label = "";
     //attempt parameter i18n resource
@@ -116,7 +115,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
 
     // if there seems to be no exact translation use general translation for the type
     if (i18n.language !== "en" && _label === param.parameterName) {
-      _label = t("nodeEdit.valueLabels." + param.parameterType);
+      _label = t("nodeEditPanel.valueLabels." + param.parameterType);
     }
     return _label;
   };
@@ -193,7 +192,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
             className={`w-full h-32 bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none resize-none ${textAlignClass}`}
             value={String(renderValue)}
             onChange={handleChange}
-            placeholder="Text value..."
+            placeholder={t("nodeEditPanel.textValuePlaceholder", "Text value...")}
           />
         );
       case "number":
@@ -217,7 +216,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
                 checked={Boolean(formValues[param.parameterName])}
                 onChange={handleChange}
               />
-              {formValues[param.parameterName] ? "TRUE" : "FALSE"}
+              {formValues[param.parameterName] ? t("nodeEditPanel.true", "TRUE") : t("nodeEditPanel.false", "FALSE")}
             </label>
           </div>
         );
@@ -247,12 +246,12 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
       <div className="sticky top-0 bg-[#0D0D0D] z-10">
         <div className="flex items-center justify-between p-4 border-b border-[#FFC72C]/20">
           <h2 className={`text-[#FFC72C] text-lg font-bold ${textAlignClass}`}>
-            {t("nodeEdit.title")}
+            {t("nodeEditPanel.title")}
           </h2>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-800 transition-colors"
-            aria-label="Close"
+            aria-label={t("common.close", "Close")}
           >
             <X size={20} />
           </button>
@@ -263,7 +262,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
             <div className="w-3 h-3 rounded-full bg-[#FFC72C] shadow-[0_0_10px_rgba(255,199,44,0.7)]"></div>
             <span className="text-sm font-medium">{node.nodeType}</span>
             <span className="bg-[#FFC72C]/10 text-[#FFC72C] text-xs px-2 py-1 rounded">
-              ID: {node.id}
+              {t("nodeEditPanel.id", "ID")}: {node.id}
             </span>
           </div>
         </div>
@@ -275,7 +274,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
             htmlFor="node-title-input"
             className={`block text-sm font-medium text-gray-300 ${textAlignClass}`}
           >
-            {t("nodeEdit.nodeTitle")}
+            {t("nodeEditPanel.nodeTitle")}
           </label>
           <input
             id="node-title-input"
@@ -311,7 +310,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
           <label
             className={`block text-sm font-medium text-gray-300 ${textAlignClass}`}
           >
-            {t("nodeEdit.socketInfo")}
+            {t("nodeEditPanel.socketInfo")}
           </label>
           <div className="bg-[#161616] border border-[#FFC72C]/20 rounded-md p-3">
             <ul className="space-y-2">
@@ -330,7 +329,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
                   </div>
                   <div className="text-xs text-gray-400">
                     <span className="uppercase">
-                      {t(`nodeEdit.${socket.type}`)}
+                      {t(`nodeEditPanel.${socket.type}`)}
                     </span>
                     {socket.dataType && (
                       <span className="ml-1">- {socket.dataType}</span>

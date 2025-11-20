@@ -13,6 +13,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Plus, Settings, Trash2, ChevronRight } from "lucide-react";
 import { nodeRegistry } from "../types/NodeRegistry";
+import { useTranslation } from "react-i18next";
+import type { BaseNode } from "../types/NodeTypes";
+
 
 interface ContextMenuPosition {
   visible: boolean;
@@ -23,7 +26,7 @@ interface ContextMenuPosition {
 
 interface CanvasContextMenuProps {
   contextMenu: ContextMenuPosition;
-  // kept signature the same as your original; for keyboard Enter we cast the event
+    // kept signature the same as your original; for keyboard Enter we cast the event
   onAddNode: (
     nodeType: string,
     e?: React.MouseEvent | React.KeyboardEvent | null
@@ -36,13 +39,27 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   onAddNode,
   onContextMenuAction,
 }) => {
+  const { t, i18n } = useTranslation();
+  const currentLanguage = i18n.language || 'en';
   const [submenuPath, setSubmenuPath] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const hoverTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  //Clear hover timer on unmount to avoid late state updates.
+
+  const getTranslatedFields = (node: BaseNode, lang: string) => {
+    const i18nData = node.i18n?.[lang] || node.i18n?.en;
+    return {
+      translatedTitle: i18nData?.title || node.title,
+      translatedCategory: i18nData?.category || node.category,
+      translatedDescription: i18nData?.description || node.description || '',
+      translatedNodeType: i18nData?.nodeType || node.nodeType,
+    };
+  };
+
+
   useEffect(() => {
     return () => {
       if (hoverTimerRef.current) {
@@ -53,35 +70,37 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
 
   useEffect(() => {
     if (contextMenu.visible) {
-      // focus the input when menu opens
       setTimeout(() => inputRef.current?.focus(), 0);
     } else {
-      // reset when menu closes
       setSearchQuery("");
       setSelectedIndex(0);
       setSubmenuPath([]);
+      setHoveredNode(null);
     }
   }, [contextMenu.visible]);
-  // Build a flat list of all node types (with category)
-  const allNodes = nodeRegistry.listNodeDetails();
 
-  // When there's a query, compute matches (startsWith first, then includes)
+  const allNodes: Array<BaseNode & { translatedTitle: string; translatedCategory: string; translatedDescription: string; translatedNodeType: string }> = 
+    nodeRegistry.listNodeDetails().map(node => ({
+      ...node,
+      ...getTranslatedFields(node, currentLanguage),
+    }));
+
+
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const matches = normalizedQuery
     ? allNodes
         .map((n) => {
-          const name = n.nodeType.toLowerCase();
-          const starts = name.startsWith(normalizedQuery) ? 0 : 1;
-          return { ...n, score: starts, nameLower: name };
+          const searchText = `${n.translatedTitle} ${n.translatedCategory} ${n.translatedNodeType}`.toLowerCase();
+          const starts = searchText.startsWith(normalizedQuery) ? 0 : 1;
+          return { ...n, score: starts, searchText };
         })
-        .filter((n) => n.nameLower.includes(normalizedQuery))
+        .filter((n) => n.searchText.includes(normalizedQuery))
         .sort((a, b) => {
           if (a.score !== b.score) return a.score - b.score;
-          return a.nodeType.localeCompare(b.nodeType);
+          return a.translatedTitle.localeCompare(b.translatedTitle);
         })
     : [];
 
-  // Keep keyboard selection in range
   useEffect(() => {
     setSelectedIndex((prev) => {
       if (matches.length === 0) return 0;
@@ -133,6 +152,18 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     whiteSpace: "nowrap",
   };
 
+  const categoryHeaderStyle: React.CSSProperties = {
+    ...menuItemStyle,
+    fontSize: "16px",
+    fontWeight: "700",
+    padding: "12px 14px",
+    color: "#FFC72C",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    pointerEvents: "none",
+  };
+
+
   const iconStyle: React.CSSProperties = {
     color: "#FFC72C",
     marginRight: "8px",
@@ -169,6 +200,28 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     color: "#FFC72C",
   };
 
+
+  const tooltipStyle: React.CSSProperties = {
+    position: 'absolute',
+    left: '100%',
+    top: 0,
+    marginLeft: '8px',
+    backgroundColor: 'rgba(17, 17, 17, 0.98)',
+    border: '1px solid rgba(255, 199, 44, 0.3)',
+    borderRadius: '6px',
+    padding: '10px 14px',
+    minWidth: '200px',
+    maxWidth: '320px',
+    color: 'white',
+    fontSize: '13px',
+    lineHeight: '1.5',
+    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.4)',
+    zIndex: 1001,
+    whiteSpace: 'normal',
+    backdropFilter: 'blur(10px)',
+  };
+
+
   const handleHover = (path: string[]) => {
     if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
     hoverTimerRef.current = window.setTimeout(() => {
@@ -186,11 +239,9 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (matches[selectedIndex]) {
-        // onAddNode expects a MouseEvent in your signature; pass a dummy object casted to satisfy the type.
         onAddNode(matches[selectedIndex].nodeType, undefined);
       }
     } else if (e.key === "Escape") {
-      // clear search (you can also close menu externally)
       setSearchQuery("");
       setSelectedIndex(0);
       setSubmenuPath([]);
@@ -199,46 +250,83 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
 
   const renderAddNodeSubmenu = () => (
     <div style={subMenuStyle}>
-      <p className="text-xs text-[#FFC72C]/80 font-mono p-2">Categories</p>
-      {nodeRegistry.listCategories().map((category) => (
-        <div
-          key={category}
-          style={menuItemStyle}
-          onMouseEnter={() => handleHover(["addNode", `category:${category}`])}
-          className="hover:bg-[#222]"
-        >
-          <span>{category}</span>
-          <ChevronRight size={16} style={iconStyle} />
-          {submenuPath.join("/") === `addNode/category:${category}` && (
-            <div style={{ ...subMenuStyle, top: 0 }}>
-              <p className="text-xs text-[#FFC72C]/80 font-mono p-2">
-                {category} Nodes
-              </p>
-              {Object.entries(
-                nodeRegistry.listNodeTypesByCategory(category)
-              ).map(([nodeType, title]) => (
-                <div
-                  key={nodeType}
-                  style={{
-                    ...menuItemStyle,
-                    justifyContent: "flex-start",
-                  }}
-                  onClick={(e) => onAddNode(nodeType, e)}
-                  className="hover:bg-[#222]"
-                >
-                  <span>{`${title} Node`}</span>
+      <div style={categoryHeaderStyle}>
+        {t("canvasContextMenu.categories", "Categories")}
+      </div>
+      {nodeRegistry.listCategories().map((category) => {
+        const categoryNode = allNodes.find(n => n.category === category);
+        const translatedCategory = categoryNode ? categoryNode.translatedCategory : category;
+        return (
+          <div
+            key={category}
+            style={menuItemStyle}
+            onMouseEnter={() => handleHover(["addNode", `category:${category}`])}
+            className="hover:bg-[#222]"
+          >
+            <span>{translatedCategory}</span>
+            <ChevronRight size={16} style={iconStyle} />
+            {submenuPath.join("/") === `addNode/category:${category}` && (
+              <div style={{ ...subMenuStyle, top: 0 }}>
+                <div style={categoryHeaderStyle}>
+                  {translatedCategory} {t("canvasContextMenu.nodes", "Nodes")}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+                {Object.entries(
+                  nodeRegistry.listNodeTypesByCategory(category)
+                ).map(([nodeType, originalTitle]) => {
+                  const nodeDetails = allNodes.find(n => n.nodeType === nodeType);
+                  if (!nodeDetails) return null;
+                  const translatedTitle = nodeDetails.translatedTitle;
+                  const translatedNodeType = nodeDetails.translatedNodeType;
+                  const translatedDescription = nodeDetails.translatedDescription;
+                  return (
+                    <div
+                      key={nodeType}
+                      style={{
+                        ...menuItemStyle,
+                        justifyContent: "flex-start",
+                        position: 'relative',
+                      }}
+                      onMouseEnter={() => setHoveredNode(nodeType)}
+                      onMouseLeave={() => setHoveredNode(null)}
+                      onClick={(e) => onAddNode(nodeType, e)}
+                      className="hover:bg-[#222]"
+                    >
+                      <span>{`${translatedTitle} ${t("canvasContextMenu.node", "Node")}`}</span>
+                      
+                      {hoveredNode === nodeType && translatedDescription && (
+                        <div style={tooltipStyle}>
+                          <div style={{ 
+                            color: '#FFC72C', 
+                            fontSize: '18px',
+                            fontWeight: '700',
+                            textTransform: 'uppercase',
+                            textShadow: '0 0 4px rgba(255, 199, 44, 0.4)',
+                            marginBottom: '8px',
+                            fontFamily: 'monospace'
+                          }}>
+                            {translatedNodeType}
+                          </div>
+                          <div style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
+                            {translatedDescription}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 
   const renderSettingsSubmenu = () => (
     <div style={subMenuStyle}>
-      <p className="text-xs text-[#FFC72C]/80 font-mono p-2">Settings</p>
+      <div style={categoryHeaderStyle}>
+        {t("canvasContextMenu.settings", "Settings")}
+      </div>
       <div
         style={{
           ...menuItemStyle,
@@ -249,59 +337,89 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         className="hover:bg-[#222]"
       >
         <Trash2 size={16} style={{ color: "#ff6b6b", marginRight: "8px" }} />
-        <span>Clear View</span>
+        <span>{t("canvasContextMenu.clearView", "Clear View")}</span>
       </div>
     </div>
   );
 
   return (
     <div style={menuStyle} onClick={(e) => e.stopPropagation()}>
-      {/* Search input */}
+       {/* Search input */}
       <input
         ref={inputRef}
         value={searchQuery}
         onChange={(e) => {
           setSearchQuery(e.target.value);
-          setSubmenuPath([]); // close submenus while searching
+          setSubmenuPath([]);
+          setHoveredNode(null);
         }}
         onKeyDown={handleKeyDown}
-        placeholder="Search..."
-        aria-label="Search nodes"
+        placeholder={t("canvasContextMenu.searchPlaceholder", "Search...")}
+        aria-label={t("canvasContextMenu.searchAriaLabel", "Search nodes")}
         style={inputStyle}
         onClick={(e) => e.stopPropagation()}
       />
 
-      {/* If there's a non-empty query, show flat search results like Rivet */}
+   {/* If there's a non-empty query, show flat search results like Rivet */}
       {normalizedQuery ? (
         <div role="list" aria-label="search-results">
           {matches.length === 0 ? (
             <div style={{ ...menuItemStyle, padding: "10px 14px" }}>
-              <span style={{ color: "#888" }}>No results</span>
+              <span style={{ color: "#888" }}>{t("canvasContextMenu.noResults", "No results")}</span>
             </div>
           ) : (
-            matches.map((m, idx) => (
-              <div
-                key={`${m.category}.${m.nodeType}`}
-                role="listitem"
-                onMouseEnter={() => setSelectedIndex(idx)}
-                onClick={(e) => onAddNode(m.nodeType, e)}
-                style={{
-                  ...searchItemStyle,
-                  ...(idx === selectedIndex ? selectedStyle : {}),
-                }}
-              >
-                <span style={{ fontSize: "15px" }}>{m.nodeType}</span>
-                <small
-                  style={{ color: "rgba(255,255,255,0.45)", marginTop: "4px" }}
+            matches.map((m, idx) => {
+              const nodeDetails = allNodes.find(n => n.nodeType === m.nodeType);
+              if (!nodeDetails) return null;
+              const translatedNodeType = nodeDetails.translatedNodeType;
+              const translatedDescription = nodeDetails.translatedDescription;
+              return (
+                <div
+                  key={`${m.category}.${m.nodeType}`}
+                  role="listitem"
+                  onMouseEnter={() => {
+                    setSelectedIndex(idx);
+                    setHoveredNode(m.nodeType);
+                  }}
+                  onMouseLeave={() => setHoveredNode(null)}
+                  onClick={(e) => onAddNode(m.nodeType, e)}
+                  style={{
+                    ...searchItemStyle,
+                    ...(idx === selectedIndex ? selectedStyle : {}),
+                    position: 'relative',
+                  }}
                 >
-                  {m.category}
-                </small>
-              </div>
-            ))
+                  <span style={{ fontSize: "15px" }}>{translatedNodeType}</span>
+                  <small
+                    style={{ color: "rgba(255,255,255,0.45)", marginTop: "4px" }}
+                  >
+                    {m.translatedCategory}
+                  </small>
+                  
+                  {hoveredNode === m.nodeType && translatedDescription && (
+                    <div style={tooltipStyle}>
+                      <div style={{ 
+                        color: '#FFC72C', 
+                        fontSize: '18px',
+                        fontWeight: '700',
+                        textTransform: 'uppercase',
+                        textShadow: '0 0 4px rgba(255, 199, 44, 0.4)',
+                        marginBottom: '8px',
+                        fontFamily: 'monospace'
+                      }}>
+                        {translatedNodeType}
+                      </div>
+                      <div style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
+                        {translatedDescription}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       ) : (
-        // fallback UI when search is empty (original menu with submenus)
         <>
           <div
             style={menuItemStyle}
@@ -310,7 +428,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           >
             <div style={{ display: "flex", alignItems: "center" }}>
               <Plus size={16} style={iconStyle} />
-              <span>Add</span>
+              <span>{t("canvasContextMenu.add", "Add")}</span>
             </div>
             <ChevronRight size={16} style={iconStyle} />
             {submenuPath[0] === "addNode" && renderAddNodeSubmenu()}
@@ -323,7 +441,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           >
             <div style={{ display: "flex", alignItems: "center" }}>
               <Settings size={16} style={iconStyle} />
-              <span>Settings</span>
+              <span>{t("canvasContextMenu.settings", "Settings")}</span>
             </div>
             <ChevronRight size={16} style={iconStyle} />
             {submenuPath[0] === "settings" && renderSettingsSubmenu()}

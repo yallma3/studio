@@ -64,20 +64,22 @@ export const useCanvasState = (initialNodes?: NodeType[], initialConnections?: C
     setNodes(prevNodes => prevNodes.filter(n => n.id !== nodeId));
   };
   
-  // Add a connection
-  const addConnection = (fromSocketId: number, toSocketId: number) => {
-    // Check if connection already exists
-    const connectionExists = connections.some(
-      conn => conn.fromSocket === fromSocketId && conn.toSocket === toSocketId
-    );
-    
-    if (connectionExists) return;
-    
-    setConnections(prevConnections => [
-      ...prevConnections,
-      { fromSocket: fromSocketId, toSocket: toSocketId }
-    ]);
-  };
+   // Add a connection
+   const addConnection = (fromSocketId: number, toSocketId: number) => {
+     setConnections(prevConnections => {
+       // Check if connection already exists in current state
+       const connectionExists = prevConnections.some(
+         conn => conn.fromSocket === fromSocketId && conn.toSocket === toSocketId
+       );
+
+       if (connectionExists) return prevConnections;
+
+       return [
+         ...prevConnections,
+         { fromSocket: fromSocketId, toSocket: toSocketId }
+       ];
+     });
+   };
   
   // Remove a connection
   const removeConnection = (fromSocketId: number, toSocketId: number) => {

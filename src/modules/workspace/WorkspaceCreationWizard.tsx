@@ -56,7 +56,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
 
-  // workspace data state
+    // workspace data state
   const [workspaceData, setWorkspaceData] = useState<WorkspaceData>({
     id: "", // Will be set when component mounts
     createdAt: Date.now(),
@@ -82,6 +82,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
 
     // Workflows
     workflows: [],
+    mcpTools: [],
   });
 
   // Initialize unique workspace ID when component mounts
@@ -195,7 +196,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
       onCreateWorkspace(workspaceData);
 
       // Reset form with new unique ID
-      const newUniqueId = await generateUniqueWorkspaceId();
+  const newUniqueId = await generateUniqueWorkspaceId();
       setWorkspaceData({
         id: newUniqueId,
         createdAt: Date.now(),
@@ -212,6 +213,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         connections: [],
         agents: [],
         workflows: [],
+        mcpTools: [],
       });
       setSelectedProvider("Groq");
       setCurrentStep(1);
@@ -271,8 +273,8 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
       } else {
         const base = (workspaceData.tasks.length + 1) * 100;
         const generatedSockets: TaskSocket[] = [
-          { id: base + 1, title: "Input", type: "input" },
-          { id: base + 2, title: "Output", type: "output" },
+          { id: base + 1, title: t("taskNode.input", "Input"), type: "input" },
+          { id: base + 2, title: t("taskNode.output", "Output"), type: "output" },
         ];
         // Add new task
         const task: Task = {
@@ -495,15 +497,15 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   const getTaskTypeLabel = (type: string) => {
     switch (type) {
       case "agentic":
-        return "Agentic";
+        return t("taskModal.agenticAuto", "Agentic (Auto)");
       case "specific-agent":
-        return "Specific Agent";
+        return t("taskModal.specificAgent", "Specific Agent");
       case "workflow":
-        return "Workflow";
+        return t("taskModal.workflow", "Workflow");
       case "MCP":
-        return "MCP";
+        return t("taskModal.mcp", "MCP");
       default:
-        return type || "Unknown";
+        return type || t("workspaceTab.unknownNode", "Unknown");
     }
   };
 
@@ -604,6 +606,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
       })) || [];
     return workflowTools;
   }, [workspaceData.workflows]);
+  
+  const availableMcpTools = useMemo(() => {
+    return workspaceData.mcpTools;
+  }, [workspaceData.mcpTools]);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -691,7 +697,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             "Workspace Description"
                           )}
                           <TooltipHelper
-                            text="More detailed explanation about this field."
+                            text={t("workspaces.workspaceDescription", "Workspace Description")}
                             position="bottom"
                           />
                         </label>
@@ -960,7 +966,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         : t("workspaces.addAgent", `Add Agent`)}
                     </h3>
 
-                    <AgentForm
+                                       <AgentForm
                       value={{
                         name: newAgent.name,
                         role: newAgent.role,
@@ -987,6 +993,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       }
                       handleImportWorkflow={handleImportWorkflow}
                       availableTools={availableTools}
+                      availableMcpTools={availableMcpTools}
                       enableVariables={false}
                       workspaceMainLLMName={workspaceData.mainLLM.model?.name}
                     />
@@ -1044,7 +1051,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       {workspaceData.agents.length > 0 && (
                         <span className="text-gray-400 text-sm">
                           {" "}
-                          {workspaceData.agents.length} agent(s) added
+                          {workspaceData.agents.length} {t("workspaces.agents", "agent(s)")} {t("common.add", "added")}
                         </span>
                       )}
                     </h3>
@@ -1179,7 +1186,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             {agent.tools && agent.tools.length > 0 && (
                               <div className="mt-2">
                                 <span className="text-xs text-gray-400">
-                                  Tools:
+                                  {t("agentsTab.tools", "Tools")}:
                                 </span>
                                 <div className="flex flex-wrap gap-1 mt-1">
                                   {agent.tools.map((tool, index) => (
@@ -1410,7 +1417,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           htmlFor="type"
                           className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
                         >
-                          Type
+                          {t("taskModal.type", "Type")}
                         </label>
                         <select
                           id="type"
@@ -1419,10 +1426,9 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           onChange={handleInputChange}
                           className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent"
                         >
-                          <option value="agentic">Agentic (Auto)</option>
-                          <option value="specific-agent">Specific Agent</option>
-                          <option value="workflow">Workflow</option>
-                          <option value="MCP">MCP</option>
+                          <option value="agentic">{t("taskModal.agenticAuto", "Agentic (Auto)")}</option>
+                          <option value="specific-agent">{t("taskModal.specificAgent", "Specific Agent")}</option>
+                          <option value="workflow">{t("taskModal.workflow", "Workflow")}</option>
                         </select>
                       </div>
                       {newTask.type === "specific-agent" ||
@@ -1433,8 +1439,8 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
                           >
                             {newTask.type === "specific-agent"
-                              ? "Agent"
-                              : "Workflow"}
+                              ? t("taskModal.agent", "Agent")
+                              : t("taskModal.workflow", "Workflow")}
                           </label>
                           <select
                             id="executorId"
@@ -1443,7 +1449,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             onChange={handleInputChange}
                             className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent"
                           >
-                            <option value="">None</option>
+                            <option value="">{t("taskModal.none", "None")}</option>
                             {newTask.type === "specific-agent"
                               ? workspaceData.agents.map((agent) => (
                                   <option key={agent.id} value={agent.id}>
@@ -1530,7 +1536,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       {workspaceData.tasks.length > 0 && (
                         <span className="text-gray-400 text-sm">
                           {" "}
-                          {workspaceData.tasks.length} task(s) added
+                          {workspaceData.tasks.length} {t("workspaces.tasks", "task(s)")} {t("common.add", "added")}
                         </span>
                       )}
                     </h3>
@@ -1559,7 +1565,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                   task.executorId as unknown as string | null
                                 ) && (
                                   <span className="text-[10px] bg-zinc-700/60 text-gray-300 px-2 py-0.5 rounded">
-                                    Exec:{" "}
+                                    {t("taskNode.executor", "Exec")}:{" "}
                                     {getExecutorLabel(
                                       task.type as unknown as string,
                                       task.executorId as unknown as
@@ -1572,7 +1578,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               {task.description && (
                                 <div className="mt-2">
                                   <span className="text-xs font-medium text-gray-400">
-                                    Description:
+                                    {t("workspaces.taskDescription", "Description")}:
                                   </span>
                                   <p className="text-sm text-gray-300">
                                     {task.description}
@@ -1582,7 +1588,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               {task.expectedOutput && (
                                 <div className="mt-2">
                                   <span className="text-xs font-medium text-gray-400">
-                                    Expected Output:
+                                    {t("taskNode.expectedOutput", "Expected Output")}:
                                   </span>
                                   <p className="text-sm text-gray-300">
                                     {task.expectedOutput}
@@ -1676,7 +1682,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           </span>
                         ) : (
                           <span className="text-white w-40 whitespace-nowrap">
-                            No LLM selected
+                            {t("workspaceTab.noModelSelected", "No LLM selected")}
                           </span>
                         )}
                       </div>
@@ -1695,7 +1701,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                   "workspaces.usingCustomApiKey",
                                   "Using custom API key"
                                 )
-                            : "No LLM Selected"}
+                            : t("workspaceTab.noModelSelected", "No LLM Selected")}
                         </span>
                       </div>
                     </div>
@@ -1734,7 +1740,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             {agent.background && (
                               <div className="mt-2 text-sm">
                                 <span className="text-gray-400 whitespace-nowrap">
-                                  Background:
+                                  {t("agentsTab.background", "Background")}:
                                 </span>
                                 <p className="text-gray-300 mt-1">
                                   {replaceVariables(
@@ -1750,7 +1756,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                 workspaceData.mainLLM.model && (
                                 <div className="mt-2 flex items-center">
                                   <span className="text-xs text-gray-400 mr-2">
-                                    Custom LLM:
+                                    {t("workspaceTab.customLLM", "Custom LLM")}:
                                   </span>
                                   <span className="text-xs bg-zinc-700 px-2 py-0.5 rounded text-yellow-400">
                                     {agent.llm.model.name}
@@ -1761,7 +1767,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             {agent.tools && agent.tools.length > 0 && (
                               <div className="mt-2">
                                 <span className="text-xs text-gray-400">
-                                  Tools:
+                                  {t("agentsTab.tools", "Tools")}:
                                 </span>
                                 <div className="flex flex-wrap gap-1 mt-1">
                                   {agent.tools.map((tool, index) => (
@@ -1822,7 +1828,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                 task.executorId as unknown as string | null
                               ) && (
                                 <span className="text-[10px] bg-zinc-700/60 text-gray-300 px-2 py-0.5 rounded">
-                                  Exec:{" "}
+                                  {t("taskNode.executor", "Exec")}:{" "}
                                   {getExecutorLabel(
                                     task.type as unknown as string,
                                     task.executorId as unknown as string | null
@@ -1836,7 +1842,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               {task.description && (
                                 <div>
                                   <span className="text-xs text-gray-400 whitespace-nowrap">
-                                    Description:
+                                    {t("workspaces.taskDescription", "Description")}:
                                   </span>
                                   <p className="text-sm text-gray-300 mt-0.5">
                                     {task.description}
@@ -1848,7 +1854,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               {task.expectedOutput && (
                                 <div>
                                   <span className="text-xs text-gray-400 whitespace-nowrap">
-                                    Expected Output:
+                                    {t("taskNode.expectedOutput", "Expected Output")}:
                                   </span>
                                   <p className="text-sm text-gray-300 mt-0.5">
                                     {task.expectedOutput}

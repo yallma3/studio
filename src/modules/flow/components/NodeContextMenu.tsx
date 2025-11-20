@@ -13,6 +13,7 @@
 
 import React from "react";
 import { Copy, Edit, RotateCw, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 // Define types for the node context menu
 interface NodeContextMenuProps {
@@ -26,6 +27,8 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
   y,
   onContextMenuAction,
 }) => {
+  const { t } = useTranslation();
+
   const menuStyle: React.CSSProperties = {
     position: 'absolute',
     top: y,
@@ -64,7 +67,7 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
         className="hover:bg-[#222]"
       >
         <Copy size={16} style={iconStyle} />
-        <span>Copy</span>
+        <span>{t("nodeContextMenu.copy", "Copy")}</span>
       </div>
       <div 
         style={menuItemStyle}
@@ -72,7 +75,7 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
         className="hover:bg-[#222]"
       >
         <Edit size={16} style={iconStyle} />
-        <span>Edit</span>
+        <span>{t("nodeContextMenu.edit", "Edit")}</span>
       </div>
       <div 
         style={menuItemStyle}
@@ -80,7 +83,7 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
         className="hover:bg-[#222]"
       >
         <RotateCw size={16} style={iconStyle} />
-        <span>Duplicate</span>
+        <span>{t("nodeContextMenu.duplicate", "Duplicate")}</span>
       </div>
       <div className="border-t border-[#FFC72C]/20 my-1"></div>
       <div 
@@ -89,10 +92,10 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
         className="hover:bg-[#222]"
       >
         <Trash2 size={16} style={{color: '#ff6b6b', marginRight: '8px'}} />
-        <span>Delete</span>
+        <span>{t("nodeContextMenu.delete", "Delete")}</span>
       </div>
     </div>
   );
 };
 
-export default NodeContextMenu; 
+export default NodeContextMenu;
