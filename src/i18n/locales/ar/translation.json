@@ -197,8 +197,12 @@
     "addNew": "إضافة جديد",
     "importFlow": "استيراد",
     "editWorkflow": "تعديل مخطط العمل",
-    "lastUpdated": "آخر تحديث"
-  },
+     "lastUpdated": "آخر تحديث",
+     "selectAgent": "اختر الوكيل",
+     "selectWorkflow": "اختر مخطط العمل",
+     "agentLater": "ليس الآن، سأختار لاحقًا",
+     "workflowLater": "ليس الآن، سأحدد لاحقًا"
+   },
   "workspaceTab": {
     "unknownNode": "عقدة غير معروفة",
     "userInput": "إدخال المستخدم",

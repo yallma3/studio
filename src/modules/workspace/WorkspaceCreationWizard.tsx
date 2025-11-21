@@ -53,7 +53,8 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   onClose,
   onCreateWorkspace,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const [currentStep, setCurrentStep] = useState(1);
 
     // workspace data state
@@ -1318,12 +1319,17 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                 <div className="flex flex-col lg:flex-row gap-6 h-full">
                   {/* Add Task Form (Left 2/3) */}
                   <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-2/3 flex flex-col h-full">
-                    <h3 className="text-lg font-medium text-white mb-4 ">
-                      {t(
-                        "workspaces.addTask",
-                        `Add Task (${workspaceData.tasks.length + 1})`
-                      )}
-                    </h3>
+                     <h3 className="text-lg font-medium text-white mb-4 ">
+                       {isEditingTask
+                         ? t(
+                             "workspaces.updateTask",
+                             `Update Task: ${newTask.title}`
+                           )
+                         : t(
+                             "workspaces.addTask",
+                             `Add Task (${workspaceData.tasks.length + 1})`
+                           )}
+                     </h3>
 
                     <div className="space-y-4 mb-4">
                       <div>
@@ -1429,14 +1435,14 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                          {newTask.type === "specific-agent" ||
                          newTask.type === "workflow" ? (
                            <div className="flex-1">
-                             <label
-                               htmlFor="executorId"
-                               className="block text-sm font-medium text-gray-300 mb-1"
-                              >
-                                {newTask.type === "specific-agent"
-                                  ? t("workspaces.selectAgent", "Select Agent")
-                                  : t("workspaces.selectWorkflow", "Select Workflow")}
-                              </label>
+                              <label
+                                htmlFor="executorId"
+                                className="block text-sm font-medium text-gray-300 mb-1"
+                               >
+                                 {newTask.type === "specific-agent"
+                                   ? t("workspaces.selectAgent", "Select Agent")
+                                   : t("workspaces.selectWorkflow", "Select Workflow")}
+                               </label>
                              <Select
                                id="executorId"
                                value={newTask.executorId || ""}
@@ -1446,15 +1452,15 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                    executorId: value || null,
                                  }));
                                }}
-                              options={[
-                                 {
-                                   value: "",
-                                   label: newTask.type === "workflow"
-                                     ? t("workspaces.workflowLater", "Not for now, I'll specify later")
-                                     : newTask.type === "specific-agent"
-                                     ? t("workspaces.agentLater", "Not for now, I'll select later")
-                                     : t("taskModal.none", "None")
-                                 },
+                               options={[
+                                  {
+                                    value: "",
+                                    label: newTask.type === "workflow"
+                                      ? t("workspaces.workflowLater", "Not for now, I'll specify later")
+                                      : newTask.type === "specific-agent"
+                                      ? t("workspaces.agentLater", "Not for now, I'll select later")
+                                      : t("taskModal.none", "None")
+                                  },
                                 ...(newTask.type === "specific-agent"
                                   ? workspaceData.agents.map((agent) => ({
                                       value: agent.id,
@@ -1881,7 +1887,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                 onClick={handlePrevStep}
                 className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium border-0 flex items-center cursor-pointer"
               >
-                <ChevronLeft className="h-4 w-4 mr-2" />
+                {isRTL ? <ChevronRight className="h-4 w-4 mr-2" /> : <ChevronLeft className="h-4 w-4 mr-2" />}
                 {t("common.back", "Back")}
               </Button>
             ) : (
@@ -1913,7 +1919,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                   disabled={!getCurrentStepValidation()}
                 >
                   {t("common.next", "Next")}
-                  <ChevronRight className="h-4 w-4 ml-2" />
+                  {isRTL ? <ChevronLeft className="h-4 w-4 ml-2" /> : <ChevronRight className="h-4 w-4 ml-2" />}
                 </Button>
               </div>
             ) : (
