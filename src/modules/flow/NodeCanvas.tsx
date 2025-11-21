@@ -805,7 +805,7 @@ const NodeCanvas: React.FC<{
       // Note: We don't remove the listener as sidecarClient is a singleton
       // and we want it to persist across component unmounts
     };
-  }, [t, showToast]);
+  }, [t, showToast, setNodes, workflowMeta]);
 
   // Hide toast notification
   const hideToast = () => {

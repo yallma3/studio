@@ -48,39 +48,39 @@ export const McpWorkflowImportDialog: React.FC<
   );
   const [selectedMcps, setSelectedMcps] = useState<string[]>([]);
   const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+   const [loadingCount, setLoadingCount] = useState(0);
 
-  const loadAvailableMcps = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const allMcps = await loadAllMcpToolsFromFiles();
-      // Filter out MCPs already in the current workspace
-      const filteredMcps = allMcps.filter(
-        (mcp) => !currentWorkspaceMcps.includes(mcp.id)
-      );
-      setAvailableMcps(filteredMcps);
-    } catch (error) {
-      console.error("Error loading available MCPs:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentWorkspaceMcps]);
+   const loadAvailableMcps = useCallback(async () => {
+     try {
+       setLoadingCount(prev => prev + 1);
+       const allMcps = await loadAllMcpToolsFromFiles();
+       // Filter out MCPs already in the current workspace
+       const filteredMcps = allMcps.filter(
+         (mcp) => !currentWorkspaceMcps.includes(mcp.id)
+       );
+       setAvailableMcps(filteredMcps);
+     } catch (error) {
+       console.error("Error loading available MCPs:", error);
+     } finally {
+       setLoadingCount(prev => prev - 1);
+     }
+   }, [currentWorkspaceMcps]);
 
-  const loadAvailableWorkflows = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const allWorkflows = await loadAllWorkflowsFromFiles();
-      // Filter out workflows already in the current workspace
-      const filteredWorkflows = allWorkflows.filter(
-        (workflow) => !currentWorkspaceWorkflows.includes(workflow.id)
-      );
-      setAvailableWorkflows(filteredWorkflows);
-    } catch (error) {
-      console.error("Error loading available workflows:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentWorkspaceWorkflows]);
+   const loadAvailableWorkflows = useCallback(async () => {
+     try {
+       setLoadingCount(prev => prev + 1);
+       const allWorkflows = await loadAllWorkflowsFromFiles();
+       // Filter out workflows already in the current workspace
+       const filteredWorkflows = allWorkflows.filter(
+         (workflow) => !currentWorkspaceWorkflows.includes(workflow.id)
+       );
+       setAvailableWorkflows(filteredWorkflows);
+     } catch (error) {
+       console.error("Error loading available workflows:", error);
+     } finally {
+       setLoadingCount(prev => prev - 1);
+     }
+   }, [currentWorkspaceWorkflows]);
 
   useEffect(() => {
     if (isOpen) {
@@ -297,7 +297,7 @@ export const McpWorkflowImportDialog: React.FC<
 
           {/* Items List */}
           <div className="flex-1 overflow-y-auto pr-2 space-y-1.5">
-            {isLoading ? (
+             {loadingCount > 0 ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-zinc-500 text-sm">Loading...</div>
               </div>

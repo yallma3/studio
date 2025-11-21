@@ -360,8 +360,8 @@ describe('loadAllWorkspaces', () => {
   });
 
   it('should handle missing updatedAt field', async () => {
-    const workspace = createMockWorkspaceData();
-    delete (workspace as any).updatedAt;
+    const workspaceWithUpdatedAt = createMockWorkspaceData();
+    const { updatedAt: _omit, ...workspace } = workspaceWithUpdatedAt;
 
     const mockEntries = [
       { name: 'ws-1.yallma3', isDirectory: false, isFile: true, isSymlink: false },

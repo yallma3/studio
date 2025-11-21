@@ -46,7 +46,7 @@ vi.mock('@/modules/flow/utils/storageUtils', () => ({
   saveCanvasState: vi.fn(),
 }));
 
-vi.mock('@/tauri-apps/plugin-fs', () => ({
+vi.mock('@tauri-apps/plugin-fs', () => ({
   writeTextFile: vi.fn(),
 }));
 
@@ -74,6 +74,13 @@ import { useConnectionDrag } from '@/modules/flow/hooks/useConnectionDrag';
 import { useContextMenu } from '@/modules/flow/hooks/useContextMenu';
 import { createJson } from '@/modules/flow/utils/flowRuntime';
 
+// Create typed mocks
+const mockedUseCanvasState = vi.mocked(useCanvasState);
+const mockedUseCanvasTransform = vi.mocked(useCanvasTransform);
+const mockedUseConnectionDrag = vi.mocked(useConnectionDrag);
+const mockedUseContextMenu = vi.mocked(useContextMenu);
+const mockedCreateJson = vi.mocked(createJson);
+
 // Test data factories
 const createMockCanvasState = (): CanvasState => ({
   graphId: 'test-graph',
@@ -94,11 +101,16 @@ describe('NodeCanvas Component', () => {
     setNodes: vi.fn(),
     connections: [],
     setConnections: vi.fn(),
-    nextNodeId: 1,
+    nextNodeId: { current: 1 },
+    addNode: vi.fn(),
+    updateNode: vi.fn(),
     removeNode: vi.fn(),
+    addConnection: vi.fn(),
+    removeConnection: vi.fn(),
 
     // Canvas transform
     transform: { scale: 1, translateX: 0, translateY: 0 },
+    setTransform: vi.fn(),
     isPanningActive: false,
     handleWheel: vi.fn(),
     startPanning: vi.fn(),
@@ -115,8 +127,9 @@ describe('NodeCanvas Component', () => {
     handleSocketDragEnd: vi.fn(),
 
     // Context menu
-    contextMenu: { visible: false, x: 0, y: 0 },
+    contextMenu: { visible: false, x: 0, y: 0, subMenu: null },
     setContextMenu: vi.fn(),
+    contextMenuCanvasPosition: { current: { x: 0, y: 0 } },
     handleContextMenu: vi.fn(),
     handleNodeContextMenu: vi.fn(),
     handleAddNodeFromContextMenu: vi.fn(),
@@ -126,17 +139,22 @@ describe('NodeCanvas Component', () => {
     vi.clearAllMocks();
 
     // Setup default hook mocks
-    (useCanvasState as any).mockReturnValue({
+    mockedUseCanvasState.mockReturnValue({
       nodes: defaultMocks.nodes,
       setNodes: defaultMocks.setNodes,
       connections: defaultMocks.connections,
       setConnections: defaultMocks.setConnections,
       nextNodeId: defaultMocks.nextNodeId,
+      addNode: defaultMocks.addNode,
+      updateNode: defaultMocks.updateNode,
       removeNode: defaultMocks.removeNode,
+      addConnection: defaultMocks.addConnection,
+      removeConnection: defaultMocks.removeConnection,
     });
 
-    (useCanvasTransform as any).mockReturnValue({
+    mockedUseCanvasTransform.mockReturnValue({
       transform: defaultMocks.transform,
+      setTransform: defaultMocks.setTransform,
       isPanningActive: defaultMocks.isPanningActive,
       handleWheel: defaultMocks.handleWheel,
       startPanning: defaultMocks.startPanning,
@@ -147,22 +165,23 @@ describe('NodeCanvas Component', () => {
       zoomOut: defaultMocks.zoomOut,
     });
 
-    (useConnectionDrag as any).mockReturnValue({
+    mockedUseConnectionDrag.mockReturnValue({
       dragConnection: defaultMocks.dragConnection,
       handleSocketDragStart: defaultMocks.handleSocketDragStart,
       handleSocketDragMove: defaultMocks.handleSocketDragMove,
       handleSocketDragEnd: defaultMocks.handleSocketDragEnd,
     });
 
-    (useContextMenu as any).mockReturnValue({
+    mockedUseContextMenu.mockReturnValue({
       contextMenu: defaultMocks.contextMenu,
       setContextMenu: defaultMocks.setContextMenu,
+      contextMenuCanvasPosition: defaultMocks.contextMenuCanvasPosition,
       handleContextMenu: defaultMocks.handleContextMenu,
       handleNodeContextMenu: defaultMocks.handleNodeContextMenu,
       handleAddNodeFromContextMenu: defaultMocks.handleAddNodeFromContextMenu,
     });
 
-    (createJson as any).mockReturnValue({
+    mockedCreateJson.mockReturnValue({
       id: 'wf-123',
       name: 'Test Workflow',
       description: 'A test workflow',

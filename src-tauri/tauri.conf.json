@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": "yarn start",
-    "beforeBuildCommand": "yarn pretauri:build"
+    "beforeBuildCommand": "yarn build && yarn pretauri:build"
   },
   "app": {
     "windows": [
@@ -35,8 +35,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "bin/server"
-    ]
+    "resources": ["bin/server"]
   }
 }

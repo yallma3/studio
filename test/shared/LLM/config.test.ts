@@ -76,7 +76,7 @@ describe('LLM Configuration Testing', () => {
           'gpt-4.1',
           'gpt-4.1-nano',
           'gpt-4.1-mini',
-          'gpt-40',
+          'gpt-4o',
           'gpt-4o-mini'
         ];
 

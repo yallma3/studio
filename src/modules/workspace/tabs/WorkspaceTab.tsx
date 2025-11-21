@@ -71,13 +71,16 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   onSendConsoleInput,
 }) => {
   const { t } = useTranslation();
+
+  const WAITING_FOR_INPUT = t("workspaceTab.waitingForInput", "Waiting for user input");
   
-  // Console state
-  const [events, setEvents] = useState<ConsoleEvent[]>([]);
-  const [pendingPrompts, setPendingPrompts] = useState<PendingPromptData[]>([]);
-  const [consoleInput, setConsoleInput] = useState("");
-  const [isConsoleRunning, setIsConsoleRunning] = useState(true);
-  const [isConsoleExpanded, setIsConsoleExpanded] = useState(false);
+   // Console state
+   const [events, setEvents] = useState<ConsoleEvent[]>([]);
+   const [pendingPrompts, setPendingPrompts] = useState<PendingPromptData[]>([]);
+   const [consumedPromptIds, setConsumedPromptIds] = useState<string[]>([]);
+   const [consoleInput, setConsoleInput] = useState("");
+   const [isConsoleRunning, setIsConsoleRunning] = useState(true);
+   const [isConsoleExpanded, setIsConsoleExpanded] = useState(false);
 
   // Event result dialog state
   const [selectedEvent, setSelectedEvent] = useState<ConsoleEvent | null>(null);
@@ -155,29 +158,29 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     setIsEditing(false);
   };
 
-  // Handle adding new pending prompts from console events - ONE AT A TIME
-  useEffect(() => {
-    if (pendingPrompts.length === 0) {
-      const newPrompts = events.filter(
-        (event) => 
-          event.type === "input" && 
-          event.promptId &&
-          event.details === "Waiting for user input" 
-      );
+   // Handle adding new pending prompts from console events - ONE AT A TIME
+   useEffect(() => {
+     if (pendingPrompts.length === 0) {
+       const newPrompt = events.find(
+         (event) =>
+           event.type === "input" &&
+           event.promptId &&
+           event.details === WAITING_FOR_INPUT &&
+           !consumedPromptIds.includes(event.promptId)
+       );
 
-      if (newPrompts.length > 0) {
-        const firstPrompt = newPrompts[0];
-        setPendingPrompts([{
-          promptId: firstPrompt.promptId!,
-          nodeId: firstPrompt.nodeId || 0,
-          nodeName: firstPrompt.nodeName || t("workspaceTab.unknownNode", "Unknown Node"),
-          message: firstPrompt.message,
-          timestamp: firstPrompt.timestamp,
-          inputValue: "",
-        }]);
-      }
-    }
-  }, [events, pendingPrompts, t]);
+       if (newPrompt) {
+         setPendingPrompts([{
+           promptId: newPrompt.promptId!,
+           nodeId: newPrompt.nodeId || 0,
+           nodeName: newPrompt.nodeName || t("workspaceTab.unknownNode", "Unknown Node"),
+           message: newPrompt.message,
+           timestamp: newPrompt.timestamp,
+           inputValue: "",
+         }]);
+       }
+     }
+   }, [events, pendingPrompts, consumedPromptIds, t]);
   const handleConsoleInputSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!consoleInput.trim()) return;
@@ -208,34 +211,12 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
         }
       }
 
-      // Remove the prompt from pending list
-      setPendingPrompts(prev => prev.filter(p => p.promptId !== currentPrompt.promptId));
+       // Remove the prompt from pending list and mark as consumed
+       setPendingPrompts(prev => prev.filter(p => p.promptId !== currentPrompt.promptId));
+       setConsumedPromptIds(prev => [...prev, currentPrompt.promptId]);
 
-      // Clear input immediately
-      setConsoleInput("");
-
-      // Check if there are more prompts waiting
-      setTimeout(() => {
-        const waitingPrompts = events.filter(
-          (event) => 
-            event.type === "input" && 
-            event.promptId && 
-            event.promptId !== currentPrompt.promptId &&
-            !pendingPrompts.some(p => p.promptId === event.promptId)
-        );
-
-        if (waitingPrompts.length > 0) {
-          const nextPrompt = waitingPrompts[0];
-          setPendingPrompts([{
-            promptId: nextPrompt.promptId!,
-            nodeId: nextPrompt.nodeId || 0,
-            nodeName: nextPrompt.nodeName || t("workspaceTab.unknownNode", "Unknown Node"),
-            message: nextPrompt.message,
-            timestamp: nextPrompt.timestamp,
-            inputValue: "",
-          }]);
-        }
-      }, 100);
+       // Clear input immediately
+       setConsoleInput("");
     } else {
       // No pending prompt, just add as regular console input
       const newEvent: ConsoleEvent = {
@@ -265,10 +246,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     }
   };
 
-  // Update input value for a specific prompt
-  const updatePromptInput = (promptId: string, value: string) => {
-    setConsoleInput(value);
-  };
+
 
   // Handle cancel
   const handleCancel = () => {

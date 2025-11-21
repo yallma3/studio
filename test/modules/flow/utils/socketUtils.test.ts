@@ -420,8 +420,8 @@ describe('Socket Utilities', () => {
 
       const graph = buildExecutionGraph(nodes, connections);
 
-      expect(graph).toEqual([[1, 2], [1, 2]]);
-      expect(graph.length).toBe(2);
+       expect(graph).toEqual([[1, 2]]);
+       expect(graph.length).toBe(1);
     });
   });
 
@@ -429,11 +429,11 @@ describe('Socket Utilities', () => {
     it('should add input socket to Join node', () => {
       const joinNode = createMockNode(1, 'Join Node');
       joinNode.nodeType = 'Join';
-      joinNode.sockets = [
-        createMockSocket(101, 'input', 1, 'Input 1'),
-        createMockSocket(102, 'input', 1, 'Input 2'),
-        createMockSocket(103, 'output', 1, 'Output'),
-      ];
+       joinNode.sockets = [
+         createMockSocket(101, 'input', 1, 'Input 1'),
+         createMockSocket(102, 'input', 1, 'Input 2'),
+         createMockSocket(199, 'output', 1, 'Output'),
+       ];
       joinNode.height = 230;
 
       const result = addSocketToJoinNode(joinNode);
@@ -452,10 +452,10 @@ describe('Socket Utilities', () => {
     it('should increase height for additional sockets', () => {
       const joinNode = createMockNode(1, 'Join Node');
       joinNode.nodeType = 'Join';
-      joinNode.sockets = [
-        createMockSocket(101, 'input', 1, 'Input 1'),
-        createMockSocket(102, 'output', 1, 'Output'),
-      ];
+       joinNode.sockets = [
+         createMockSocket(101, 'input', 1, 'Input 1'),
+         createMockSocket(199, 'output', 1, 'Output'),
+       ];
       joinNode.height = 230;
 
       const result = addSocketToJoinNode(joinNode);
@@ -475,9 +475,9 @@ describe('Socket Utilities', () => {
     it('should handle Join node with no existing inputs', () => {
       const joinNode = createMockNode(1, 'Join Node');
       joinNode.nodeType = 'Join';
-      joinNode.sockets = [
-        createMockSocket(101, 'output', 1, 'Output'),
-      ];
+       joinNode.sockets = [
+         createMockSocket(199, 'output', 1, 'Output'),
+       ];
       joinNode.height = 230;
 
       const result = addSocketToJoinNode(joinNode);

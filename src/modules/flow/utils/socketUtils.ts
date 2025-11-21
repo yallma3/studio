@@ -135,21 +135,19 @@ export const addSocketToJoinNode = (node: BaseNode): BaseNode => {
  * Build a graph of node dependencies for execution tracking
  */
 export const buildExecutionGraph = (nodes: BaseNode[], connections: Connection[]): [number, number][] => {
-  const graph: [number, number][] = [];
-  
-  // Build edges from connections
+  const edges = new Set<string>();
+
   connections.forEach(conn => {
-    // Find source and target nodes for this connection
     const fromSocket = nodes.flatMap(n => n.sockets).find(s => s.id === conn.fromSocket);
     const toSocket = nodes.flatMap(n => n.sockets).find(s => s.id === conn.toSocket);
-    
+
     if (fromSocket && toSocket) {
-      const sourceNodeId = fromSocket.nodeId;
-      const targetNodeId = toSocket.nodeId;
-      
-      graph.push([sourceNodeId, targetNodeId]);
+      edges.add(`${fromSocket.nodeId}-${toSocket.nodeId}`);
     }
   });
-  
-  return graph;
+
+  return Array.from(edges).map(edge => {
+    const [from, to] = edge.split('-').map(Number);
+    return [from, to];
+  });
 }; 

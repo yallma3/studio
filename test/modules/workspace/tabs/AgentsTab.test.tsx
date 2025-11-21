@@ -113,10 +113,6 @@ describe('AgentsTab', () => {
     };
   });
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('renders agents list and add button', () => {
     render(
       <AgentsTab

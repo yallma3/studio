@@ -233,6 +233,7 @@
     "noEvents": "لا توجد أحداث لعرضها. ستظهر الأحداث هنا عند حدوثها.",
     "viewResult": "عرض النتيجة",
     "enterInput": "الرجاء إدخال مدخلاتك:",
+    "waitingForInput": "في انتظار إدخال المستخدم",
     "send": "إرسال"
   },
   "tasksTab": {
@@ -441,7 +442,7 @@
     "enterAgentRole": "أدخل دور الوكيل",
     "background": "الخلفية",
     "enterAgentBackground": "أنت مساعد مفيد.",
-    "enterAgentBackgroundWithVariables": "أدخل خلفية الوكيل مع {{المتغيرات}} مثل: أنت خبير في {{الخبرة}} مع {{السنوات}} سنوات من الخبرة",
+    "enterAgentBackgroundWithVariables": "أدخل خلفية الوكيل مع {{variables}} مثل: أنت خبير في {{expertise}} مع {{years}} سنوات من الخبرة",
     "addVariable": "إضافة متغير",
     "definedVariables": "المتغيرات المحددة:",
     "removeVariable": "إزالة المتغير",

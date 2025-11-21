@@ -16,7 +16,6 @@ import { nodeRegistry } from "../types/NodeRegistry";
 import { useTranslation } from "react-i18next";
 import type { BaseNode } from "../types/NodeTypes";
 
-
 interface ContextMenuPosition {
   visible: boolean;
   x: number;
@@ -26,7 +25,7 @@ interface ContextMenuPosition {
 
 interface CanvasContextMenuProps {
   contextMenu: ContextMenuPosition;
-    // kept signature the same as your original; for keyboard Enter we cast the event
+  // kept signature the same as your original; for keyboard Enter we cast the event
   onAddNode: (
     nodeType: string,
     e?: React.MouseEvent | React.KeyboardEvent | null
@@ -40,7 +39,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   onContextMenuAction,
 }) => {
   const { t, i18n } = useTranslation();
-  const currentLanguage = i18n.language || 'en';
+  const currentLanguage = i18n.language || "en";
   const [submenuPath, setSubmenuPath] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -48,17 +47,15 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   const hoverTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-
   const getTranslatedFields = (node: BaseNode, lang: string) => {
     const i18nData = node.i18n?.[lang] || node.i18n?.en;
     return {
       translatedTitle: i18nData?.title || node.title,
       translatedCategory: i18nData?.category || node.category,
-      translatedDescription: i18nData?.description || node.description || '',
+      translatedDescription: i18nData?.description || node.description || "",
       translatedNodeType: i18nData?.nodeType || node.nodeType,
     };
   };
-
 
   useEffect(() => {
     return () => {
@@ -79,18 +76,24 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     }
   }, [contextMenu.visible]);
 
-  const allNodes: Array<BaseNode & { translatedTitle: string; translatedCategory: string; translatedDescription: string; translatedNodeType: string }> = 
-    nodeRegistry.listNodeDetails().map(node => ({
-      ...node,
-      ...getTranslatedFields(node, currentLanguage),
-    }));
-
+  const allNodes: Array<
+    BaseNode & {
+      translatedTitle: string;
+      translatedCategory: string;
+      translatedDescription: string;
+      translatedNodeType: string;
+    }
+  > = nodeRegistry.listNodeDetails().map((node) => ({
+    ...node,
+    ...getTranslatedFields(node, currentLanguage),
+  }));
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const matches = normalizedQuery
     ? allNodes
         .map((n) => {
-          const searchText = `${n.translatedTitle} ${n.translatedCategory} ${n.translatedNodeType}`.toLowerCase();
+          const searchText =
+            `${n.translatedTitle} ${n.translatedCategory} ${n.translatedNodeType}`.toLowerCase();
           const starts = searchText.startsWith(normalizedQuery) ? 0 : 1;
           return { ...n, score: starts, searchText };
         })
@@ -163,7 +166,6 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     pointerEvents: "none",
   };
 
-
   const iconStyle: React.CSSProperties = {
     color: "#FFC72C",
     marginRight: "8px",
@@ -200,27 +202,25 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     color: "#FFC72C",
   };
 
-
   const tooltipStyle: React.CSSProperties = {
-    position: 'absolute',
-    left: '100%',
+    position: "absolute",
+    left: "100%",
     top: 0,
-    marginLeft: '8px',
-    backgroundColor: 'rgba(17, 17, 17, 0.98)',
-    border: '1px solid rgba(255, 199, 44, 0.3)',
-    borderRadius: '6px',
-    padding: '10px 14px',
-    minWidth: '200px',
-    maxWidth: '320px',
-    color: 'white',
-    fontSize: '13px',
-    lineHeight: '1.5',
-    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.4)',
+    marginLeft: "8px",
+    backgroundColor: "rgba(17, 17, 17, 0.98)",
+    border: "1px solid rgba(255, 199, 44, 0.3)",
+    borderRadius: "6px",
+    padding: "10px 14px",
+    minWidth: "200px",
+    maxWidth: "320px",
+    color: "white",
+    fontSize: "13px",
+    lineHeight: "1.5",
+    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.4)",
     zIndex: 1001,
-    whiteSpace: 'normal',
-    backdropFilter: 'blur(10px)',
+    whiteSpace: "normal",
+    backdropFilter: "blur(10px)",
   };
-
 
   const handleHover = (path: string[]) => {
     if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
@@ -254,13 +254,17 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         {t("canvasContextMenu.categories", "Categories")}
       </div>
       {nodeRegistry.listCategories().map((category) => {
-        const categoryNode = allNodes.find(n => n.category === category);
-        const translatedCategory = categoryNode ? categoryNode.translatedCategory : category;
+        const categoryNode = allNodes.find((n) => n.category === category);
+        const translatedCategory = categoryNode
+          ? categoryNode.translatedCategory
+          : category;
         return (
           <div
             key={category}
             style={menuItemStyle}
-            onMouseEnter={() => handleHover(["addNode", `category:${category}`])}
+            onMouseEnter={() =>
+              handleHover(["addNode", `category:${category}`])
+            }
             className="hover:bg-[#222]"
           >
             <span>{translatedCategory}</span>
@@ -272,41 +276,49 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                 </div>
                 {Object.entries(
                   nodeRegistry.listNodeTypesByCategory(category)
-                ).map(([nodeType, originalTitle]) => {
-                  const nodeDetails = allNodes.find(n => n.nodeType === nodeType);
+                ).map(([nodeType, _]) => {
+                  const nodeDetails = allNodes.find(
+                    (n) => n.nodeType === nodeType
+                  );
                   if (!nodeDetails) return null;
                   const translatedTitle = nodeDetails.translatedTitle;
                   const translatedNodeType = nodeDetails.translatedNodeType;
-                  const translatedDescription = nodeDetails.translatedDescription;
+                  const translatedDescription =
+                    nodeDetails.translatedDescription;
                   return (
                     <div
                       key={nodeType}
                       style={{
                         ...menuItemStyle,
                         justifyContent: "flex-start",
-                        position: 'relative',
+                        position: "relative",
                       }}
                       onMouseEnter={() => setHoveredNode(nodeType)}
                       onMouseLeave={() => setHoveredNode(null)}
                       onClick={(e) => onAddNode(nodeType, e)}
                       className="hover:bg-[#222]"
                     >
-                      <span>{`${translatedTitle} ${t("canvasContextMenu.node", "Node")}`}</span>
-                      
+                      <span>{`${translatedTitle} ${t(
+                        "canvasContextMenu.node",
+                        "Node"
+                      )}`}</span>
+
                       {hoveredNode === nodeType && translatedDescription && (
                         <div style={tooltipStyle}>
-                          <div style={{ 
-                            color: '#FFC72C', 
-                            fontSize: '18px',
-                            fontWeight: '700',
-                            textTransform: 'uppercase',
-                            textShadow: '0 0 4px rgba(255, 199, 44, 0.4)',
-                            marginBottom: '8px',
-                            fontFamily: 'monospace'
-                          }}>
+                          <div
+                            style={{
+                              color: "#FFC72C",
+                              fontSize: "18px",
+                              fontWeight: "700",
+                              textTransform: "uppercase",
+                              textShadow: "0 0 4px rgba(255, 199, 44, 0.4)",
+                              marginBottom: "8px",
+                              fontFamily: "monospace",
+                            }}
+                          >
                             {translatedNodeType}
                           </div>
-                          <div style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
+                          <div style={{ color: "rgba(255, 255, 255, 0.85)" }}>
                             {translatedDescription}
                           </div>
                         </div>
@@ -344,7 +356,7 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
 
   return (
     <div style={menuStyle} onClick={(e) => e.stopPropagation()}>
-       {/* Search input */}
+      {/* Search input */}
       <input
         ref={inputRef}
         value={searchQuery}
@@ -360,16 +372,20 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         onClick={(e) => e.stopPropagation()}
       />
 
-   {/* If there's a non-empty query, show flat search results like Rivet */}
+      {/* If there's a non-empty query, show flat search results like Rivet */}
       {normalizedQuery ? (
         <div role="list" aria-label="search-results">
           {matches.length === 0 ? (
             <div style={{ ...menuItemStyle, padding: "10px 14px" }}>
-              <span style={{ color: "#888" }}>{t("canvasContextMenu.noResults", "No results")}</span>
+              <span style={{ color: "#888" }}>
+                {t("canvasContextMenu.noResults", "No results")}
+              </span>
             </div>
           ) : (
             matches.map((m, idx) => {
-              const nodeDetails = allNodes.find(n => n.nodeType === m.nodeType);
+              const nodeDetails = allNodes.find(
+                (n) => n.nodeType === m.nodeType
+              );
               if (!nodeDetails) return null;
               const translatedNodeType = nodeDetails.translatedNodeType;
               const translatedDescription = nodeDetails.translatedDescription;
@@ -386,30 +402,35 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                   style={{
                     ...searchItemStyle,
                     ...(idx === selectedIndex ? selectedStyle : {}),
-                    position: 'relative',
+                    position: "relative",
                   }}
                 >
                   <span style={{ fontSize: "15px" }}>{translatedNodeType}</span>
                   <small
-                    style={{ color: "rgba(255,255,255,0.45)", marginTop: "4px" }}
+                    style={{
+                      color: "rgba(255,255,255,0.45)",
+                      marginTop: "4px",
+                    }}
                   >
                     {m.translatedCategory}
                   </small>
-                  
+
                   {hoveredNode === m.nodeType && translatedDescription && (
                     <div style={tooltipStyle}>
-                      <div style={{ 
-                        color: '#FFC72C', 
-                        fontSize: '18px',
-                        fontWeight: '700',
-                        textTransform: 'uppercase',
-                        textShadow: '0 0 4px rgba(255, 199, 44, 0.4)',
-                        marginBottom: '8px',
-                        fontFamily: 'monospace'
-                      }}>
+                      <div
+                        style={{
+                          color: "#FFC72C",
+                          fontSize: "18px",
+                          fontWeight: "700",
+                          textTransform: "uppercase",
+                          textShadow: "0 0 4px rgba(255, 199, 44, 0.4)",
+                          marginBottom: "8px",
+                          fontFamily: "monospace",
+                        }}
+                      >
                         {translatedNodeType}
                       </div>
-                      <div style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
+                      <div style={{ color: "rgba(255, 255, 255, 0.85)" }}>
                         {translatedDescription}
                       </div>
                     </div>
