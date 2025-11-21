@@ -5,7 +5,7 @@ import { Button } from "../../../shared/components/ui/button";
 import ToolSelectionPopup from "../../../shared/components/ToolSelectionPopup";
 import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
 import { LLMOption, Tool, Workflow } from "../types/Types";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Key } from "lucide-react";
 
 export interface AgentFormValues {
   name: string;
@@ -126,14 +126,15 @@ const AgentForm: React.FC<AgentFormProps> = ({
           htmlFor="agentName"
           className="block text-sm font-medium text-gray-300 mb-1 "
         >
-          {t("agentForm.name", "Name")}
+          {t("agentForm.name", "Name")}{" "}
+          <span className="text-yellow-500">*</span>
         </label>
         <input
           type="text"
           id="agentName"
           value={value.name}
           onChange={(e) => onChange({ ...value, name: e.target.value })}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
           placeholder={t("agentForm.enterAgentName", "Enter agent name")}
         />
       </div>
@@ -150,7 +151,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           id="agentRole"
           value={value.role}
           onChange={(e) => onChange({ ...value, role: e.target.value })}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
           placeholder={t("agentForm.enterAgentRole", "Enter agent role")}
         />
       </div>
@@ -179,7 +180,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           id="agentBackground"
           value={value.background}
           onChange={(e) => onChange({ ...value, background: e.target.value })}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
           placeholder={
             enableVariables
               ? t(
@@ -270,7 +271,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                   }}
                   className={`w-full px-3 py-2 bg-zinc-800 border ${
                     variableError ? "border-red-500" : "border-zinc-700"
-                  } rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500`}
+                  } rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500`}
                   placeholder={t(
                     "agentForm.enterVariableName",
                     "Enter variable name (e.g. expertise)"
@@ -294,7 +295,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                       value: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
                   placeholder={t(
                     "agentForm.enterVariableValue",
                     "Enter default value (e.g. JavaScript)"
@@ -384,14 +385,17 @@ const AgentForm: React.FC<AgentFormProps> = ({
         <label htmlFor="agentApiKey" className="block text-sm font-medium text-zinc-300 mb-1">
           {t("agentForm.apiKey", "API Key")}
         </label>
-        <input
-          id="agentApiKey"
-          type="password"
-          className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-          value={value.apiKey}
-          onChange={(e) => onChange({ ...value, apiKey: e.target.value })}
-          placeholder={t("agentForm.enterApiKey", "Enter agent API Key")}
-        />
+        <div className="relative">
+          <input
+            id="agentApiKey"
+            type="password"
+            className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+            value={value.apiKey}
+            onChange={(e) => onChange({ ...value, apiKey: e.target.value })}
+            placeholder={t("agentForm.enterApiKey", "Enter agent API Key")}
+          />
+          <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+        </div>
       </div>
       <div className="flex flex-col space-y-2">
         <div className="flex items-center justify-between gap-2">

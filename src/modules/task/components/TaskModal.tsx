@@ -195,7 +195,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     htmlFor="executorId"
                     className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
                   >
-                    {formData.type === "specific-agent" ? t("taskModal.agent", "Agent") : t("taskModal.workflow", "Workflow")}
+                    {formData.type === "specific-agent" ? t("workspaces.selectAgent", "Select Agent") : t("workspaces.selectWorkflow", "Select Workflow")}
                   </label>
                   <select
                     id="executorId"
@@ -204,7 +204,13 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent"
                   >
-                    <option value="">{t("taskModal.none", "None")}</option>
+                    <option value="">
+                      {formData.type === "workflow"
+                        ? t("workspaces.workflowLater", "Not for now, I'll specify later")
+                        : formData.type === "specific-agent"
+                        ? t("workspaces.agentLater", "Not for now, I'll select later")
+                        : t("taskModal.none", "None")}
+                    </option>
                     {formData.type === "specific-agent"
                       ? agents.map((agent) => (
                           <option key={agent.id} value={agent.id}>
