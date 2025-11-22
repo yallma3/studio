@@ -1418,13 +1418,13 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                            <Select
                              id="type"
                              value={newTask.type}
-                             onChange={(value) => {
-                               setNewTask((prev) => ({
-                                 ...prev,
-                                 type: value,
-                                 executorId: value === "agentic" ? null : prev.executorId,
-                               }));
-                             }}
+                              onChange={(value) => {
+                                setNewTask((prev) => ({
+                                  ...prev,
+                                  type: value,
+                                  executorId: value === "agentic" || value !== prev.type ? null : prev.executorId,
+                                }));
+                              }}
                              options={[
                                { value: "agentic", label: t("taskModal.agenticAuto", "Agentic (Auto)") },
                                { value: "specific-agent", label: t("taskModal.specificAgent", "Specific Agent") },
