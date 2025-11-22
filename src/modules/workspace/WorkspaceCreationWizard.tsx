@@ -1415,23 +1415,30 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                            >
                              {t("taskModal.type", "Type")}
                            </label>
-                           <Select
-                             id="type"
-                             value={newTask.type}
-                              onChange={(value) => {
-                                setNewTask((prev) => ({
-                                  ...prev,
-                                  type: value,
-                                  executorId: value === "agentic" || value !== prev.type ? null : prev.executorId,
-                                }));
-                              }}
-                             options={[
-                               { value: "agentic", label: t("taskModal.agenticAuto", "Agentic (Auto)") },
-                               { value: "specific-agent", label: t("taskModal.specificAgent", "Specific Agent") },
-                               { value: "workflow", label: t("taskModal.workflow", "Workflow") },
-                             ]}
-                           />
-                         </div>
+                            <Select
+                              id="type"
+                              value={newTask.type}
+                               onChange={(value) => {
+                                 setNewTask((prev) => ({
+                                   ...prev,
+                                   type: value,
+                                   executorId: value === "agentic" || value !== prev.type ? null : prev.executorId,
+                                 }));
+                               }}
+                              options={[
+                                { value: "agentic", label: t("taskModal.agenticAuto", "Agentic (Auto)") },
+                                { value: "specific-agent", label: t("taskModal.specificAgent", "Specific Agent") },
+                                { value: "workflow", label: t("taskModal.workflow", "Workflow") },
+                              ]}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">
+                              {newTask.type === "agentic"
+                                ? t("taskModal.typeNoteAgentic", "yaLLMa3 main Agent will decide how to handle the Task")
+                                : newTask.type === "specific-agent"
+                                ? t("taskModal.typeNoteSpecific", "Select Agent to perform the Task")
+                                : t("taskModal.typeNoteWorkflow", "The specified Workflow will be used to perform the Task")}
+                            </p>
+                          </div>
                          {newTask.type === "specific-agent" ||
                          newTask.type === "workflow" ? (
                            <div className="flex-1">

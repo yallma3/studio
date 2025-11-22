@@ -176,18 +176,25 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 >
                   {t("taskModal.type", "Type")}
                 </label>
-                <select
-                  id="type"
-                  name="type"
-                  value={formData.type}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent"
-                >
-                  <option value="agentic">{t("taskModal.agenticAuto", "Agentic (Auto)")}</option>
-                  <option value="specific-agent">{t("taskModal.specificAgent", "Specific Agent")}</option>
-                  <option value="workflow">{t("taskModal.workflow", "Workflow")}</option>
-                </select>
-              </div>
+                 <select
+                   id="type"
+                   name="type"
+                   value={formData.type}
+                   onChange={handleInputChange}
+                   className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent"
+                 >
+                   <option value="agentic">{t("taskModal.agenticAuto", "Agentic (Auto)")}</option>
+                   <option value="specific-agent">{t("taskModal.specificAgent", "Specific Agent")}</option>
+                   <option value="workflow">{t("taskModal.workflow", "Workflow")}</option>
+                 </select>
+                 <p className="text-xs text-gray-400 mt-1">
+                   {formData.type === "agentic"
+                     ? t("taskModal.typeNoteAgentic", "yaLLMa3 main Agent will decide how to handle the Task")
+                     : formData.type === "specific-agent"
+                     ? t("taskModal.typeNoteSpecific", "Select Agent to perform the Task")
+                     : t("taskModal.typeNoteWorkflow", "The specified Workflow will be used to perform the Task")}
+                 </p>
+               </div>
               {formData.type === "specific-agent" ||
               formData.type === "workflow" ? (
                 <div>
