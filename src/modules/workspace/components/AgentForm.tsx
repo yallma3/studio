@@ -376,10 +376,10 @@ const AgentForm: React.FC<AgentFormProps> = ({
         </div>
         <p className="text-xs text-zinc-400 mt-2">
           {value.llm.model
-            ? t(
-                "agentForm.customLLMSelected",
-                "Custom LLM selected for this agent"
-              )
+             ? t(
+                 "agentForm.customLLMSelected",
+                 "LLM selected for this agent"
+               )
             : t(
                 "agentForm.usingWorkspaceLLM",
                 `Using workspace's main LLM: ${

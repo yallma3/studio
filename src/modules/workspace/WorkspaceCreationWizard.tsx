@@ -284,7 +284,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           description: newTask.description,
           expectedOutput: newTask.expectedOutput,
           type: newTask.type,
-          executorId: null,
+          executorId: newTask.executorId,
           position: {
             x: base * 5,
             y: Math.floor(Math.random() * 201) - 100,
