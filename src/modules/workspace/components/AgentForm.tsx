@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Select from "../../../shared/components/ui/select";
 import { Button } from "../../../shared/components/ui/button";
+import { TooltipHelper } from "../../../shared/components/ui/tooltip-helper";
 import ToolSelectionPopup from "../../../shared/components/ToolSelectionPopup";
 import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
 import { LLMOption, Tool, Workflow } from "../types/Types";
@@ -136,6 +137,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           onChange={(e) => onChange({ ...value, name: e.target.value })}
           className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
           placeholder={t("agentForm.enterAgentName", "Enter agent name")}
+          maxLength={40}
         />
       </div>
 
@@ -152,18 +154,23 @@ const AgentForm: React.FC<AgentFormProps> = ({
           value={value.role}
           onChange={(e) => onChange({ ...value, role: e.target.value })}
           className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          placeholder={t("agentForm.enterAgentRole", "Enter agent role")}
+          placeholder={t("agentForm.enterAgentRole", "Enter agent role that reflects its intended specialty or type of activity")}
+          maxLength={100}
         />
       </div>
 
       <div className="flex flex-col gap-1">
         <div className="flex justify-between items-center">
-          <label
-            htmlFor="agentBackground"
-            className="block text-sm font-medium text-gray-300 mb-1 "
-          >
-            {t("agentForm.background", "Background")}
-          </label>
+           <label
+             htmlFor="agentBackground"
+             className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-1 "
+           >
+             {t("agentForm.background", "Background")}
+             <TooltipHelper
+               text={t("agentForm.backgroundTooltip", "This will be used to prompt the agent during task execution")}
+               position="bottom"
+             />
+           </label>
           {enableVariables && (
             <button
               onClick={() => setShowVariablePopup(true)}
@@ -181,17 +188,18 @@ const AgentForm: React.FC<AgentFormProps> = ({
           value={value.background}
           onChange={(e) => onChange({ ...value, background: e.target.value })}
           className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
-          placeholder={
-            enableVariables
-              ? t(
-                  "agentForm.enterAgentBackgroundWithVariables",
-                  "Enter agent background with {{variables}} like: You are an expert in {{expertise}} with {{years}} years of experience"
-                )
-              : t(
-                  "agentForm.enterAgentBackground",
-                  "You are a helpful assistant."
-                )
-          }
+           placeholder={
+             enableVariables
+               ? t(
+                   "agentForm.enterAgentBackgroundWithVariables",
+                   "Enter agent background with {{variables}} like: You are an expert in {{expertise}} with {{years}} years of experience"
+                 )
+               : t(
+                   "agentForm.enterAgentBackground",
+                   "You are a helpful assistant."
+                 )
+           }
+           maxLength={1000}
         />
 
         {enableVariables &&

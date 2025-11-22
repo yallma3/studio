@@ -194,7 +194,7 @@ describe('AgentForm Component', () => {
     it('should show custom LLM selected message when model is chosen', () => {
       render(<AgentForm {...defaultProps} />);
 
-      expect(screen.getByText('Custom LLM selected for this agent')).toBeInTheDocument();
+      expect(screen.getByText('LLM selected for this agent')).toBeInTheDocument();
     });
 
     it('should show workspace LLM message when no model selected', () => {
