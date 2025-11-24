@@ -216,14 +216,14 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
 
           <div className="flex gap-3">
             <button
-              className="flex items-center justify-center px-4 py-2 rounded-md bg-[#FFC72C] hover:bg-[#E6B328] text-black font-medium "
+              className="flex items-center justify-center px-4 py-2 rounded-md bg-[#FFC72C] hover:bg-[#E6B328] text-black font-medium cursor-pointer"
               onClick={() => onCreateNew()}
             >
               <Plus className="h-4 w-4 mr-2" />
               {t("workspaces.createNew", "Create New Workspace")}
             </button>
             <button
-              className="flex items-center justify-center px-4 py-2 rounded-md border border-zinc-700 bg-zinc-800 hover:bg-zinc-700"
+              className="flex items-center justify-center px-4 py-2 rounded-md border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 cursor-pointer"
               onClick={() => onOpenFromFile()}
             >
               <FolderUp className="h-4 w-4 mr-2" />

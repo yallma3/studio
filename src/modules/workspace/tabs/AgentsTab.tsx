@@ -200,7 +200,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         <div className="flex justify-between items-center p-6 border-b border-[#FFC72C]/50">
           <div className="flex items-center">
             <h2 className="text-xl font-bold text-white">
-              {t("workspaces.agents", "Agents")}
+              {t("workspaces.subAgents", "Sub Agents")}
             </h2>
           </div>
           <button

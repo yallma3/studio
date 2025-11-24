@@ -158,7 +158,7 @@ describe('Flow Storage Utils Testing', () => {
       // Arrange
       const graphId = 'gf-123abc';
       const nodes = [createMockNode(1)];
-      const connections = [];
+      const connections: Connection[] = [];
       const nextNodeId = 2;
       const graphName = 'Test Graph';
 
@@ -314,7 +314,7 @@ describe('Flow Storage Utils Testing', () => {
         nextNodeId: 1,
       };
       const nodes = [createMockNode(1)];
-      const connections = [];
+      const connections: Connection[] = [];
       const nextNodeId = 2;
 
       mockSave.mockResolvedValue(null);

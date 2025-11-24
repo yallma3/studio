@@ -183,7 +183,7 @@ export class SidecarClient {
     }
   }
 
-  onCommand(callback: (command: SidecarCommand) => void): void {
+  onCommand(callback: (command: SidecarCommand) => void): () => void {
     this.commandCallbacks.push(callback);
     return () => {
       const index = this.commandCallbacks.indexOf(callback);

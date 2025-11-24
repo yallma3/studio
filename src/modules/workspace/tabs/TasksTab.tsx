@@ -18,6 +18,7 @@ import TaskModal from "../../task/components/TaskModal";
 // import { ContextMenuItem } from "../../task/components/ContextMenu";
 import { Task, TaskConnection } from "../../task/types/types";
 import { useTranslation } from "react-i18next";
+import { Plus } from "lucide-react";
 
 interface TasksTabProps {
   workspaceData: WorkspaceData;
@@ -74,6 +75,12 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
     },
     []
   );
+
+  const handleAddTask = useCallback(() => {
+    setEditingTask(null);
+    setPendingNewTaskPosition({ x: 100, y: 100 });
+    setIsModalOpen(true);
+  }, []);
 
   const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
@@ -142,17 +149,36 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
   }, [tasks, connections]);
 
   return (
-    <div className="relative w-full h-full">
-      <TasksCanvas
-        tasks={tasks}
-        connections={connections}
-        onTaskPositionChange={handleTaskPositionChange}
-        onConnectionCreate={handleConnectionCreate}
-        onConnectionRemove={handleConnectionRemove}
-        onTaskEdit={handleEditTask}
-        onTaskDelete={handleDeleteTask}
-        onTaskAdd={handleCanvasAddTask}
-      />
+    <div className="space-y-6">
+      <div className="bg-[#121212] rounded-md">
+        <div className="flex justify-between items-center p-6 border-b border-[#FFC72C]/50">
+          <div className="flex items-center">
+            <h2 className="text-xl font-bold text-white">
+              {t("workspaces.tasks", "Tasks")}
+            </h2>
+          </div>
+          <button
+            className="bg-[#FFC72C] hover:bg-[#E6B428] text-black px-3 py-1 rounded text-sm flex items-center gap-1"
+            onClick={handleAddTask}
+          >
+            <Plus size={16} />
+            {t("tasksTab.addTask", "Add Task")}
+          </button>
+        </div>
+
+        <div className="relative w-full h-[calc(100vh-200px)]">
+          <TasksCanvas
+            tasks={tasks}
+            connections={connections}
+            onTaskPositionChange={handleTaskPositionChange}
+            onConnectionCreate={handleConnectionCreate}
+            onConnectionRemove={handleConnectionRemove}
+            onTaskEdit={handleEditTask}
+            onTaskDelete={handleDeleteTask}
+            onTaskAdd={handleCanvasAddTask}
+          />
+        </div>
+      </div>
 
       <TaskModal
         isOpen={isModalOpen}

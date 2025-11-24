@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Select from "../../../shared/components/ui/select";
 import { Button } from "../../../shared/components/ui/button";
+import { TooltipHelper } from "../../../shared/components/ui/tooltip-helper";
 import ToolSelectionPopup from "../../../shared/components/ToolSelectionPopup";
 import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
 import { LLMOption, Tool, Workflow } from "../types/Types";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Key } from "lucide-react";
 
 export interface AgentFormValues {
   name: string;
@@ -126,15 +127,17 @@ const AgentForm: React.FC<AgentFormProps> = ({
           htmlFor="agentName"
           className="block text-sm font-medium text-gray-300 mb-1 "
         >
-          {t("agentForm.name", "Name")}
+          {t("agentForm.name", "Name")}{" "}
+          <span className="text-yellow-500">*</span>
         </label>
         <input
           type="text"
           id="agentName"
           value={value.name}
           onChange={(e) => onChange({ ...value, name: e.target.value })}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
           placeholder={t("agentForm.enterAgentName", "Enter agent name")}
+          maxLength={40}
         />
       </div>
 
@@ -150,19 +153,24 @@ const AgentForm: React.FC<AgentFormProps> = ({
           id="agentRole"
           value={value.role}
           onChange={(e) => onChange({ ...value, role: e.target.value })}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          placeholder={t("agentForm.enterAgentRole", "Enter agent role")}
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          placeholder={t("agentForm.enterAgentRole", "Enter agent role that reflects its intended specialty or type of activity")}
+          maxLength={100}
         />
       </div>
 
       <div className="flex flex-col gap-1">
         <div className="flex justify-between items-center">
-          <label
-            htmlFor="agentBackground"
-            className="block text-sm font-medium text-gray-300 mb-1 "
-          >
-            {t("agentForm.background", "Background")}
-          </label>
+           <label
+             htmlFor="agentBackground"
+             className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-1 "
+           >
+             {t("agentForm.background", "Background")}
+             <TooltipHelper
+               text={t("agentForm.backgroundTooltip", "This will be used to prompt the agent during task execution")}
+               position="bottom"
+             />
+           </label>
           {enableVariables && (
             <button
               onClick={() => setShowVariablePopup(true)}
@@ -179,18 +187,19 @@ const AgentForm: React.FC<AgentFormProps> = ({
           id="agentBackground"
           value={value.background}
           onChange={(e) => onChange({ ...value, background: e.target.value })}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
-          placeholder={
-            enableVariables
-              ? t(
-                  "agentForm.enterAgentBackgroundWithVariables",
-                  "Enter agent background with {{variables}} like: You are an expert in {{expertise}} with {{years}} years of experience"
-                )
-              : t(
-                  "agentForm.enterAgentBackground",
-                  "You are a helpful assistant."
-                )
-          }
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
+           placeholder={
+             enableVariables
+               ? t(
+                   "agentForm.enterAgentBackgroundWithVariables",
+                   "Enter agent background with {{variables}} like: You are an expert in {{expertise}} with {{years}} years of experience"
+                 )
+               : t(
+                   "agentForm.enterAgentBackground",
+                   "You are a helpful assistant."
+                 )
+           }
+           maxLength={1000}
         />
 
         {enableVariables &&
@@ -270,7 +279,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                   }}
                   className={`w-full px-3 py-2 bg-zinc-800 border ${
                     variableError ? "border-red-500" : "border-zinc-700"
-                  } rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500`}
+                  } rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500`}
                   placeholder={t(
                     "agentForm.enterVariableName",
                     "Enter variable name (e.g. expertise)"
@@ -294,7 +303,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
                       value: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
                   placeholder={t(
                     "agentForm.enterVariableValue",
                     "Enter default value (e.g. JavaScript)"
@@ -367,10 +376,10 @@ const AgentForm: React.FC<AgentFormProps> = ({
         </div>
         <p className="text-xs text-zinc-400 mt-2">
           {value.llm.model
-            ? t(
-                "agentForm.customLLMSelected",
-                "Custom LLM selected for this agent"
-              )
+             ? t(
+                 "agentForm.customLLMSelected",
+                 "LLM selected for this agent"
+               )
             : t(
                 "agentForm.usingWorkspaceLLM",
                 `Using workspace's main LLM: ${
@@ -384,14 +393,17 @@ const AgentForm: React.FC<AgentFormProps> = ({
         <label htmlFor="agentApiKey" className="block text-sm font-medium text-zinc-300 mb-1">
           {t("agentForm.apiKey", "API Key")}
         </label>
-        <input
-          id="agentApiKey"
-          type="password"
-          className="w-full bg-[#111] border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-          value={value.apiKey}
-          onChange={(e) => onChange({ ...value, apiKey: e.target.value })}
-          placeholder={t("agentForm.enterApiKey", "Enter agent API Key")}
-        />
+        <div className="relative">
+          <input
+            id="agentApiKey"
+            type="password"
+            className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+            value={value.apiKey}
+            onChange={(e) => onChange({ ...value, apiKey: e.target.value })}
+            placeholder={t("agentForm.enterApiKey", "Enter agent API Key")}
+          />
+          <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+        </div>
       </div>
       <div className="flex flex-col space-y-2">
         <div className="flex items-center justify-between gap-2">

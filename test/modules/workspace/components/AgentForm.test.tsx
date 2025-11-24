@@ -86,7 +86,7 @@ describe('AgentForm Component', () => {
     it('should render all form fields', () => {
       render(<AgentForm {...defaultProps} />);
 
-      expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      expect(screen.getByLabelText('Name *')).toBeInTheDocument();
       expect(screen.getByLabelText('Role')).toBeInTheDocument();
       expect(screen.getByLabelText('Background')).toBeInTheDocument();
       expect(screen.getByLabelText('API Key')).toBeInTheDocument();
@@ -131,7 +131,7 @@ describe('AgentForm Component', () => {
   describe('Form Data Changes', () => {
     it('should call onChange when name changes', () => {
       render(<AgentForm {...defaultProps} />);
-      const nameInput = screen.getByLabelText('Name');
+      const nameInput = screen.getByLabelText('Name *');
 
       fireEvent.change(nameInput, { target: { value: 'New Agent Name' } });
 
@@ -194,7 +194,7 @@ describe('AgentForm Component', () => {
     it('should show custom LLM selected message when model is chosen', () => {
       render(<AgentForm {...defaultProps} />);
 
-      expect(screen.getByText('Custom LLM selected for this agent')).toBeInTheDocument();
+      expect(screen.getByText('LLM selected for this agent')).toBeInTheDocument();
     });
 
     it('should show workspace LLM message when no model selected', () => {
@@ -389,7 +389,7 @@ describe('AgentForm Component', () => {
       render(<AgentForm {...defaultProps} value={emptyValue} />);
 
       // Should render without errors
-      expect(screen.getByLabelText('Name')).toHaveValue('');
+      expect(screen.getByLabelText('Name *')).toHaveValue('');
     });
   });
 
@@ -397,7 +397,7 @@ describe('AgentForm Component', () => {
     it('should have proper styling classes', () => {
       render(<AgentForm {...defaultProps} />);
 
-      const nameInput = screen.getByLabelText('Name');
+      const nameInput = screen.getByLabelText('Name *');
       expect(nameInput).toHaveClass('w-full', 'px-3', 'py-2', 'bg-zinc-800', 'border', 'border-zinc-700', 'rounded-md', 'text-white');
     });
 
