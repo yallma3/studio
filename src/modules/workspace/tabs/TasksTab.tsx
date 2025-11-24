@@ -38,7 +38,7 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
     x: number;
     y: number;
   } | null>(null);
-    // Context menu state reserved for future use
+  // Context menu state reserved for future use
 
   const handleTaskPositionChange = useCallback(
     (taskId: string, position: { x: number; y: number }) => {
@@ -151,22 +151,7 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
   return (
     <div className="space-y-6">
       <div className="bg-[#121212] rounded-md">
-        <div className="flex justify-between items-center p-6 border-b border-[#FFC72C]/50">
-          <div className="flex items-center">
-            <h2 className="text-xl font-bold text-white">
-              {t("workspaces.tasks", "Tasks")}
-            </h2>
-          </div>
-          <button
-            className="bg-[#FFC72C] hover:bg-[#E6B428] text-black px-3 py-1 rounded text-sm flex items-center gap-1"
-            onClick={handleAddTask}
-          >
-            <Plus size={16} />
-            {t("tasksTab.addTask", "Add Task")}
-          </button>
-        </div>
-
-        <div className="relative w-full h-[calc(100vh-200px)]">
+        <div className="relative w-full h-[calc(100vh)]">
           <TasksCanvas
             tasks={tasks}
             connections={connections}
@@ -176,7 +161,9 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
             onTaskEdit={handleEditTask}
             onTaskDelete={handleDeleteTask}
             onTaskAdd={handleCanvasAddTask}
+            onAddTaskButtonClick={handleAddTask}
           />
+          <button />
         </div>
       </div>
 
@@ -185,7 +172,11 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveTask}
         task={editingTask}
-        title={editingTask ? t("tasksTab.editTask", "Edit Task") : t("tasksTab.addNewTask", "Add New Task")}
+        title={
+          editingTask
+            ? t("tasksTab.editTask", "Edit Task")
+            : t("tasksTab.addNewTask", "Add New Task")
+        }
         tasksCount={tasks.length}
         agents={workspaceData.agents}
         workflows={workspaceData.workflows}

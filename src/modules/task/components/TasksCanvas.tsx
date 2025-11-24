@@ -2,11 +2,16 @@ import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Task } from "../types/types";
 import TaskNode from "./TaskNode";
 import ContextMenu, { type ContextMenuItem } from "./ContextMenu";
-import { Edit, Fullscreen, Plus, Trash2 } from "lucide-react";
+import {
+  MinusIcon,
+  Edit,
+  Fullscreen,
+  Maximize2Icon,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
-
 import { TaskConnection } from "../types/types";
-import { MinusIcon, PlusIcon } from "lucide-react";
 
 interface TasksCanvasProps {
   tasks?: Task[];
@@ -20,6 +25,7 @@ interface TasksCanvasProps {
   onTaskEdit?: (task: Task) => void;
   onTaskDelete?: (taskId: string) => void;
   onTaskAdd?: (position: { x: number; y: number }) => void;
+  onAddTaskButtonClick?: () => void;
 }
 
 interface ViewportState {
@@ -37,6 +43,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
   onTaskEdit,
   onTaskDelete,
   onTaskAdd,
+  onAddTaskButtonClick,
 }) => {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -319,10 +326,10 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
 
     // Calculate bounding box of all tasks
     const positions = tasks.map((task) => task.position);
-    const minX = Math.min(...positions.map((p) => p.x)) - 50;
-    const maxX = Math.max(...positions.map((p) => p.x)) + 350; // Account for node width
-    const minY = Math.min(...positions.map((p) => p.y)) - 50;
-    const maxY = Math.max(...positions.map((p) => p.y)) + 200; // Account for node height
+    const minX = Math.min(...positions.map((p) => p.x)) - 100;
+    const maxX = Math.max(...positions.map((p) => p.x)) + 550; // Account for node width
+    const minY = Math.min(...positions.map((p) => p.y)) - 100;
+    const maxY = Math.max(...positions.map((p) => p.y)) + 450; // Account for node height
 
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
@@ -332,8 +339,8 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     if (!rect) return;
 
     // Calculate zoom to fit content with some padding
-    const zoomX = (rect.width * 0.8) / contentWidth;
-    const zoomY = (rect.height * 0.8) / contentHeight;
+    const zoomX = (rect.width * 0.9) / contentWidth;
+    const zoomY = (rect.height * 0.9) / contentHeight;
     const fitZoom = Math.min(zoomX, zoomY, 1); // Don't zoom in beyond 100%
 
     // Center the content
@@ -354,7 +361,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     if (tasks.length > 0) {
       fitToView();
     }
-  }, [tasks, fitToView]);
+  }, []);
 
   const handleCanvasContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -530,19 +537,17 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
         </div>
       </div>
 
-      {/* Canvas Controls */}
-      <div className="absolute bottom-4 left-4 bg-gray-900 rounded-lg shadow-lg p-2 flex  gap-2">
+      {/* Add Task Button */}
+      <div className="fixed top-32 right-6 ">
         <button
-          onClick={() =>
-            setViewport((prev) => ({
-              ...prev,
-              zoom: Math.min(3, prev.zoom * 1.2),
-            }))
-          }
-          className="px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+          className="flex gap-1 items-center rounded-lg bg-yellow-500/90 px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-yellow-500"
+          onClick={onAddTaskButtonClick}
         >
-          <PlusIcon className="w-4" />
+          <Plus className="w-4" /> Add Task
         </button>
+      </div>
+      {/* Zoom Controls */}
+      <div className="fixed bottom-6 left-6 flex items-center gap-2">
         <button
           onClick={() =>
             setViewport((prev) => ({
@@ -550,14 +555,34 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
               zoom: Math.max(0.1, prev.zoom * 0.8),
             }))
           }
-          className="px-2 py-1  bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-yellow-600/30 bg-zinc-900/90 text-yellow-500 backdrop-blur-sm transition-all hover:border-yellow-500/50 hover:bg-zinc-800"
+          aria-label="Zoom out"
         >
-          <MinusIcon className="w-4" />
+          <MinusIcon className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() =>
+            setViewport((prev) => ({
+              ...prev,
+              zoom: Math.min(3, prev.zoom * 1.2),
+            }))
+          }
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-yellow-600/30 bg-zinc-900/90 text-yellow-500 backdrop-blur-sm transition-all hover:border-yellow-500/50 hover:bg-zinc-800"
+          aria-label="Zoom in"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+        <button
+          onClick={fitToView}
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-yellow-600/30 bg-zinc-900/90 text-yellow-500 backdrop-blur-sm transition-all hover:border-yellow-500/50 hover:bg-zinc-800"
+          aria-label="Fit to screen"
+        >
+          <Maximize2Icon className="h-4 w-4" />
         </button>
       </div>
 
       {/* Zoom Indicator */}
-      <div className="absolute bottom-4 right-4 bg-gray-900 rounded-lg shadow-lg px-3 py-2 text-sm text-gray-600">
+      <div className="fixed bottom-6 right-6 rounded-lg border border-yellow-600/30 bg-zinc-900/90 px-4 py-2 text-sm font-medium text-yellow-500/90 backdrop-blur-sm">
         {t("tasksCanvas.zoom", "Zoom")}: {Math.round(viewport.zoom * 100)}%
       </div>
 
