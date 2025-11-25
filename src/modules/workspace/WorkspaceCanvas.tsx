@@ -21,7 +21,7 @@ import {
   Play,
   MoreVertical,
   Download,
-  ArrowRight, 
+  ArrowRight,
 } from "lucide-react";
 import {
   saveWorkspaceToDefaultLocation,
@@ -98,7 +98,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   workspaceData: initialWorkspaceData,
   onReturnToHome,
 }) => {
-  const { t, i18n } = useTranslation(); 
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
   const initEvents: ConsoleEvent[] = [];
 
@@ -191,15 +191,16 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         // Handle resolved console input
         if (command.type === "console_input_resolved") {
           if (command.data && typeof command.data === "object") {
-            const { promptId, message } = command.data as { 
-              promptId: string; 
-              message: string 
+            const { promptId, message } = command.data as {
+              promptId: string;
+              message: string;
             };
-            console.log(`Console input resolved for prompt ${promptId}: ${message}`);
+            console.log(
+              `Console input resolved for prompt ${promptId}: ${message}`
+            );
             // The event is already added to console, just log confirmation
           }
         }
-
 
         if (command.type == "message") {
           if (command.data && typeof command.data === "object") {
@@ -274,7 +275,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     sidecarClient.onCommand(handleSidecarCommand);
     sidecarClient.onStatusChange(handleStatusChange);
 
-
     sidecarClient.onConsoleEvent((event: ConsoleEvent) => {
       console.log("Received workflow output event:", event);
       addEvent(event);
@@ -286,8 +286,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       // Clean up listeners to prevent duplicates
       sidecarClient.offCommand(handleSidecarCommand);
       sidecarClient.offStatusChange(handleStatusChange);
-      sidecarClient.offConsoleEvent(handleConsoleEvent);   
-     };
+      sidecarClient.offConsoleEvent(handleConsoleEvent);
+    };
   }, [workspaceData.id, handleRunWorkspace]);
 
   // Handle clicks outside dropdown to close it
@@ -350,7 +350,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       );
     } catch (error) {
       console.error("Error saving workspace:", error);
- showToast(t("workspaces.saveError", "Failed to save workspace"), "error");
+      showToast(t("workspaces.saveError", "Failed to save workspace"), "error");
     }
   };
 
@@ -389,7 +389,10 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   const handleExportWorkspace = async () => {
     console.log("Exporting workspace...");
     // TODO: Implement new export pipeline - exportWorkspaceAsJs is deprecated
-    showToast("Export functionality is temporarily disabled. Use save instead.", "error");
+    showToast(
+      "Export functionality is temporarily disabled. Use save instead.",
+      "error"
+    );
   };
 
   // Handle updating workspace data - only update state, don't save to file
@@ -428,8 +431,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     const newWorkflows = [...workspaceData.workflows, workflow];
     setWorkspaceData({ ...workspaceData, workflows: newWorkflows });
   };
-  const isRTL = i18n.language === 'ar';
-
+  const isRTL = i18n.language === "ar";
 
   return (
     <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
@@ -479,7 +481,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               </span>
             </div>
 
-
             {hasUnsavedChanges && (
               <div className="text-zinc-500 text-sm font-medium">
                 {t("workspaces.unsavedChanges", "Unsaved changes")}
@@ -522,7 +523,10 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                         onClick={handleExportWorkspace}
                       >
                         <Download className="h-4 w-4" />
-                        {t("workspaces.exportExecutable", "Export Executable Workspace")}
+                        {t(
+                          "workspaces.exportExecutable",
+                          "Export Executable Workspace"
+                        )}
                       </button>
                       {/* Future options can be added here */}
                     </div>
@@ -541,17 +545,20 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                 key: "workspace",
                 label: t("workspaces.workspace", "Workspace"),
               },
-              { 
-                key: "tasks", 
-                label: t("workspaces.tasks", "Tasks") 
+              {
+                key: "tasks",
+                label: t("workspaces.tasks", "Tasks"),
               },
-              { 
-                key: "agents", 
-                label: t("workspaces.subAgents", "Sub Agents") 
+              {
+                key: "agents",
+                label: t("workspaces.subAgents", "Sub Agents"),
               },
               {
                 key: "aiflows",
-                label: t("workspaces.toolsAndWorkflows", "Tools & AI Workflows"),
+                label: t(
+                  "workspaces.toolsAndWorkflows",
+                  "Tools & AI Workflows"
+                ),
               },
             ].map((tab) => (
               <button
@@ -570,10 +577,9 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         </div>
       </div>
 
-
       {/* Main canvas area */}
-      <div className="flex-1 bg-[#0a0a0a] overflow-hidden">
-        <div className="w-full h-full overflow-auto">
+      <div className="bg-[#0a0a0a]">
+        <div className="w-full h-full overflow-hidden">
           {/* Render the appropriate tab component based on activeTab */}
           {activeTab === "workspace" && (
             <WorkspaceTab
@@ -620,7 +626,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         </div>
       </div>
 
-
       {/* Toast notification */}
       {toast.visible && (
         <Toast
@@ -633,6 +638,5 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     </div>
   );
 };
-
 
 export default WorkspaceCanvas;
