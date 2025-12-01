@@ -22,6 +22,7 @@ import {
   MoreVertical,
   Download,
   ArrowRight,
+  StopCircleIcon,
 } from "lucide-react";
 import {
   saveWorkspaceToDefaultLocation,
@@ -153,6 +154,16 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
     sidecarClient.sendMessage(message);
   }, [workspaceData]);
+
+  const handleAbortWorkspace = React.useCallback(async () => {
+    const message: SidecarCommand = {
+      id: crypto.randomUUID(),
+      type: "abort_workspace",
+      timestamp: new Date().toISOString(),
+    };
+
+    sidecarClient.sendMessage(message);
+  }, []);
 
   // Check if workspace is imported (doesn't exist locally) and set unsaved flag
   useEffect(() => {
@@ -492,6 +503,12 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                 onClick={handleRunWorkspace}
               >
                 <Play className="h-4 w-4" />
+              </button>
+              <button
+                className="bg-red-600 hover:bg-red-500 text-white font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                onClick={handleAbortWorkspace}
+              >
+                <StopCircleIcon className="h-4 w-4" />
               </button>
               <button
                 className="bg-[#FFC72C] hover:bg-[#FFD700] text-black font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
