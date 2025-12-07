@@ -23,6 +23,8 @@ import {
   Download,
   ArrowRight,
   StopCircleIcon,
+  Terminal,
+  X,
 } from "lucide-react";
 import {
   saveWorkspaceToDefaultLocation,
@@ -38,6 +40,8 @@ import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
 import { getWorkflow } from "./utils/runtimeUtils";
 import { createJson } from "../flow/utils/flowRuntime";
+import { ConsoleProvider, useConsole } from "./context/ConsoleContext";
+import ConsolePanel from "./components/ConsolePanel";
 
 // Toast notification component
 interface ToastProps {
@@ -95,23 +99,33 @@ interface WorkspaceCanvasProps {
   onReturnToHome: () => void;
 }
 
-const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
+const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   workspaceData: initialWorkspaceData,
   onReturnToHome,
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
-  const initEvents: ConsoleEvent[] = [];
+  const { addEvent, events } = useConsole();
 
-  const [events, setEvents] = useState<ConsoleEvent[]>(initEvents);
+  // Console visibility state
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [isConsoleMaximized, setIsConsoleMaximized] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const prevEventsLengthRef = useRef(0);
 
-  const addEvent = (newEvent: ConsoleEvent) => {
-    try {
-      setEvents((prev) => [...prev, newEvent]);
-    } catch (error) {
-      console.error("Failed to add console event:", error);
+  useEffect(() => {
+    if (isConsoleOpen) {
+      setUnreadCount(0);
+    } else {
+      const diff = events.length - prevEventsLengthRef.current;
+      if (diff > 0) {
+        setUnreadCount((prev) => prev + diff);
+      } else if (events.length === 0) {
+        setUnreadCount(0);
+      }
     }
-  };
+    prevEventsLengthRef.current = events.length;
+  }, [events.length, isConsoleOpen]);
 
   // Maintain workspace data in state
   const [workspaceData, setWorkspaceData] =
@@ -188,37 +202,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   useEffect(() => {
     const handleSidecarCommand = async (command: SidecarCommand) => {
       try {
-        if (
-          command.type === "console_prompt" ||
-          command.type === "console_input"
-        ) {
-          if (command.data && typeof command.data === "object") {
-            const event = command.data as ConsoleEvent;
-            // Add to console display
-            addEvent(event);
-          }
-        }
-
-        // Handle resolved console input
-        if (command.type === "console_input_resolved") {
-          if (command.data && typeof command.data === "object") {
-            const { promptId, message } = command.data as {
-              promptId: string;
-              message: string;
-            };
-            console.log(
-              `Console input resolved for prompt ${promptId}: ${message}`
-            );
-            // The event is already added to console, just log confirmation
-          }
-        }
-
-        if (command.type == "message") {
-          if (command.data && typeof command.data === "object") {
-            addEvent(command.data as ConsoleEvent);
-          }
-        }
-
         if (command.type == "run_workflow") {
           console.log("Running Workflow", command.data);
           if (typeof command.data == "string") {
@@ -278,18 +261,9 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       setSidecarStatus(status);
     };
 
-    const handleConsoleEvent = (event: ConsoleEvent) => {
-      console.log("Received workflow output event:", event);
-      addEvent(event);
-    };
-
     sidecarClient.onCommand(handleSidecarCommand);
     sidecarClient.onStatusChange(handleStatusChange);
 
-    sidecarClient.onConsoleEvent((event: ConsoleEvent) => {
-      console.log("Received workflow output event:", event);
-      addEvent(event);
-    });
     // Set initial status
     setSidecarStatus(sidecarClient.getConnectionStatus());
 
@@ -297,9 +271,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       // Clean up listeners to prevent duplicates
       sidecarClient.offCommand(handleSidecarCommand);
       sidecarClient.offStatusChange(handleStatusChange);
-      sidecarClient.offConsoleEvent(handleConsoleEvent);
     };
-  }, [workspaceData.id, handleRunWorkspace]);
+  }, [workspaceData.id, handleRunWorkspace, addEvent]);
 
   // Handle clicks outside dropdown to close it
   useEffect(() => {
@@ -499,27 +472,30 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
             )}
             <div className="flex items-center gap-2">
               <button
-                className="bg-green-600 hover:bg-green-500 text-white font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                className="bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 p-2 rounded-md transition-all"
                 onClick={handleRunWorkspace}
+                title={t("common.run", "Run")}
               >
                 <Play className="h-4 w-4" />
               </button>
               <button
-                className="bg-red-600 hover:bg-red-500 text-white font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 p-2 rounded-md transition-all"
                 onClick={handleAbortWorkspace}
+                title={t("common.stop", "Stop")}
               >
                 <StopCircleIcon className="h-4 w-4" />
               </button>
               <button
-                className="bg-[#FFC72C] hover:bg-[#FFD700] text-black font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                className="bg-[#FFC72C]/10 hover:bg-[#FFC72C]/20 text-[#FFC72C] border border-[#FFC72C]/20 p-2 rounded-md transition-all"
                 onClick={handleSaveWorkspace}
+                title={t("common.save", "Save")}
               >
                 <Save className="h-4 w-4" />
               </button>
               {/* Dropdown Menu */}
               <div className="relative" ref={dropdownRef}>
                 <button
-                  className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium p-2 rounded flex items-center transition-colors"
+                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border border-zinc-700 p-2 rounded-md transition-all"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -593,7 +569,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
           </div>
         </div>
       </div>
-
       {/* Main canvas area */}
       <div className="bg-[#0a0a0a]">
         <div className="w-full h-full overflow-hidden">
@@ -602,20 +577,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
             <WorkspaceTab
               workspaceData={workspaceData}
               onUpdateWorkspace={handleUpdateWorkspace}
-              events={events}
-              onClearEvents={() => setEvents([])}
-              onAddEvent={addEvent}
-              onSendConsoleInput={(event: ConsoleEvent) => {
-                // Send console input via WebSocket
-                const message: SidecarCommand = {
-                  id: crypto.randomUUID(),
-                  type: "console_input",
-                  workspaceId: workspaceData.id,
-                  data: event,
-                  timestamp: new Date().toISOString(),
-                };
-                sidecarClient.sendMessage(message);
-              }}
             />
           )}
           {activeTab === "tasks" && (
@@ -642,7 +603,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
           )}
         </div>
       </div>
-
       {/* Toast notification */}
       {toast.visible && (
         <Toast
@@ -652,7 +612,60 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
           isClosing={toast.isClosing}
         />
       )}
+      {/* Floating Console Button */}
+      <button
+        onClick={() => setIsConsoleOpen(true)}
+        className={`fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 ${
+          isConsoleOpen
+            ? "opacity-0 scale-0 pointer-events-none"
+            : "opacity-100 scale-100 bg-[#FFC72C] text-black hover:bg-[#E6B328]"
+        }`}
+        title={t("workspaceTab.openConsole", "Open Console")}
+      >
+        <Terminal className="h-6 w-6" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm border border-[#0a0a0a]">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </button>
+      {/* Floating Console Panel */}
+      <div
+        className={`fixed z-50 shadow-2xl rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900 flex flex-col transition-all duration-300 origin-bottom-right ${
+          isConsoleOpen
+            ? "opacity-100 scale-100 translate-y-0 translate-x-0"
+            : "opacity-0 scale-0 translate-y-12 translate-x-12 pointer-events-none"
+        } ${
+          isConsoleMaximized
+            ? "bottom-6 right-6 w-[calc(100vw-3rem)] h-[calc(100vh-3rem)]"
+            : "bottom-6 right-6 w-[600px] h-[500px]"
+        }`}
+      >
+        {/* Close Button Overlay */}
+        <button
+          onClick={() => setIsConsoleOpen(false)}
+          className="absolute top-3 right-3 z-[60] text-zinc-400 hover:text-white bg-zinc-800/50 hover:bg-zinc-700 rounded-full p-1 transition-colors"
+          title={t("common.close", "Close")}
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <ConsolePanel
+          isMaximized={isConsoleMaximized}
+          onToggleMaximize={() => setIsConsoleMaximized(!isConsoleMaximized)}
+          onClose={() => setIsConsoleOpen(false)}
+          className="h-full border-0"
+        />
+      </div>{" "}
     </div>
+  );
+};
+
+const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = (props) => {
+  return (
+    <ConsoleProvider workspaceId={props.workspaceData.id}>
+      <WorkspaceCanvasContent {...props} />
+    </ConsoleProvider>
   );
 };
 
