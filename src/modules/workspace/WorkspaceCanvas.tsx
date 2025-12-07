@@ -112,6 +112,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   const [isConsoleMaximized, setIsConsoleMaximized] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const prevEventsLengthRef = useRef(0);
+  const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
     if (isConsoleOpen) {
@@ -157,7 +158,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   // Expose a stable run handler used by effects and UI controls
   const handleRunWorkspace = React.useCallback(async () => {
     if (!workspaceData) return;
-
+    setIsRunning(true);
     const message: SidecarCommand = {
       id: crypto.randomUUID(),
       type: "run_workspace",
@@ -170,6 +171,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   }, [workspaceData]);
 
   const handleAbortWorkspace = React.useCallback(async () => {
+    setIsRunning(false);
     const message: SidecarCommand = {
       id: crypto.randomUUID(),
       type: "abort_workspace",
@@ -201,7 +203,11 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   // Set up sidecar client command listener and status listener
   useEffect(() => {
     const handleSidecarCommand = async (command: SidecarCommand) => {
+      console.log("Received sidecar command:", command);
       try {
+        if (command.type === "workspace_stopped") {
+          setIsRunning(false);
+        }
         if (command.type == "run_workflow") {
           console.log("Running Workflow", command.data);
           if (typeof command.data == "string") {
@@ -471,20 +477,23 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
               </div>
             )}
             <div className="flex items-center gap-2">
-              <button
-                className="bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 p-2 rounded-md transition-all"
-                onClick={handleRunWorkspace}
-                title={t("common.run", "Run")}
-              >
-                <Play className="h-4 w-4" />
-              </button>
-              <button
-                className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 p-2 rounded-md transition-all"
-                onClick={handleAbortWorkspace}
-                title={t("common.stop", "Stop")}
-              >
-                <StopCircleIcon className="h-4 w-4" />
-              </button>
+              {!isRunning ? (
+                <button
+                  className="bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 p-2 rounded-md transition-all"
+                  onClick={handleRunWorkspace}
+                  title={t("common.run", "Run")}
+                >
+                  <Play className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 p-2 rounded-md transition-all animate-pulse"
+                  onClick={handleAbortWorkspace}
+                  title={t("common.stop", "Stop")}
+                >
+                  <StopCircleIcon className="h-4 w-4" />
+                </button>
+              )}
               <button
                 className="bg-[#FFC72C]/10 hover:bg-[#FFC72C]/20 text-[#FFC72C] border border-[#FFC72C]/20 p-2 rounded-md transition-all"
                 onClick={handleSaveWorkspace}

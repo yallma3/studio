@@ -16,7 +16,8 @@ export interface SidecarCommand {
     | "ping"
     | "pong"
     | "workflow_output"
-    | "abort_workspace";
+    | "abort_workspace"
+    | "workspace_stopped";
 
   workspaceId?: string;
   data?: unknown;
