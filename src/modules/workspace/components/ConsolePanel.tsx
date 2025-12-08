@@ -21,6 +21,7 @@ import {
   Minimize,
   FileText,
   Send,
+  X,
 } from "lucide-react";
 
 import {
@@ -44,6 +45,7 @@ interface ConsolePanelProps {
 const ConsolePanel: React.FC<ConsolePanelProps> = ({
   isMaximized = false,
   onToggleMaximize,
+  onClose,
   className = "",
 }) => {
   const { t } = useTranslation();
@@ -180,8 +182,17 @@ const ConsolePanel: React.FC<ConsolePanelProps> = ({
               </Button>
             )}
 
-            {/* Close/Minimize to button (optional here if we have the X in parent, but good to have) */}
-            {/* Use the parent's X button instead for closing to avoid clutter, as requested "make them minimal" */}
+            {/* Close Button */}
+            {onClose && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClose}
+                className="h-9 w-9 p-0 border-0 bg-transparent text-zinc-400 hover:text-white hover:bg-zinc-800"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </CardHeader>
         {/* ... content ... */}

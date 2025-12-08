@@ -128,6 +128,15 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
     prevEventsLengthRef.current = events.length;
   }, [events.length, isConsoleOpen]);
 
+  // Handle active tab changes for console visibility
+  useEffect(() => {
+    if (activeTab === "workspace") {
+      setIsConsoleOpen(true);
+    } else {
+      setIsConsoleOpen(false);
+    }
+  }, [activeTab]);
+
   // Maintain workspace data in state
   const [workspaceData, setWorkspaceData] =
     useState<WorkspaceData>(initialWorkspaceData);
@@ -426,7 +435,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   return (
     <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm relative z-10">
+      <div className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm relative z-10 flex-none">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
             <button
@@ -501,6 +510,25 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
               >
                 <Save className="h-4 w-4" />
               </button>
+
+              {/* Console Toggle Button */}
+              <button
+                className={`relative border p-2 rounded-md transition-all ${
+                  isConsoleOpen
+                    ? "bg-zinc-700 text-white border-zinc-600"
+                    : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700 hover:text-white"
+                }`}
+                onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+                title={t("workspaceTab.openConsole", "Open Console")}
+              >
+                <Terminal className="h-4 w-4" />
+                {!isConsoleOpen && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-600 text-[8px] font-bold text-white shadow-sm border border-[#0a0a0a]">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
               {/* Dropdown Menu */}
               <div className="relative" ref={dropdownRef}>
                 <button
@@ -578,40 +606,75 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
           </div>
         </div>
       </div>
-      {/* Main canvas area */}
-      <div className="bg-[#0a0a0a]">
-        <div className="w-full h-full overflow-hidden">
-          {/* Render the appropriate tab component based on activeTab */}
-          {activeTab === "workspace" && (
-            <WorkspaceTab
-              workspaceData={workspaceData}
-              onUpdateWorkspace={handleUpdateWorkspace}
-            />
-          )}
-          {activeTab === "tasks" && (
-            <TasksTab
-              workspaceData={workspaceData}
-              onTabChanges={handleTabChanges}
-              onChange={({ tasks, connections }) =>
-                handleUpdateWorkspace({ tasks, connections })
+
+      {/* Main Body with Content and Console */}
+      <div className="flex-1 relative overflow-hidden">
+        {/* Main canvas area */}
+        <div
+          className="bg-[#0a0a0a] absolute top-0 left-0 right-0 overflow-hidden transition-all duration-300 ease-in-out"
+          style={{
+            bottom: isConsoleOpen ? (isConsoleMaximized ? "100%" : "50%") : "0",
+          }}
+        >
+          <div className="w-full h-full overflow-hidden">
+            {/* Render the appropriate tab component based on activeTab */}
+            {activeTab === "workspace" && (
+              <WorkspaceTab
+                workspaceData={workspaceData}
+                onUpdateWorkspace={handleUpdateWorkspace}
+              />
+            )}
+            {activeTab === "tasks" && (
+              <TasksTab
+                workspaceData={workspaceData}
+                onTabChanges={handleTabChanges}
+                onChange={({ tasks, connections }) =>
+                  handleUpdateWorkspace({ tasks, connections })
+                }
+              />
+            )}
+            {activeTab === "agents" && (
+              <AgentsTab
+                workspaceData={workspaceData}
+                onTabChanges={handleTabChanges}
+                handleImportWorkflow={handleImportWorkflow}
+              />
+            )}
+            {activeTab === "aiflows" && (
+              <AiFlowsTab
+                workspaceData={workspaceData}
+                onTabChanges={handleTabChanges}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Docked Console Panel */}
+        <div
+          className={`bg-zinc-900 border-zinc-800 absolute bottom-0 left-0 right-0 flex flex-col transition-all duration-300 ease-in-out z-20 ${
+            isConsoleOpen ? "border-t" : "border-t-0"
+          }`}
+          style={{
+            height: isConsoleOpen
+              ? isConsoleMaximized
+                ? "100%"
+                : "55%"
+              : "0px",
+          }}
+        >
+          <div className="w-full h-full overflow-hidden">
+            <ConsolePanel
+              isMaximized={isConsoleMaximized}
+              onToggleMaximize={() =>
+                setIsConsoleMaximized(!isConsoleMaximized)
               }
+              onClose={() => setIsConsoleOpen(false)}
+              className="h-full border-0"
             />
-          )}
-          {activeTab === "agents" && (
-            <AgentsTab
-              workspaceData={workspaceData}
-              onTabChanges={handleTabChanges}
-              handleImportWorkflow={handleImportWorkflow}
-            />
-          )}
-          {activeTab === "aiflows" && (
-            <AiFlowsTab
-              workspaceData={workspaceData}
-              onTabChanges={handleTabChanges}
-            />
-          )}
+          </div>
         </div>
       </div>
+
       {/* Toast notification */}
       {toast.visible && (
         <Toast
@@ -621,51 +684,6 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
           isClosing={toast.isClosing}
         />
       )}
-      {/* Floating Console Button */}
-      <button
-        onClick={() => setIsConsoleOpen(true)}
-        className={`fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 ${
-          isConsoleOpen
-            ? "opacity-0 scale-0 pointer-events-none"
-            : "opacity-100 scale-100 bg-[#FFC72C] text-black hover:bg-[#E6B328]"
-        }`}
-        title={t("workspaceTab.openConsole", "Open Console")}
-      >
-        <Terminal className="h-6 w-6" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm border border-[#0a0a0a]">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        )}
-      </button>
-      {/* Floating Console Panel */}
-      <div
-        className={`fixed z-50 shadow-2xl rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900 flex flex-col transition-all duration-300 origin-bottom-right ${
-          isConsoleOpen
-            ? "opacity-100 scale-100 translate-y-0 translate-x-0"
-            : "opacity-0 scale-0 translate-y-12 translate-x-12 pointer-events-none"
-        } ${
-          isConsoleMaximized
-            ? "bottom-6 right-6 w-[calc(100vw-3rem)] h-[calc(100vh-3rem)]"
-            : "bottom-6 right-6 w-[600px] h-[500px]"
-        }`}
-      >
-        {/* Close Button Overlay */}
-        <button
-          onClick={() => setIsConsoleOpen(false)}
-          className="absolute top-3 right-3 z-[60] text-zinc-400 hover:text-white bg-zinc-800/50 hover:bg-zinc-700 rounded-full p-1 transition-colors"
-          title={t("common.close", "Close")}
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        <ConsolePanel
-          isMaximized={isConsoleMaximized}
-          onToggleMaximize={() => setIsConsoleMaximized(!isConsoleMaximized)}
-          onClose={() => setIsConsoleOpen(false)}
-          className="h-full border-0"
-        />
-      </div>{" "}
     </div>
   );
 };
