@@ -13,9 +13,9 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Settings, Key, Bell, Server, GitBranch } from 'lucide-react';
+import { Settings, Bell, Server, GitBranch } from 'lucide-react';
 
-type SettingsSection = 'general' | 'api-keys' | 'notifications' | 'advanced' | 'ai-workflows';
+type SettingsSection = 'general'  | 'notifications' | 'advanced' | 'ai-workflows';
 
 interface SettingsSidebarProps {
   activeSection: SettingsSection;
@@ -30,7 +30,6 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
 
   const menuItems = [
     { id: 'general' as const, icon: Settings, label: t('settings.general', 'General') },
-    { id: 'api-keys' as const, icon: Key, label: t('settings.apiKeys', 'Keys Vault') },
     { id: 'ai-workflows' as const, icon: GitBranch, label: t('settings.aiWorkflows', 'AI Workflows') },
     { id: 'notifications' as const, icon: Bell, label: t('settings.notifications', 'Notifications') },
     { id: 'advanced' as const, icon: Server, label: t('settings.advanced', 'Advanced') },

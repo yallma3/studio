@@ -22,7 +22,10 @@ import SettingsView from "./settings/SettingsView";
 import { useTranslation } from "react-i18next";
 import { Settings, Bell } from "lucide-react";
 import { WorkspaceData } from "../modules/workspace/types/Types";
-import { saveWorkspaceToDefaultLocation } from "../modules/workspace/utils/storageUtils";
+import { 
+  saveWorkspaceToDefaultLocation,
+  loadWorkspaceState 
+} from "../modules/workspace/utils/storageUtils";
 
 interface HomeScreenProps {
   onOpenFromFile: () => void;
@@ -31,13 +34,18 @@ interface HomeScreenProps {
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
-  onOpenFromFile,
   onOpenFromPath,
   onOpenWorkspace: onOpenWorkspace,
 }) => {
   const { t } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
   const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false);
+  
+  // State for handling encrypted workspace imports
+  const [encryptedWorkspaceData, setEncryptedWorkspaceData] = useState<{
+    content: string;
+    path: string;
+  } | null>(null);
 
   const onCreateWorkspace = () => {
     console.log(isCreateWizardOpen);
@@ -63,6 +71,37 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       }
     } catch (error) {
       console.error("Error saving workspace:", error);
+    }
+  };
+
+  // Enhanced handleOpenFromFile to detect encrypted workspaces
+  const handleOpenFromFile = async () => {
+    try {
+      const result = await loadWorkspaceState();
+      
+      if (result.encrypted && result.encryptedContent) {
+        // Workspace is encrypted, pass to WorkspaceHome to prompt for password
+        setEncryptedWorkspaceData({
+          content: result.encryptedContent,
+          path: result.path,
+        });
+      } else if (result.workspaceState) {
+        // Workspace is not encrypted, open directly
+        if (onOpenWorkspace) {
+          onOpenWorkspace(result.workspaceState);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading workspace:", error);
+      // You could add a toast notification here
+    }
+  };
+
+  // Handle workspace opening and clear encrypted data
+  const handleOpenWorkspace = (workspace: WorkspaceData) => {
+    setEncryptedWorkspaceData(null); // Clear the encrypted data after handling
+    if (onOpenWorkspace) {
+      onOpenWorkspace(workspace);
     }
   };
 
@@ -104,9 +143,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           <main className="relative z-10">
             <WorkspaceHome
               onCreateNew={onCreateWorkspace}
-              onOpenFromFile={onOpenFromFile}
+              onOpenFromFile={handleOpenFromFile}
               onOpenFromPath={onOpenFromPath}
-              onOpenWorkspace={onOpenWorkspace}
+              onOpenWorkspace={handleOpenWorkspace}
+              encryptedWorkspaceData={encryptedWorkspaceData}
             />
           </main>
 

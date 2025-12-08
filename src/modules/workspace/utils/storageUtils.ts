@@ -23,6 +23,7 @@ import {
 import { join } from "@tauri-apps/api/path";
 import { appDataDir } from "@tauri-apps/api/path";
 import { WorkspaceData } from "../types/Types";
+import { EncryptedWorkspace, hasEncryptedApiKeys } from "./encryptionUtils";
 
 export interface WorkspaceState {
   workspaceId: string;
@@ -36,7 +37,9 @@ export interface WorkspaceState {
 
 export interface WorkspaceSaveResult {
   path: string;
-  workspaceState: WorkspaceData;
+  workspaceState: WorkspaceData | null;
+  encrypted?: boolean;
+  encryptedContent?: string;
 }
 
 // Generate clean, short random string
@@ -100,7 +103,62 @@ const regenerateWorkspaceIds = async (
   };
 };
 
-// Save workspace state to a file
+// Check if workspace content is encrypted (either full or API keys)
+export const isWorkspaceEncrypted = (content: string): boolean => {
+  try {
+    const parsed = JSON.parse(content);
+    
+    // Full encryption - has wrapper with encrypted=true
+    if (parsed.encrypted === true && parsed.algorithm === "AES") {
+      return true;
+    }
+    
+    // API keys encryption - check for enc_ prefixed fields
+    if (hasEncryptedApiKeys(parsed)) {
+      return true;
+    }
+    
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+// Save encrypted workspace to file
+// Handles both full encryption (EncryptedWorkspace) and API key encryption (WorkspaceData with enc_ fields)
+export const saveEncryptedWorkspace = async (
+  encryptedData: EncryptedWorkspace | WorkspaceData,
+  workspaceName: string
+): Promise<string> => {
+  try {
+    // Use .yallma3 extension for all workspaces
+    const cleanName = workspaceName.replace(/\.yallma3$/, '');
+    const fileName = `${cleanName}.yallma3`;
+
+    const savePath = await save({
+      title: "Export workspace",
+      defaultPath: fileName,
+      filters: [
+        {
+          name: "yaLLma3 workspace",
+          extensions: ["yallma3"],
+        },
+      ],
+    });
+
+    if (!savePath) {
+      throw new Error("Export operation cancelled");
+    }
+
+    await writeTextFile(savePath, JSON.stringify(encryptedData, null, 2));
+    return savePath;
+  } catch (error) {
+    console.error("Error saving encrypted workspace:", error);
+    throw error;
+  }
+};
+
+// Save workspace state to a file (unencrypted)
 export const saveWorkspaceState = async (
   workspaceState: WorkspaceData
 ): Promise<WorkspaceSaveResult> => {
@@ -138,6 +196,7 @@ export const saveWorkspaceState = async (
     return {
       path: savePath,
       workspaceState: updatedState,
+      encrypted: false,
     };
   } catch (error) {
     console.error("Error exporting workspace:", error);
@@ -181,6 +240,7 @@ export const saveWorkspace = async (
     return {
       path: savePath,
       workspaceState: updatedState,
+      encrypted: false,
     };
   } catch (error) {
     console.error("Error saving workspace:", error);
@@ -209,6 +269,19 @@ export const loadWorkspaceState = async (): Promise<WorkspaceSaveResult> => {
 
     // Read and parse the file
     const fileContent = await readTextFile(filePath);
+
+    // Check if encrypted (either full or API keys)
+    if (isWorkspaceEncrypted(fileContent)) {
+      // Return special marker to trigger password prompt in UI
+      return {
+        path: filePath,
+        workspaceState: null,
+        encrypted: true,
+        encryptedContent: fileContent,
+      };
+    }
+
+    // Regular unencrypted flow
     const originalWorkspaceData = JSON.parse(fileContent) as WorkspaceData;
 
     // Regenerate all IDs for the imported workspace
@@ -219,6 +292,7 @@ export const loadWorkspaceState = async (): Promise<WorkspaceSaveResult> => {
     return {
       path: filePath,
       workspaceState: workspaceStateWithNewIds,
+      encrypted: false,
     };
   } catch (error) {
     console.error("Error loading workspace:", error);
@@ -270,8 +344,10 @@ export const loadAllWorkspaces = async (): Promise<WorkspaceData[]> => {
         try {
           const filePath = await join(workspacesDirPath, entry.name);
           const fileContent = await readTextFile(filePath);
-          const workspaceData = JSON.parse(fileContent) as WorkspaceData;
-          workspaces.push(workspaceData);
+          if (!isWorkspaceEncrypted(fileContent)) {
+            const workspaceData = JSON.parse(fileContent) as WorkspaceData;
+            workspaces.push(workspaceData);
+          }
         } catch (error) {
           console.error(`Error loading workspace ${entry.name}:`, error);
         }
@@ -430,6 +506,7 @@ export const saveWorkspaceToDefaultLocation = async (
     return {
       path: filePath,
       workspaceState: updatedState,
+      encrypted: false,
     };
   } catch (error) {
     console.error("Error saving workspace to default location:", error);
