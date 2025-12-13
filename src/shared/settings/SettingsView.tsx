@@ -15,10 +15,9 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import SettingsSidebar from './SettingsSidebar';
-import ApiKeysSection from './Tabs/ApiKeysTab';
 import AIWorkflowsSection from './Tabs/AIWorkflowsTab';
 
-type SettingsSection = 'general' | 'api-keys' | 'notifications' | 'advanced' | 'ai-workflows';
+type SettingsSection = 'general'  | 'notifications' | 'advanced' | 'ai-workflows';
 
 interface SettingsViewProps {
   onClose: () => void;
@@ -30,8 +29,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'api-keys':
-        return <ApiKeysSection />;
       case 'ai-workflows':
         return <AIWorkflowsSection />;
       case 'notifications':

@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import TasksCanvas from '@/modules/task/components/TasksCanvas';
 import { Task, TaskConnection } from '@/modules/task/types/types';
 
@@ -189,21 +189,21 @@ describe('TasksCanvas Component', () => {
       expect(paths?.length).toBeGreaterThan(0);
     });
 
-    it('should render zoom controls', () => {
+    it('should render zoom controls', async () => {
       render(<TasksCanvas {...defaultProps} />);
-      expect(screen.getByText('Zoom: 100%')).toBeInTheDocument();
+      // Wait for fitToView effect to complete
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      // Check that zoom display exists (value will vary due to fitToView)
+      const zoomText = screen.getByText(/Zoom:/);
+      expect(zoomText.textContent).toMatch(/Zoom: \d+%/);
     });
 
     it('should render zoom buttons', () => {
       render(<TasksCanvas {...defaultProps} />);
-      // Find zoom buttons by their SVG content
-      const zoomButtons = document.querySelectorAll('button');
-      const zoomInButton = Array.from(zoomButtons).find(btn =>
-        btn.querySelector('svg.lucide-plus')
-      );
-      const zoomOutButton = Array.from(zoomButtons).find(btn =>
-        btn.querySelector('svg.lucide-minus')
-      );
+      const zoomInButton = screen.getByLabelText('Zoom in');
+      const zoomOutButton = screen.getByLabelText('Zoom out');
       expect(zoomInButton).toBeInTheDocument();
       expect(zoomOutButton).toBeInTheDocument();
     });
@@ -241,66 +241,120 @@ describe('TasksCanvas Component', () => {
   });
 
   describe('Zooming', () => {
-    it('should zoom in when zoom in button is clicked', () => {
+    it('should zoom in when zoom in button is clicked', async () => {
       render(<TasksCanvas {...defaultProps} />);
-      const zoomButtons = document.querySelectorAll('button');
-      const zoomInButton = Array.from(zoomButtons).find(btn =>
-        btn.querySelector('svg.lucide-plus')
-      );
+      
+      // Wait for initial fitToView to complete
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      
+      // Get initial zoom value
+      const initialZoomText = screen.getByText(/Zoom:/);
+      const initialZoomMatch = initialZoomText.textContent?.match(/(\d+)%/);
+      const initialZoom = initialZoomMatch ? parseInt(initialZoomMatch[1]) : 100;
+      
+      const zoomInButton = screen.getByLabelText('Zoom in');
 
-      fireEvent.click(zoomInButton!);
-      expect(screen.getByText(/Zoom: 120%/)).toBeInTheDocument();
+      fireEvent.click(zoomInButton);
+      
+      // Check zoom increased
+      await waitFor(() => {
+        const newZoomText = screen.getByText(/Zoom:/);
+        const newZoomMatch = newZoomText.textContent?.match(/(\d+)%/);
+        const newZoom = newZoomMatch ? parseInt(newZoomMatch[1]) : 100;
+        expect(newZoom).toBeGreaterThan(initialZoom);
+      });
     });
 
-    it('should zoom out when zoom out button is clicked', () => {
+    it('should zoom out when zoom out button is clicked', async () => {
       render(<TasksCanvas {...defaultProps} />);
-      const zoomButtons = document.querySelectorAll('button');
-      const zoomOutButton = Array.from(zoomButtons).find(btn =>
-        btn.querySelector('svg.lucide-minus')
-      );
-
-      fireEvent.click(zoomOutButton!);
-      expect(screen.getByText(/Zoom: 80%/)).toBeInTheDocument();
+      
+      // Wait for initial fitToView to complete
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      
+      // Get initial zoom value
+      const initialZoomText = screen.getByText(/Zoom:/);
+      const initialZoomMatch = initialZoomText.textContent?.match(/(\d+)%/);
+      const initialZoom = initialZoomMatch ? parseInt(initialZoomMatch[1]) : 100;
+      
+      const zoomOutButton = screen.getByLabelText('Zoom out');
+      fireEvent.click(zoomOutButton);
+      
+      // Check zoom decreased
+      await waitFor(() => {
+        const newZoomText = screen.getByText(/Zoom:/);
+        const newZoomMatch = newZoomText.textContent?.match(/(\d+)%/);
+        const newZoom = newZoomMatch ? parseInt(newZoomMatch[1]) : 100;
+        expect(newZoom).toBeLessThan(initialZoom);
+      });
     });
 
-    it('should handle mouse wheel zooming', () => {
+    it('should handle mouse wheel zooming', async () => {
       render(<TasksCanvas {...defaultProps} />);
       const canvas = document.querySelector('[data-canvas-container]');
+      
+      // Wait for initial render
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      
+      // Get initial zoom
+      const initialZoomText = screen.getByText(/Zoom:/);
+      const initialZoomMatch = initialZoomText.textContent?.match(/(\d+)%/);
+      const initialZoom = initialZoomMatch ? parseInt(initialZoomMatch[1]) : 100;
 
       fireEvent.wheel(canvas!, { deltaY: -100 }); // Zoom in
-      expect(screen.getByText(/Zoom: 1[0-9][0-9]%/).textContent).toMatch(/Zoom: 1[0-9][0-9]%/);
-
-      fireEvent.wheel(canvas!, { deltaY: 100 }); // Zoom out
-      // Just check that zoom changed (exact value may vary due to floating point)
-      expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      
+      // Check zoom increased
+      await waitFor(() => {
+        const zoomText = screen.getByText(/Zoom:/);
+        const zoomMatch = zoomText.textContent?.match(/(\d+)%/);
+        const newZoom = zoomMatch ? parseInt(zoomMatch[1]) : 100;
+        expect(newZoom).toBeGreaterThan(initialZoom);
+      });
     });
 
-    it('should limit zoom to minimum value', () => {
+    it('should limit zoom to minimum value', async () => {
       render(<TasksCanvas {...defaultProps} />);
-      const zoomButtons = document.querySelectorAll('button');
-      const zoomOutButton = Array.from(zoomButtons).find(btn =>
-        btn.querySelector('svg.lucide-minus')
-      );
+      
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      
+      const zoomOutButton = screen.getByLabelText('Zoom out');
 
-      // Click zoom out multiple times
-      for (let i = 0; i < 20; i++) {
-        fireEvent.click(zoomOutButton!);
+      // Click zoom out many times to reach minimum
+      for (let i = 0; i < 30; i++) {
+        fireEvent.click(zoomOutButton);
       }
-      expect(screen.getByText(/Zoom: 10%/)).toBeInTheDocument();
+      
+      // Should be clamped at 10%
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom: 10%/)).toBeInTheDocument();
+      });
     });
 
-    it('should limit zoom to maximum value', () => {
+    it('should limit zoom to maximum value', async () => {
       render(<TasksCanvas {...defaultProps} />);
-      const zoomButtons = document.querySelectorAll('button');
-      const zoomInButton = Array.from(zoomButtons).find(btn =>
-        btn.querySelector('svg.lucide-plus')
-      );
+      
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      
+      const zoomInButton = screen.getByLabelText('Zoom in');
 
-      // Click zoom in multiple times
-      for (let i = 0; i < 20; i++) {
-        fireEvent.click(zoomInButton!);
+      // Click zoom in many times to reach maximum
+      for (let i = 0; i < 30; i++) {
+        fireEvent.click(zoomInButton);
       }
-      expect(screen.getByText(/Zoom: 300%/)).toBeInTheDocument();
+      
+      // Should be clamped at 300%
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom: 300%/)).toBeInTheDocument();
+      });
     });
   });
 
@@ -330,7 +384,7 @@ describe('TasksCanvas Component', () => {
       const outputSocket = screen.getByTestId('socket-102');
 
       fireEvent.mouseDown(outputSocket);
-      // The actual connection logic is complex and hard to test in isolation
+       // The actual connection logic is complex and hard to test in isolation
       // Just verify the socket interaction works
       expect(outputSocket).toBeInTheDocument();
     });
@@ -411,7 +465,7 @@ describe('TasksCanvas Component', () => {
       const fitToViewButton = screen.getByTestId('context-menu-item-1');
       fireEvent.click(fitToViewButton);
 
-      // The viewport should be updated (hard to test exact values without complex mocking)
+       // The viewport should be updated (hard to test exact values without complex mocking)
       // Just verify the context menu interaction works
       expect(mockOnTaskAdd).not.toHaveBeenCalled(); // Should not trigger add task
     });
