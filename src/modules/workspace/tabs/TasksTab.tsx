@@ -18,6 +18,7 @@ import TaskModal from "../../task/components/TaskModal";
 // import { ContextMenuItem } from "../../task/components/ContextMenu";
 import { Task, TaskConnection } from "../../task/types/types";
 import { useTranslation } from "react-i18next";
+
 interface TasksTabProps {
   workspaceData: WorkspaceData;
   onTabChanges?: () => void;
