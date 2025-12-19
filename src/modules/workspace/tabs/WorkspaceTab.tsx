@@ -567,7 +567,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                             : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
                         }`}
                       >
-                        {t("workspaceTab.keysVault", "Keys Vault")}
+                        {t("workspaceTab.environmentVariables", "Environment Variables")}
                       </button>
                     </div>
 
@@ -603,18 +603,18 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                             options={[
                               {
                                 value: "",
-                                label: t("workspaceTab.selectSavedKey", "Select a saved key..."),
+                                label: t("workspaceTab.selectEnvVar", "Select an environment variable..."),
                                 disabled: true,
                               },
-                              { value: "key1", label: "Groq API Key" },
-                              { value: "key2", label: "OpenAI API Key" },
-                              { value: "key3", label: "Anthropic API Key" },
-                              { value: "key4", label: "Google API Key" },
+                              ...(workspaceData.environmentVariables || []).map((envVar) => ({
+                                value: envVar.value,
+                                label: envVar.key,
+                              })),
                             ]}
-                            label={t("workspaceTab.savedKey", "Saved Key")}
+                            label={t("workspaceTab.environmentVariable", "Environment Variable")}
                           />
                           <p className="text-xs text-zinc-400 mt-1">
-                            {t("workspaceTab.savedKeyInfo", "Use a previously saved API key from your vault")}
+                            {t("workspaceTab.envVarInfo", "Select an API key from your environment variables")}
                           </p>
                         </div>
                       )}

@@ -37,3 +37,8 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+/* Hide Edge / IE built‑in password reveal + clear icons */
+::-ms-reveal,
+::-ms-clear {
+  display: none;
+}

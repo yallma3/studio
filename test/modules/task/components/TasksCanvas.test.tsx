@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import TasksCanvas from '@/modules/task/components/TasksCanvas';
 import { Task, TaskConnection } from '@/modules/task/types/types';
 
@@ -189,15 +189,21 @@ describe('TasksCanvas Component', () => {
       expect(paths?.length).toBeGreaterThan(0);
     });
 
-    it('should render zoom controls', () => {
+    it('should render zoom controls', async () => {
       render(<TasksCanvas {...defaultProps} />);
-      expect(screen.getByText(/Zoom.*%/)).toBeInTheDocument();
+      // Wait for fitToView effect to complete
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      // Check that zoom display exists (value will vary due to fitToView)
+      const zoomText = screen.getByText(/Zoom:/);
+      expect(zoomText.textContent).toMatch(/Zoom: \d+%/);
     });
 
     it('should render zoom buttons', () => {
       render(<TasksCanvas {...defaultProps} />);
-      const zoomInButton = document.getElementById('tasks-canvas-zoom-in-button');
-      const zoomOutButton = document.getElementById('tasks-canvas-zoom-out-button');
+      const zoomInButton = screen.getByLabelText('Zoom in');
+      const zoomOutButton = screen.getByLabelText('Zoom out');
       expect(zoomInButton).toBeInTheDocument();
       expect(zoomOutButton).toBeInTheDocument();
     });
@@ -235,54 +241,120 @@ describe('TasksCanvas Component', () => {
   });
 
   describe('Zooming', () => {
-    it('should zoom in when zoom in button is clicked', () => {
+    it('should zoom in when zoom in button is clicked', async () => {
       render(<TasksCanvas {...defaultProps} />);
-      const zoomInButton = document.getElementById('tasks-canvas-zoom-in-button') as HTMLButtonElement;
+      
+      // Wait for initial fitToView to complete
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      
+      // Get initial zoom value
+      const initialZoomText = screen.getByText(/Zoom:/);
+      const initialZoomMatch = initialZoomText.textContent?.match(/(\d+)%/);
+      const initialZoom = initialZoomMatch ? parseInt(initialZoomMatch[1]) : 100;
+      
+      const zoomInButton = screen.getByLabelText('Zoom in');
 
       fireEvent.click(zoomInButton);
-      expect(screen.getByText(/Zoom.*100%/)).toBeInTheDocument();
+      
+      // Check zoom increased
+      await waitFor(() => {
+        const newZoomText = screen.getByText(/Zoom:/);
+        const newZoomMatch = newZoomText.textContent?.match(/(\d+)%/);
+        const newZoom = newZoomMatch ? parseInt(newZoomMatch[1]) : 100;
+        expect(newZoom).toBeGreaterThan(initialZoom);
+      });
     });
 
-    it('should zoom out when zoom out button is clicked', () => {
+    it('should zoom out when zoom out button is clicked', async () => {
       render(<TasksCanvas {...defaultProps} />);
-      const zoomOutButton = document.getElementById('tasks-canvas-zoom-out-button') as HTMLButtonElement;
-
+      
+      // Wait for initial fitToView to complete
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      
+      // Get initial zoom value
+      const initialZoomText = screen.getByText(/Zoom:/);
+      const initialZoomMatch = initialZoomText.textContent?.match(/(\d+)%/);
+      const initialZoom = initialZoomMatch ? parseInt(initialZoomMatch[1]) : 100;
+      
+      const zoomOutButton = screen.getByLabelText('Zoom out');
       fireEvent.click(zoomOutButton);
-      expect(screen.getByText(/Zoom.*66%/)).toBeInTheDocument();
+      
+      // Check zoom decreased
+      await waitFor(() => {
+        const newZoomText = screen.getByText(/Zoom:/);
+        const newZoomMatch = newZoomText.textContent?.match(/(\d+)%/);
+        const newZoom = newZoomMatch ? parseInt(newZoomMatch[1]) : 100;
+        expect(newZoom).toBeLessThan(initialZoom);
+      });
     });
 
-    it('should handle mouse wheel zooming', () => {
+    it('should handle mouse wheel zooming', async () => {
       render(<TasksCanvas {...defaultProps} />);
       const canvas = document.querySelector('[data-canvas-container]');
+      
+      // Wait for initial render
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      
+      // Get initial zoom
+      const initialZoomText = screen.getByText(/Zoom:/);
+      const initialZoomMatch = initialZoomText.textContent?.match(/(\d+)%/);
+      const initialZoom = initialZoomMatch ? parseInt(initialZoomMatch[1]) : 100;
 
       fireEvent.wheel(canvas!, { deltaY: -100 }); // Zoom in
-      expect(screen.getByText(/Zoom.*\d+%/)).toBeInTheDocument();
-
-      fireEvent.wheel(canvas!, { deltaY: 100 }); // Zoom out
-      // Just check that zoom changed (exact value may vary due to floating point)
-      expect(screen.getByText(/Zoom.*\d+%/)).toBeInTheDocument();
+      
+      // Check zoom increased
+      await waitFor(() => {
+        const zoomText = screen.getByText(/Zoom:/);
+        const zoomMatch = zoomText.textContent?.match(/(\d+)%/);
+        const newZoom = zoomMatch ? parseInt(zoomMatch[1]) : 100;
+        expect(newZoom).toBeGreaterThan(initialZoom);
+      });
     });
 
-    it('should limit zoom to minimum value', () => {
+    it('should limit zoom to minimum value', async () => {
       render(<TasksCanvas {...defaultProps} />);
-      const zoomOutButton = document.getElementById('tasks-canvas-zoom-out-button') as HTMLButtonElement;
+      
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      
+      const zoomOutButton = screen.getByLabelText('Zoom out');
 
-      // Click zoom out multiple times
-      for (let i = 0; i < 20; i++) {
+      // Click zoom out many times to reach minimum
+      for (let i = 0; i < 30; i++) {
         fireEvent.click(zoomOutButton);
       }
-      expect(screen.getByText(/Zoom.*10%/)).toBeInTheDocument();
+      
+      // Should be clamped at 10%
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom: 10%/)).toBeInTheDocument();
+      });
     });
 
-    it('should limit zoom to maximum value', () => {
+    it('should limit zoom to maximum value', async () => {
       render(<TasksCanvas {...defaultProps} />);
-      const zoomInButton = document.getElementById('tasks-canvas-zoom-in-button') as HTMLButtonElement;
+      
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom:/)).toBeInTheDocument();
+      });
+      
+      const zoomInButton = screen.getByLabelText('Zoom in');
 
-      // Click zoom in multiple times
-      for (let i = 0; i < 20; i++) {
+      // Click zoom in many times to reach maximum
+      for (let i = 0; i < 30; i++) {
         fireEvent.click(zoomInButton);
       }
-      expect(screen.getByText(/Zoom.*300%/)).toBeInTheDocument();
+      
+      // Should be clamped at 300%
+      await waitFor(() => {
+        expect(screen.getByText(/Zoom: 300%/)).toBeInTheDocument();
+      });
     });
   });
 
@@ -312,7 +384,7 @@ describe('TasksCanvas Component', () => {
       const outputSocket = screen.getByTestId('socket-102');
 
       fireEvent.mouseDown(outputSocket);
-      // The actual connection logic is complex and hard to test in isolation
+       // The actual connection logic is complex and hard to test in isolation
       // Just verify the socket interaction works
       expect(outputSocket).toBeInTheDocument();
     });
@@ -393,7 +465,7 @@ describe('TasksCanvas Component', () => {
       const fitToViewButton = screen.getByTestId('context-menu-item-1');
       fireEvent.click(fitToViewButton);
 
-      // The viewport should be updated (hard to test exact values without complex mocking)
+       // The viewport should be updated (hard to test exact values without complex mocking)
       // Just verify the context menu interaction works
       expect(mockOnTaskAdd).not.toHaveBeenCalled(); // Should not trigger add task
     });

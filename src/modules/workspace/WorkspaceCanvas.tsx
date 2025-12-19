@@ -27,16 +27,21 @@ import {
   saveWorkspaceToDefaultLocation,
   workspaceFileExists,
   saveWorkspaceState,
+  saveEncryptedWorkspace,
 } from "./utils/storageUtils";
 import { sidecarClient, SidecarCommand } from "../api/SidecarClient";
 import { useTranslation } from "react-i18next";
 
 import { WorkspaceData, ConsoleEvent, Workflow } from "./types/Types";
 
-import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
+import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab, EnvironmentVariablesTab } from "./tabs";
 
 import { getWorkflow } from "./utils/runtimeUtils";
 import { createJson } from "../flow/utils/flowRuntime";
+
+import { encryptWorkspaceData, encryptWorkspaceApiKeys } from "./utils/encryptionUtils";
+import { PasswordModal } from "./components/PasswordModal";
+import { EncryptionChoiceModal } from "./components/EncryptionChoiceModal";
 
 // Toast notification component
 interface ToastProps {
@@ -54,7 +59,7 @@ const Toast: React.FC<ToastProps> = ({
 }) => {
   React.useEffect(() => {
     if (!isClosing) {
-      // Auto-hide toast after a delay if not manually closing
+            // Auto-hide toast after a delay if not manually closing
       const autoHideTimer = setTimeout(() => {
         onClose();
       }, 2000); // Show for 2 seconds
@@ -87,7 +92,7 @@ const Toast: React.FC<ToastProps> = ({
   );
 };
 
-type WorkspaceTabSelector = "workspace" | "tasks" | "agents" | "aiflows";
+type WorkspaceTabSelector = "workspace" | "tasks" | "agents" | "aiflows" | "environment";
 
 interface WorkspaceCanvasProps {
   workspaceData: WorkspaceData;
@@ -136,6 +141,13 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Encryption modal states
+  const [showEncryptionChoice, setShowEncryptionChoice] = useState<boolean>(false);
+  const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
+  const [passwordModalMode, setPasswordModalMode] = useState<'encrypt' | 'decrypt'>('encrypt');
+  const [passwordError, setPasswordError] = useState<string>("");
+  const [encryptionMode, setEncryptionMode] = useState<'full' | 'apikeys' | null>(null);
+
   // Sidecar connection status
   const [sidecarStatus, setSidecarStatus] = useState<string>("disconnected");
 
@@ -160,12 +172,12 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       try {
         const exists = await workspaceFileExists(workspaceData);
         if (!exists) {
-          // Workspace doesn't exist locally, likely imported - mark as unsaved
+                    // Workspace doesn't exist locally, likely imported - mark as unsaved
           setHasUnsavedChanges(true);
         }
       } catch (error) {
         console.error("Error checking workspace existence:", error);
-        // On error, assume it's imported and mark as unsaved
+                // On error, assume it's imported and mark as unsaved
         setHasUnsavedChanges(true);
       }
     };
@@ -183,7 +195,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         ) {
           if (command.data && typeof command.data === "object") {
             const event = command.data as ConsoleEvent;
-            // Add to console display
+                        // Add to console display
             addEvent(event);
           }
         }
@@ -198,7 +210,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
             console.log(
               `Console input resolved for prompt ${promptId}: ${message}`
             );
-            // The event is already added to console, just log confirmation
+              // The event is already added to console, just log confirmation
           }
         }
 
@@ -279,11 +291,11 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       console.log("Received workflow output event:", event);
       addEvent(event);
     });
-    // Set initial status
+        // Set initial status
     setSidecarStatus(sidecarClient.getConnectionStatus());
 
     return () => {
-      // Clean up listeners to prevent duplicates
+            // Clean up listeners to prevent duplicates
       sidecarClient.offCommand(handleSidecarCommand);
       sidecarClient.offStatusChange(handleStatusChange);
       sidecarClient.offConsoleEvent(handleConsoleEvent);
@@ -337,11 +349,11 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
       // Update state
       setWorkspaceData(updatedWorkspace);
-
+      
       // Save to storage using workspace ID
       await saveWorkspaceToDefaultLocation(updatedWorkspace);
 
-      // Clear unsaved changes flag
+            // Clear unsaved changes flag
       setHasUnsavedChanges(false);
 
       showToast(
@@ -354,10 +366,35 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     }
   };
 
-  // Handle exporting workspace to file
+  // Handle showing encryption choice modal
   const handleShareWorkspace = async () => {
     if (!workspaceData) return;
+    setShowEncryptionChoice(true);
+    setIsDropdownOpen(false);
+  };
 
+  // Handle choosing full encryption
+  const handleShareWithEncryption = () => {
+    setShowEncryptionChoice(false);
+    setEncryptionMode('full');
+    setPasswordModalMode('encrypt');
+    setPasswordError("");
+    setShowPasswordModal(true);
+  };
+
+  // Handle choosing sensitive data only encryption
+  const handleShareWithSensitiveDataEncryption = () => {
+    setShowEncryptionChoice(false);
+    setEncryptionMode('apikeys');
+    setPasswordModalMode('encrypt');
+    setPasswordError("");
+    setShowPasswordModal(true);
+  };
+
+  // Handle choosing unencrypted export
+  const handleShareWithoutEncryption = async () => {
+    setShowEncryptionChoice(false);
+    
     try {
       const updatedWorkspace = {
         ...workspaceData,
@@ -368,7 +405,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
       // Update state
       setWorkspaceData(updatedWorkspace);
-
+      
       // Export to file with workspace name as default filename
       await saveWorkspaceState(updatedWorkspace);
 
@@ -376,7 +413,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         t("workspaces.exported", "Workspace exported successfully"),
         "success"
       );
-      setIsDropdownOpen(false); // Close dropdown after export
     } catch (error) {
       console.error("Error exporting workspace:", error);
       showToast(
@@ -384,6 +420,73 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         "error"
       );
     }
+  };
+
+  // Handle password confirmation for encryption
+  const handlePasswordConfirmed = async (password: string) => {
+    try {
+      const updatedWorkspace = {
+        ...workspaceData,
+        updatedAt: Date.now(),
+      };
+
+      if (encryptionMode === 'apikeys') {
+        // For sensitive data mode: encrypt only the API keys and sensitive env vars, return plain workspace
+        const workspaceWithEncryptedKeys = encryptWorkspaceApiKeys(updatedWorkspace, password);
+        
+        // Save as normal workspace file (no wrapper, just enc_ prefixed keys)
+        await saveEncryptedWorkspace(
+          workspaceWithEncryptedKeys,
+          updatedWorkspace.name || updatedWorkspace.id
+        );
+        
+        setShowPasswordModal(false);
+        setPasswordError("");
+        setEncryptionMode(null);
+        
+        showToast(
+          t("workspaces.sensitiveDataEncrypted", "Workspace exported with encrypted sensitive data"),
+          "success"
+        );
+      } else {
+        // For full encryption mode: encrypt entire workspace
+        const encryptedData = encryptWorkspaceData(updatedWorkspace, password);
+        
+        // Save with wrapper
+        await saveEncryptedWorkspace(
+          encryptedData,
+          updatedWorkspace.name || updatedWorkspace.id
+        );
+        
+        setShowPasswordModal(false);
+        setPasswordError("");
+        setEncryptionMode(null);
+        
+        showToast(
+          t("workspaces.encryptedExported", "Encrypted workspace exported successfully"),
+          "success"
+        );
+      }
+    } catch (error) {
+      console.error("Error encrypting workspace:", error);
+      setPasswordError(
+        error instanceof Error 
+          ? error.message 
+          : t("workspaces.encryptError", "Failed to encrypt workspace")
+      );
+    }
+  };
+
+  // Handle canceling password modal
+  const handlePasswordCancel = () => {
+    setShowPasswordModal(false);
+    setPasswordError("");
+    setEncryptionMode(null);
+  };
+
+  // Handle canceling encryption choice
+  const handleEncryptionChoiceCancel = () => {
+    setShowEncryptionChoice(false);
   };
 
   const handleExportWorkspace = async () => {
@@ -406,9 +509,9 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         updatedAt: Date.now(),
       };
 
-      // Update state to reflect changes immediately in UI
+  // Update state to reflect changes immediately in UI
       setWorkspaceData(updatedWorkspace);
-
+      
       // Mark that there are unsaved changes
       setHasUnsavedChanges(true);
     } catch (error) {
@@ -528,7 +631,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                           "Export Executable Workspace"
                         )}
                       </button>
-                      {/* Future options can be added here */}
+                       {/* Future options can be added here */}
                     </div>
                   </div>
                 )}
@@ -560,6 +663,10 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
                   "Tools & AI Workflows"
                 ),
               },
+              {
+                key: "environment",
+                label: t("workspaces.environment", "Environment Variables"),
+              },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -580,7 +687,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       {/* Main canvas area */}
       <div className="bg-[#0a0a0a]">
         <div className="w-full h-full overflow-hidden">
-          {/* Render the appropriate tab component based on activeTab */}
+         {/* Render the appropriate tab component based on activeTab */}
           {activeTab === "workspace" && (
             <WorkspaceTab
               workspaceData={workspaceData}
@@ -589,7 +696,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               onClearEvents={() => setEvents([])}
               onAddEvent={addEvent}
               onSendConsoleInput={(event: ConsoleEvent) => {
-                // Send console input via WebSocket
+                 // Send console input via WebSocket
                 const message: SidecarCommand = {
                   id: crypto.randomUUID(),
                   type: "console_input",
@@ -623,8 +730,35 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               onTabChanges={handleTabChanges}
             />
           )}
+        {activeTab === "environment" && (
+          <EnvironmentVariablesTab
+            workspaceData={workspaceData}
+            onTabChanges={handleTabChanges}
+            onUpdateWorkspace={handleUpdateWorkspace}
+          />
+        )}
         </div>
       </div>
+
+      {/* Encryption Choice Modal */}
+      {showEncryptionChoice && (
+        <EncryptionChoiceModal
+          onChooseEncrypted={handleShareWithEncryption}
+          onChooseUnencrypted={handleShareWithoutEncryption}
+          onChooseSensitiveDataOnly={handleShareWithSensitiveDataEncryption}
+          onCancel={handleEncryptionChoiceCancel}
+        />
+      )}
+
+      {/* Password Modal */}
+      {showPasswordModal && (
+        <PasswordModal
+          mode={passwordModalMode}
+          onConfirm={handlePasswordConfirmed}
+          onCancel={handlePasswordCancel}
+          error={passwordError}
+        />
+      )}
 
       {/* Toast notification */}
       {toast.visible && (
