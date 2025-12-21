@@ -39,6 +39,7 @@ interface ConsolePanelProps {
   isMaximized?: boolean;
   onToggleMaximize?: () => void;
   onClose?: () => void;
+  canClose?: boolean;
   className?: string;
 }
 
@@ -46,6 +47,7 @@ const ConsolePanel: React.FC<ConsolePanelProps> = ({
   isMaximized = false,
   onToggleMaximize,
   onClose,
+  canClose = true,
   className = "",
 }) => {
   const { t } = useTranslation();
@@ -188,7 +190,10 @@ const ConsolePanel: React.FC<ConsolePanelProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={onClose}
-                className="h-9 w-9 p-0 border-0 bg-transparent text-zinc-400 hover:text-white hover:bg-zinc-800"
+                disabled={!canClose}
+                className={`h-9 w-9 p-0 border-0 bg-transparent text-zinc-400 hover:text-white hover:bg-zinc-800 transition-opacity ${
+                  !canClose ? "opacity-30 cursor-not-allowed" : ""
+                }`}
               >
                 <X className="h-4 w-4" />
               </Button>

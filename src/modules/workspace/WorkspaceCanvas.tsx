@@ -785,6 +785,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                 setIsConsoleMaximized(!isConsoleMaximized)
               }
               onClose={() => setIsConsoleOpen(false)}
+              canClose={activeTab !== "workspace"}
               className="h-full border-0"
             />
           </div>
