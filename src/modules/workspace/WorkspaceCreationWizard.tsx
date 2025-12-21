@@ -805,42 +805,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         {t("workspaces.apiKey", "API Key")}
                       </label>
 
-                      {/* API Key Options */}
-                      <div className="flex gap-2 mb-4">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setWorkspaceData((prev) => ({
-                              ...prev,
-                              useSavedCredentials: false,
-                            }))
-                          }
-                          className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
-                            !workspaceData.useSavedCredentials
-                              ? "bg-yellow-400 text-black font-medium"
-                              : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
-                          }`}
-                        >
-                          {t("workspaces.newKey", "New Key")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setWorkspaceData((prev) => ({
-                              ...prev,
-                              useSavedCredentials: true,
-                            }))
-                          }
-                          className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
-                            workspaceData.useSavedCredentials
-                              ? "bg-yellow-400 text-black font-medium"
-                              : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
-                          }`}
-                        >
-                          {t("workspaces.keysVault", "Keys Vault")}
-                        </button>
-                      </div>
-
                       {/* API Key Input Container with fixed height */}
                       <div className="h-24">
                         {" "}
@@ -1785,14 +1749,14 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         </span>
                         <span className="text-white">
                           {workspaceData.mainLLM?.model
-                            ? workspaceData.useSavedCredentials
+                            ? workspaceData.apiKey
                               ? t(
                                   "workspaces.usingSavedCredentials",
-                                  "Using saved credentials"
+                                  "Using API key"
                                 )
                               : t(
-                                  "workspaces.usingCustomApiKey",
-                                  "Using custom API key"
+                                  "workspaces.noKeySpecified",
+                                  "No key specified"
                                 )
                             : t(
                                 "workspaceTab.noModelSelected",

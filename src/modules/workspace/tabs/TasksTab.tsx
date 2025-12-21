@@ -162,7 +162,6 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
             onTaskAdd={handleCanvasAddTask}
             onAddTaskButtonClick={handleAddTask}
           />
-          <button />
         </div>
       </div>
 

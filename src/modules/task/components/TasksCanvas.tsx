@@ -549,6 +549,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
       {/* Zoom Controls */}
       <div className="fixed bottom-6 left-6 flex items-center gap-2">
         <button
+          id="tasks-canvas-zoom-out-button"
           onClick={() =>
             setViewport((prev) => ({
               ...prev,
@@ -561,6 +562,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
           <MinusIcon className="h-4 w-4" />
         </button>
         <button
+          id="tasks-canvas-zoom-in-button"
           onClick={() =>
             setViewport((prev) => ({
               ...prev,
@@ -573,6 +575,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
           <Plus className="h-4 w-4" />
         </button>
         <button
+          id="tasks-canvas-fit-to-view-button"
           onClick={fitToView}
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-yellow-600/30 bg-zinc-900/90 text-yellow-500 backdrop-blur-sm transition-all hover:border-yellow-500/50 hover:bg-zinc-800"
           aria-label="Fit to screen"

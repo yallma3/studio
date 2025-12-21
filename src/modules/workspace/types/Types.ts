@@ -60,7 +60,14 @@ export interface LLMOption {
   provider: "Groq" | "OpenAI" | "OpenRouter" | "Gemini" | "Anthropic";
   model: LLMModel;
 }
-
+export interface EnvironmentVariable {
+  id: string;
+  key: string;
+  value: string;
+  sensitive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
 export interface WorkspaceData {
   id: string;
   createdAt: number;
@@ -85,6 +92,8 @@ export interface WorkspaceData {
 
   //MCP tools:
   mcpTools: Tool[];
+  // Environment Variables
+  environmentVariables?: EnvironmentVariable[]; 
 }
 
 export interface ConsoleEvent {

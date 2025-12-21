@@ -184,10 +184,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
           >
             {t("agentForm.background", "Background")}
             <TooltipHelper
-              text={t(
-                "agentForm.backgroundTooltip",
-                "This will be used to prompt the agent during task execution"
-              )}
+              text={t("agentForm.backgroundTooltip", "This will be used to prompt the agent during task execution")}
               position="bottom"
             />
           </label>
@@ -395,7 +392,10 @@ const AgentForm: React.FC<AgentFormProps> = ({
         </div>
         <p className="text-xs text-zinc-400 mt-2">
           {value.llm.model
-            ? t("agentForm.customLLMSelected", "LLM selected for this agent")
+            ? t(
+                "agentForm.customLLMSelected",
+                "LLM selected for this agent"
+              )
             : t(
                 "agentForm.usingWorkspaceLLM",
                 `Using workspace's main LLM: ${
@@ -423,49 +423,65 @@ const AgentForm: React.FC<AgentFormProps> = ({
           <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
         </div>
       </div>
+
       <div className="flex flex-col space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <label className="block text-sm font-medium text-zinc-300 mb-1">
-            {t("agentForm.tools", "Tools")}
-          </label>
-          <button
-            onClick={() => setShowToolPopup(true)}
-            className="px-2 py-1 text-xs bg-[#FFC72C] hover:bg-[#E6B428] text-black rounded-md transition-colors flex items-center gap-1"
-            type="button"
-          >
-            <Plus size={16} />
-            {t("agentForm.addTool", "Add Tool")}
-          </button>
-        </div>
-        {value.tools.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {value.tools.map((tool) => (
-              <div
-                key={tool.name}
-                className="flex items-center gap-1 bg-zinc-800/30 rounded-md px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-700/50 transition-colors"
-              >
-                <span>{tool.name}</span>
-                <button
-                  className="text-zinc-500 hover:text-red-400 cursor-pointer rounded-sm p-0.5"
-                  onClick={() => handleRemoveTool(tool.name)}
-                  title={t("agentForm.removeTool", "Remove tool")}
-                  type="button"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            ))}
+        <label className="block text-sm font-medium text-zinc-300 mb-1">
+          {t("agentForm.tools", "Tools")}
+        </label>
+
+        {value.tools.length === 0 && (
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-zinc-400">
+              {t(
+                "agentForm.noToolsSelected",
+                "No tools selected - Press the plus button to add tools"
+              )}
+            </p>
+            <button
+              onClick={() => setShowToolPopup(true)}
+              type="button"
+              className="px-3 py-1.5 text-xs bg-zinc-700 hover:bg-zinc-600 text-white rounded-md transition-colors flex items-center gap-1"
+            >
+              <Plus size={16} />
+              {t("agentForm.addTool", "Add Tool")}
+            </button>
           </div>
         )}
-        {value.tools.length === 0 && (
-          <p className="text-sm text-zinc-400">
-            {t(
-              "agentForm.noToolsSelected",
-              "No tools selected - Press the plus button to add tools"
-            )}
-          </p>
+
+        {value.tools.length > 0 && (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {value.tools.map((tool, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-1 bg-zinc-800/30 rounded-md px-2 py-1 border border-zinc-700"
+                >
+                  <span className="text-sm text-zinc-200">{tool.name}</span>
+                  <button
+                    onClick={() => handleRemoveTool(tool.name)}
+                    className="text-zinc-400 hover:text-red-500 transition-colors"
+                    title={t("agentForm.removeTool", "Remove tool")}
+                    type="button"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowToolPopup(true)}
+                type="button"
+                className="px-3 py-1.5 text-xs bg-zinc-700 hover:bg-zinc-600 text-white rounded-md transition-colors flex items-center gap-1"
+              >
+                <Plus size={16} />
+                {t("agentForm.addTool", "Add Tool")}
+              </button>
+            </div>
+          </>
         )}
       </div>
+      
       <ToolSelectionPopup
         isOpen={showToolPopup}
         onClose={() => setShowToolPopup(false)}

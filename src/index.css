@@ -85,3 +85,8 @@
 .console-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #3f3f46 !important;
 }
+/* Hide Edge / IE built‑in password reveal + clear icons */
+::-ms-reveal,
+::-ms-clear {
+  display: none;
+}

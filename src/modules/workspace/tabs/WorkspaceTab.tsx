@@ -359,49 +359,49 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
               </div>
             </div>
 
-            {/* API Key Section - Only show when editing */}
-            {isEditing && formValues.mainLLM?.model && (
-              <>
-                <div className="col-span-2">
-                  <label className="text-sm text-zinc-400 block mb-2">
-                    {t("workspaceTab.apiConfiguration", "API Configuration")}
-                  </label>
-
-                  {/* API Key Options */}
-                  <div className="flex gap-2 mb-4">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormValues((prev) => ({
-                          ...prev,
-                          useSavedCredentials: false,
-                        }))
-                      }
-                      className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
-                        !formValues.useSavedCredentials
-                          ? "bg-[#FFC72C] text-black font-medium"
-                          : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
-                      }`}
-                    >
-                      {t("workspaceTab.newKey", "New Key")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormValues((prev) => ({
-                          ...prev,
-                          useSavedCredentials: true,
-                        }))
-                      }
-                      className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
-                        formValues.useSavedCredentials
-                          ? "bg-[#FFC72C] text-black font-medium"
-                          : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
-                      }`}
-                    >
-                      {t("workspaceTab.keysVault", "Keys Vault")}
-                    </button>
-                  </div>
+              {/* API Key Section - Only show when editing */}
+              {isEditing && formValues.mainLLM?.model && (
+                <>
+                  <div className="col-span-2">
+                    <label className="text-sm text-zinc-400 block mb-2">
+                      {t("workspaceTab.apiConfiguration", "API Configuration")}
+                    </label>
+                    
+                    {/* API Key Options */}
+                    <div className="flex gap-2 mb-4">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormValues((prev) => ({
+                            ...prev,
+                            useSavedCredentials: false,
+                          }))
+                        }
+                        className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
+                          !formValues.useSavedCredentials
+                            ? "bg-[#FFC72C] text-black font-medium"
+                            : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
+                        }`}
+                      >
+                        {t("workspaceTab.newKey", "New Key")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormValues((prev) => ({
+                            ...prev,
+                            useSavedCredentials: true,
+                          }))
+                        }
+                        className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
+                          formValues.useSavedCredentials
+                            ? "bg-[#FFC72C] text-black font-medium"
+                            : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
+                        }`}
+                      >
+                        {t("workspaceTab.environmentVariables", "Environment Variables")}
+                      </button>
+                    </div>
 
                   <div className="h-24">
                     {!formValues.useSavedCredentials ? (
@@ -411,14 +411,28 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                             type="password"
                             name="apiKey"
                             value={formValues.apiKey}
-                            onChange={handleInputChange}
-                            className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                            placeholder={t(
-                              "workspaceTab.enterApiKey",
-                              "Enter API key"
-                            )}
+                            onChange={(value) =>
+                              setFormValues((prev) => ({
+                                ...prev,
+                                apiKey: value,
+                              }))
+                            }
+                            options={[
+                              {
+                                value: "",
+                                label: t("workspaceTab.selectEnvVar", "Select an environment variable..."),
+                                disabled: true,
+                              },
+                              ...(workspaceData.environmentVariables || []).map((envVar) => ({
+                                value: envVar.value,
+                                label: envVar.key,
+                              })),
+                            ]}
+                            label={t("workspaceTab.environmentVariable", "Environment Variable")}
                           />
-                          <Key className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+                          <p className="text-xs text-zinc-400 mt-1">
+                            {t("workspaceTab.envVarInfo", "Select an API key from your environment variables")}
+                          </p>
                         </div>
                         <p className="text-xs text-zinc-400 mt-1">
                           {t(

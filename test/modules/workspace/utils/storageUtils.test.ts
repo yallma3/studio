@@ -185,6 +185,7 @@ describe('saveWorkspaceState', () => {
         ...workspaceData,
         updatedAt: expect.any(Number),
       }),
+      encrypted: false,
     });
   });
 
@@ -247,7 +248,7 @@ describe('saveWorkspace', () => {
       defaultPath: 'ws-123456abc.yallma3',
       filters: [{ name: 'yaLLma3 workspace', extensions: ['yallma3'] }],
     });
-    expect(result.workspaceState.updatedAt).toBeGreaterThan(workspaceData.updatedAt);
+    expect(result.workspaceState!.updatedAt).toBeGreaterThan(workspaceData.updatedAt);
   });
 });
 
@@ -270,8 +271,8 @@ describe('loadWorkspaceState', () => {
       filters: [{ name: 'yaLLma3 workspace', extensions: ['yallma3'] }],
     });
     expect(result.path).toBe('/path/to/workspace.yallma3');
-    expect(result.workspaceState.id).not.toBe('original-id'); // ID should be regenerated
-    expect(result.workspaceState.createdAt).toBeGreaterThan(originalData.createdAt); // Creation time updated
+    expect(result.workspaceState!.id).not.toBe('original-id'); // ID should be regenerated
+    expect(result.workspaceState!.createdAt).toBeGreaterThan(originalData.createdAt); // Creation time updated
   });
 
   it('should throw error when no file selected', async () => {
@@ -554,7 +555,7 @@ describe('saveWorkspaceToDefaultLocation', () => {
     const result = await saveWorkspaceToDefaultLocation(workspaceData);
 
     expect(result.path).toBe('/app/data/Workspaces/ws-123456abc.yallma3');
-    expect(result.workspaceState.updatedAt).toBeGreaterThan(workspaceData.updatedAt);
+    expect(result.workspaceState!.updatedAt).toBeGreaterThan(workspaceData.updatedAt);
     expect(writeTextFile).toHaveBeenCalledWith(
       '/app/data/Workspaces/ws-123456abc.yallma3',
       expect.any(String)

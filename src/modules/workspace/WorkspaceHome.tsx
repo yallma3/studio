@@ -24,12 +24,15 @@ import {
 } from "./utils/storageUtils";
 import { WorkspaceData } from "./types/Types";
 import { ConfirmationDialog } from "../../shared/components/ui/ConfirmationDialog";
+import { PasswordModal } from "./components/PasswordModal";
+import { decryptWorkspaceData } from "./utils/encryptionUtils";
 
 interface WorkspacesTabProps {
   onCreateNew: () => void;
   onOpenFromFile: () => void;
   onOpenFromPath: (path: string, id: string) => void;
   onOpenWorkspace?: (workspaceData: WorkspaceData) => void;
+  encryptedWorkspaceData?: { content: string; path: string } | null;
 }
 
 // Main screen to create or import Workspaces
@@ -38,6 +41,7 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
   onOpenFromFile,
   onOpenFromPath,
   onOpenWorkspace,
+  encryptedWorkspaceData,
 }) => {
   const { t } = useTranslation();
   const [workspaces, setWorkspaces] = useState<WorkspaceData[]>([]);
@@ -56,6 +60,14 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
     workspaceId: "",
     workspaceName: "",
   });
+
+  // Password modal state for decryption
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [pendingEncryptedWorkspace, setPendingEncryptedWorkspace] = useState<{
+    content: string;
+    path: string;
+  } | null>(null);
 
   // Load workspaces and preferences when component mounts
   useEffect(() => {
@@ -80,6 +92,14 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
 
     loadWorkspaces();
   }, []);
+
+  // Check if encrypted workspace data was passed from parent
+  useEffect(() => {
+    if (encryptedWorkspaceData) {
+      setPendingEncryptedWorkspace(encryptedWorkspaceData);
+      setShowPasswordModal(true);
+    }
+  }, [encryptedWorkspaceData]);
 
   // Handle opening a workspace
   const handleOpenWorkspace = async (workspace: WorkspaceData) => {
@@ -165,6 +185,41 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
   // Cancel deletion
   const cancelDeleteWorkspace = () => {
     setConfirmDelete({ isOpen: false, workspaceId: "", workspaceName: "" });
+  };
+
+  // Handle password confirmation for decryption
+  const handlePasswordConfirmed = async (password: string) => {
+    if (!pendingEncryptedWorkspace) return;
+
+    try {
+      const encryptedData = JSON.parse(pendingEncryptedWorkspace.content);
+      const decryptedWorkspace = decryptWorkspaceData(encryptedData, password);
+
+      // Close modal and clear pending data
+      setShowPasswordModal(false);
+      setPendingEncryptedWorkspace(null);
+      setPasswordError("");
+
+      // Open the decrypted workspace
+      if (onOpenWorkspace) {
+        await addToRecent(decryptedWorkspace.id);
+        onOpenWorkspace(decryptedWorkspace);
+      }
+    } catch (error) {
+      console.error("Decryption error:", error);
+      setPasswordError(
+        error instanceof Error && error.message.includes("Invalid password")
+          ? t("encryption.invalidPassword", "Invalid password - please try again")
+          : t("encryption.decryptError", "Failed to decrypt workspace")
+      );
+    }
+  };
+
+  // Handle password modal cancel
+  const handlePasswordCancel = () => {
+    setShowPasswordModal(false);
+    setPendingEncryptedWorkspace(null);
+    setPasswordError("");
   };
 
   // Get filtered workspaces based on active tab
@@ -373,6 +428,16 @@ const WorkspacesTab: React.FC<WorkspacesTabProps> = ({
         onConfirm={confirmDeleteWorkspace}
         onCancel={cancelDeleteWorkspace}
       />
+
+      {/* Password Modal for Decryption */}
+      {showPasswordModal && (
+        <PasswordModal
+          mode="decrypt"
+          onConfirm={handlePasswordConfirmed}
+          onCancel={handlePasswordCancel}
+          error={passwordError}
+        />
+      )}
     </div>
   );
 };
