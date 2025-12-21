@@ -40,11 +40,13 @@ import { useTranslation } from "react-i18next";
 interface WorkspaceTabProps {
   workspaceData: WorkspaceData;
   onUpdateWorkspace?: (updatedData: Partial<WorkspaceData>) => Promise<void>;
+  onEditStatusChange?: (isEditing: boolean) => void;
 }
 
 const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   workspaceData,
   onUpdateWorkspace: onUpdateWorkspace,
+  onEditStatusChange,
 }) => {
   const { t } = useTranslation();
 
@@ -86,6 +88,13 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
 
   // State for editing mode
   const [isEditing, setIsEditing] = useState<boolean>(false);
+
+  // Notify parent about edit status change
+  useEffect(() => {
+    if (onEditStatusChange) {
+      onEditStatusChange(isEditing);
+    }
+  }, [isEditing, onEditStatusChange]);
 
   // State for form values
   useEffect(() => {

@@ -24,7 +24,6 @@ import {
   ArrowRight,
   StopCircleIcon,
   Terminal,
-  X,
 } from "lucide-react";
 import {
   saveWorkspaceToDefaultLocation,
@@ -34,7 +33,7 @@ import {
 import { sidecarClient, SidecarCommand } from "../api/SidecarClient";
 import { useTranslation } from "react-i18next";
 
-import { WorkspaceData, ConsoleEvent, Workflow } from "./types/Types";
+import { WorkspaceData, Workflow } from "./types/Types";
 
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab } from "./tabs";
 
@@ -430,6 +429,15 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
     const newWorkflows = [...workspaceData.workflows, workflow];
     setWorkspaceData({ ...workspaceData, workflows: newWorkflows });
   };
+
+  const handleEditStatusChange = (isEditing: boolean) => {
+    if (isEditing) {
+      setIsConsoleOpen(false);
+    } else {
+      setIsConsoleOpen(true);
+    }
+  };
+
   const isRTL = i18n.language === "ar";
 
   return (
@@ -622,6 +630,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
               <WorkspaceTab
                 workspaceData={workspaceData}
                 onUpdateWorkspace={handleUpdateWorkspace}
+                onEditStatusChange={handleEditStatusChange}
               />
             )}
             {activeTab === "tasks" && (
