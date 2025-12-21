@@ -15,7 +15,9 @@ export interface SidecarCommand {
     | "message"
     | "ping"
     | "pong"
-    | "workflow_output";
+    | "workflow_output"
+    | "abort_workspace"
+    | "workspace_stopped";
 
   workspaceId?: string;
   data?: unknown;
@@ -192,7 +194,7 @@ export class SidecarClient {
       }
     };
   }
-  
+
   offCommand(callback: (command: SidecarCommand) => void): void {
     const index = this.commandCallbacks.indexOf(callback);
     if (index > -1) {

@@ -37,6 +37,54 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Minimal Thin Scrollbar (Zinc-800) */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #27272a transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: #27272a !important; /* zinc-800 */
+  border-radius: 2px !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46 !important; /* zinc-700 */
+}
+
+/* Console Scrollbar - Specific override */
+.console-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #27272a transparent;
+}
+
+.console-scrollbar::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+}
+
+.console-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.console-scrollbar::-webkit-scrollbar-thumb {
+  background: #27272a !important;
+  border-radius: 2px !important;
+}
+
+.console-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46 !important;
+}
 /* Hide Edge / IE built‑in password reveal + clear icons */
 ::-ms-reveal,
 ::-ms-clear {

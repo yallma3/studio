@@ -8,14 +8,11 @@ interface ScrollAreaProps {
 export const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
   ({ children, className = "" }, ref) => {
     return (
-      <div 
-        ref={ref}
-        className={`overflow-auto scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 ${className}`}
-      >
+      <div ref={ref} className={`overflow-auto ${className}`}>
         {children}
       </div>
     );
   }
 );
 
-ScrollArea.displayName = "ScrollArea"; 
+ScrollArea.displayName = "ScrollArea";

@@ -12,6 +12,7 @@
 */
 
 import React from "react";
+import { createPortal } from "react-dom";
 import { ConsoleEvent } from "../types/Types";
 import { X, FileText } from "lucide-react";
 
@@ -53,8 +54,8 @@ const EventResultDialog: React.FC<EventResultDialogProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 ">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] ">
       <div className="rounded-lg shadow-xl w-full max-w-4xl  border border-[#2A2A2A] bg-[#171717] flex flex-col">
         <div className="px-6 pt-4 pb-4 border-b border-[#FFC72C]/30 bg-[#FFC72C]/10 rounded-t-lg backdrop-blur-sm">
           <div className="flex justify-between items-center">
@@ -97,7 +98,8 @@ const EventResultDialog: React.FC<EventResultDialogProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

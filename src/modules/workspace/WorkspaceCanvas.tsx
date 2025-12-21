@@ -22,6 +22,8 @@ import {
   MoreVertical,
   Download,
   ArrowRight,
+  StopCircleIcon,
+  Terminal,
 } from "lucide-react";
 import {
   saveWorkspaceToDefaultLocation,
@@ -32,12 +34,14 @@ import {
 import { sidecarClient, SidecarCommand } from "../api/SidecarClient";
 import { useTranslation } from "react-i18next";
 
-import { WorkspaceData, ConsoleEvent, Workflow } from "./types/Types";
+import { WorkspaceData, Workflow } from "./types/Types";
 
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab, EnvironmentVariablesTab } from "./tabs";
 
 import { getWorkflow } from "./utils/runtimeUtils";
 import { createJson } from "../flow/utils/flowRuntime";
+import { ConsoleProvider, useConsole } from "./context/ConsoleContext";
+import ConsolePanel from "./components/ConsolePanel";
 
 import { encryptWorkspaceData, encryptWorkspaceApiKeys } from "./utils/encryptionUtils";
 import { PasswordModal } from "./components/PasswordModal";
@@ -99,23 +103,43 @@ interface WorkspaceCanvasProps {
   onReturnToHome: () => void;
 }
 
-const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
+const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   workspaceData: initialWorkspaceData,
   onReturnToHome,
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
-  const initEvents: ConsoleEvent[] = [];
+  const { addEvent, events } = useConsole();
 
-  const [events, setEvents] = useState<ConsoleEvent[]>(initEvents);
+  // Console visibility state
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [isConsoleMaximized, setIsConsoleMaximized] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const prevEventsLengthRef = useRef(0);
+  const [isRunning, setIsRunning] = useState(false);
 
-  const addEvent = (newEvent: ConsoleEvent) => {
-    try {
-      setEvents((prev) => [...prev, newEvent]);
-    } catch (error) {
-      console.error("Failed to add console event:", error);
+  useEffect(() => {
+    if (isConsoleOpen) {
+      setUnreadCount(0);
+    } else {
+      const diff = events.length - prevEventsLengthRef.current;
+      if (diff > 0) {
+        setUnreadCount((prev) => prev + diff);
+      } else if (events.length === 0) {
+        setUnreadCount(0);
+      }
     }
-  };
+    prevEventsLengthRef.current = events.length;
+  }, [events.length, isConsoleOpen]);
+
+  // Handle active tab changes for console visibility
+  useEffect(() => {
+    if (activeTab === "workspace") {
+      setIsConsoleOpen(true);
+    } else {
+      setIsConsoleOpen(false);
+    }
+  }, [activeTab]);
 
   // Maintain workspace data in state
   const [workspaceData, setWorkspaceData] =
@@ -154,7 +178,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   // Expose a stable run handler used by effects and UI controls
   const handleRunWorkspace = React.useCallback(async () => {
     if (!workspaceData) return;
-
+    setIsRunning(true);
     const message: SidecarCommand = {
       id: crypto.randomUUID(),
       type: "run_workspace",
@@ -165,6 +189,17 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
     sidecarClient.sendMessage(message);
   }, [workspaceData]);
+
+  const handleAbortWorkspace = React.useCallback(async () => {
+    setIsRunning(false);
+    const message: SidecarCommand = {
+      id: crypto.randomUUID(),
+      type: "abort_workspace",
+      timestamp: new Date().toISOString(),
+    };
+
+    sidecarClient.sendMessage(message);
+  }, []);
 
   // Check if workspace is imported (doesn't exist locally) and set unsaved flag
   useEffect(() => {
@@ -188,38 +223,11 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   // Set up sidecar client command listener and status listener
   useEffect(() => {
     const handleSidecarCommand = async (command: SidecarCommand) => {
+      console.log("Received sidecar command:", command);
       try {
-        if (
-          command.type === "console_prompt" ||
-          command.type === "console_input"
-        ) {
-          if (command.data && typeof command.data === "object") {
-            const event = command.data as ConsoleEvent;
-                        // Add to console display
-            addEvent(event);
-          }
+        if (command.type === "workspace_stopped") {
+          setIsRunning(false);
         }
-
-        // Handle resolved console input
-        if (command.type === "console_input_resolved") {
-          if (command.data && typeof command.data === "object") {
-            const { promptId, message } = command.data as {
-              promptId: string;
-              message: string;
-            };
-            console.log(
-              `Console input resolved for prompt ${promptId}: ${message}`
-            );
-              // The event is already added to console, just log confirmation
-          }
-        }
-
-        if (command.type == "message") {
-          if (command.data && typeof command.data === "object") {
-            addEvent(command.data as ConsoleEvent);
-          }
-        }
-
         if (command.type == "run_workflow") {
           console.log("Running Workflow", command.data);
           if (typeof command.data == "string") {
@@ -279,28 +287,18 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       setSidecarStatus(status);
     };
 
-    const handleConsoleEvent = (event: ConsoleEvent) => {
-      console.log("Received workflow output event:", event);
-      addEvent(event);
-    };
-
     sidecarClient.onCommand(handleSidecarCommand);
     sidecarClient.onStatusChange(handleStatusChange);
 
-    sidecarClient.onConsoleEvent((event: ConsoleEvent) => {
-      console.log("Received workflow output event:", event);
-      addEvent(event);
-    });
-        // Set initial status
+    // Set initial status
     setSidecarStatus(sidecarClient.getConnectionStatus());
 
     return () => {
             // Clean up listeners to prevent duplicates
       sidecarClient.offCommand(handleSidecarCommand);
       sidecarClient.offStatusChange(handleStatusChange);
-      sidecarClient.offConsoleEvent(handleConsoleEvent);
     };
-  }, [workspaceData.id, handleRunWorkspace]);
+  }, [workspaceData.id, handleRunWorkspace, addEvent]);
 
   // Handle clicks outside dropdown to close it
   useEffect(() => {
@@ -534,12 +532,21 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     const newWorkflows = [...workspaceData.workflows, workflow];
     setWorkspaceData({ ...workspaceData, workflows: newWorkflows });
   };
+
+  const handleEditStatusChange = (isEditing: boolean) => {
+    if (isEditing) {
+      setIsConsoleOpen(false);
+    } else {
+      setIsConsoleOpen(true);
+    }
+  };
+
   const isRTL = i18n.language === "ar";
 
   return (
     <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm relative z-10">
+      <div className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm relative z-10 flex-none">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
             <button
@@ -590,22 +597,53 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               </div>
             )}
             <div className="flex items-center gap-2">
+              {!isRunning ? (
+                <button
+                  className="bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 p-2 rounded-md transition-all"
+                  onClick={handleRunWorkspace}
+                  title={t("common.run", "Run")}
+                >
+                  <Play className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 p-2 rounded-md transition-all animate-pulse"
+                  onClick={handleAbortWorkspace}
+                  title={t("common.stop", "Stop")}
+                >
+                  <StopCircleIcon className="h-4 w-4" />
+                </button>
+              )}
               <button
-                className="bg-green-600 hover:bg-green-500 text-white font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
-                onClick={handleRunWorkspace}
-              >
-                <Play className="h-4 w-4" />
-              </button>
-              <button
-                className="bg-[#FFC72C] hover:bg-[#FFD700] text-black font-medium px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                className="bg-[#FFC72C]/10 hover:bg-[#FFC72C]/20 text-[#FFC72C] border border-[#FFC72C]/20 p-2 rounded-md transition-all"
                 onClick={handleSaveWorkspace}
+                title={t("common.save", "Save")}
               >
                 <Save className="h-4 w-4" />
               </button>
+
+              {/* Console Toggle Button */}
+              <button
+                className={`relative border p-2 rounded-md transition-all ${
+                  isConsoleOpen
+                    ? "bg-zinc-700 text-white border-zinc-600"
+                    : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700 hover:text-white"
+                }`}
+                onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+                title={t("workspaceTab.openConsole", "Open Console")}
+              >
+                <Terminal className="h-4 w-4" />
+                {!isConsoleOpen && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-600 text-[8px] font-bold text-white shadow-sm border border-[#0a0a0a]">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
               {/* Dropdown Menu */}
               <div className="relative" ref={dropdownRef}>
                 <button
-                  className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium p-2 rounded flex items-center transition-colors"
+                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border border-zinc-700 p-2 rounded-md transition-all"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -684,59 +722,73 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         </div>
       </div>
 
-      {/* Main canvas area */}
-      <div className="bg-[#0a0a0a]">
-        <div className="w-full h-full overflow-hidden">
-         {/* Render the appropriate tab component based on activeTab */}
-          {activeTab === "workspace" && (
-            <WorkspaceTab
-              workspaceData={workspaceData}
-              onUpdateWorkspace={handleUpdateWorkspace}
-              events={events}
-              onClearEvents={() => setEvents([])}
-              onAddEvent={addEvent}
-              onSendConsoleInput={(event: ConsoleEvent) => {
-                 // Send console input via WebSocket
-                const message: SidecarCommand = {
-                  id: crypto.randomUUID(),
-                  type: "console_input",
-                  workspaceId: workspaceData.id,
-                  data: event,
-                  timestamp: new Date().toISOString(),
-                };
-                sidecarClient.sendMessage(message);
-              }}
-            />
-          )}
-          {activeTab === "tasks" && (
-            <TasksTab
-              workspaceData={workspaceData}
-              onTabChanges={handleTabChanges}
-              onChange={({ tasks, connections }) =>
-                handleUpdateWorkspace({ tasks, connections })
+      {/* Main Body with Content and Console */}
+      <div className="flex-1 relative overflow-hidden">
+        {/* Main canvas area */}
+        <div
+          className="bg-[#0a0a0a] absolute top-0 left-0 right-0 overflow-hidden transition-all duration-300 ease-in-out"
+          style={{
+            bottom: isConsoleOpen ? (isConsoleMaximized ? "100%" : "50%") : "0",
+          }}
+        >
+          <div className="w-full h-full overflow-hidden">
+            {/* Render the appropriate tab component based on activeTab */}
+            {activeTab === "workspace" && (
+              <WorkspaceTab
+                workspaceData={workspaceData}
+                onUpdateWorkspace={handleUpdateWorkspace}
+                onEditStatusChange={handleEditStatusChange}
+              />
+            )}
+            {activeTab === "tasks" && (
+              <TasksTab
+                workspaceData={workspaceData}
+                onTabChanges={handleTabChanges}
+                onChange={({ tasks, connections }) =>
+                  handleUpdateWorkspace({ tasks, connections })
+                }
+              />
+            )}
+            {activeTab === "agents" && (
+              <AgentsTab
+                workspaceData={workspaceData}
+                onTabChanges={handleTabChanges}
+                handleImportWorkflow={handleImportWorkflow}
+              />
+            )}
+            {activeTab === "aiflows" && (
+              <AiFlowsTab
+                workspaceData={workspaceData}
+                onTabChanges={handleTabChanges}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Docked Console Panel */}
+        <div
+          className={`bg-zinc-900 border-zinc-800 absolute bottom-0 left-0 right-0 flex flex-col transition-all duration-300 ease-in-out z-20 ${
+            isConsoleOpen ? "border-t" : "border-t-0"
+          }`}
+          style={{
+            height: isConsoleOpen
+              ? isConsoleMaximized
+                ? "100%"
+                : "55%"
+              : "0px",
+          }}
+        >
+          <div className="w-full h-full overflow-hidden">
+            <ConsolePanel
+              isMaximized={isConsoleMaximized}
+              onToggleMaximize={() =>
+                setIsConsoleMaximized(!isConsoleMaximized)
               }
+              onClose={() => setIsConsoleOpen(false)}
+              canClose={activeTab !== "workspace"}
+              className="h-full border-0"
             />
-          )}
-          {activeTab === "agents" && (
-            <AgentsTab
-              workspaceData={workspaceData}
-              onTabChanges={handleTabChanges}
-              handleImportWorkflow={handleImportWorkflow}
-            />
-          )}
-          {activeTab === "aiflows" && (
-            <AiFlowsTab
-              workspaceData={workspaceData}
-              onTabChanges={handleTabChanges}
-            />
-          )}
-        {activeTab === "environment" && (
-          <EnvironmentVariablesTab
-            workspaceData={workspaceData}
-            onTabChanges={handleTabChanges}
-            onUpdateWorkspace={handleUpdateWorkspace}
-          />
-        )}
+          </div>
         </div>
       </div>
 
@@ -770,6 +822,14 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         />
       )}
     </div>
+  );
+};
+
+const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = (props) => {
+  return (
+    <ConsoleProvider workspaceId={props.workspaceData.id}>
+      <WorkspaceCanvasContent {...props} />
+    </ConsoleProvider>
   );
 };
 
