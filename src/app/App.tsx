@@ -23,6 +23,7 @@ import {
 import { WorkspaceData } from "../modules/workspace/types/Types.ts";
 
 import { initFlowSystem } from "../modules/flow/initFlowSystem.ts";
+import { getLLMs } from "../modules/api/getLLMs.ts";
 import { sidecarClient } from "../modules/api/SidecarClient";
 
 const App: React.FC = () => {
@@ -35,6 +36,7 @@ const App: React.FC = () => {
   useEffect(() => {
     console.log("Initializing System");
     initFlowSystem();
+    getLLMs();
     initializeDefaultDirectories();
     sidecarClient.connect();
   }, []);

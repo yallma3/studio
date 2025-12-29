@@ -30,6 +30,7 @@ import { TooltipHelper } from "../../shared/components/ui/tooltip-helper";
 import Select from "../../shared/components/ui/select";
 import { generateUniqueWorkspaceId } from "./utils/storageUtils";
 import { AvailableLLMs, LLMModel } from "../../shared/LLM/config";
+import { llmsRegistry } from "@/shared/LLM/LLMsRegistry";
 import AgentForm from "./components/AgentForm";
 import type { AgentFormValues } from "./components/AgentForm";
 import { Task, TaskConnection, TaskSocket } from "../task/types/types";
@@ -54,10 +55,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   onCreateWorkspace,
 }) => {
   const { t, i18n } = useTranslation();
-  const isRTL = i18n.language === 'ar';
+  const isRTL = i18n.language === "ar";
   const [currentStep, setCurrentStep] = useState(1);
 
-    // workspace data state
+  // workspace data state
   const [workspaceData, setWorkspaceData] = useState<WorkspaceData>({
     id: "", // Will be set when component mounts
     createdAt: Date.now(),
@@ -114,7 +115,18 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   };
 
   // LLM providers/models derived from AvailableLLMs
-  const llmProviders = Object.keys(AvailableLLMs) as LLMOption["provider"][];
+  const llmProviders = llmsRegistry.listProviders();
+  const fallbackProviders = Object.keys(AvailableLLMs);
+  const providerOptions =
+    llmProviders.length > 0 ? llmProviders : fallbackProviders;
+
+  const getModelsForProvider = (provider: string): LLMModel[] => {
+    const models = llmsRegistry.getProviderModels(provider);
+    if (models && models.length > 0) {
+      return models;
+    }
+    return AvailableLLMs[provider] || [];
+  };
 
   // State for selected provider
   const [selectedProvider, setSelectedProvider] =
@@ -122,11 +134,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   // remove unused selectedModel state
 
   const [llmOptions, setLLMOptions] = useState<LLMModel[]>(
-    AvailableLLMs["Groq"]
+    getModelsForProvider("Groq")
   );
 
   useEffect(() => {
-    setLLMOptions(AvailableLLMs[selectedProvider]);
+    setLLMOptions(getModelsForProvider(selectedProvider));
   }, [selectedProvider]);
 
   // Temporary state for new items
@@ -197,7 +209,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
       onCreateWorkspace(workspaceData);
 
       // Reset form with new unique ID
-  const newUniqueId = await generateUniqueWorkspaceId();
+      const newUniqueId = await generateUniqueWorkspaceId();
       setWorkspaceData({
         id: newUniqueId,
         createdAt: Date.now(),
@@ -275,7 +287,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         const base = (workspaceData.tasks.length + 1) * 100;
         const generatedSockets: TaskSocket[] = [
           { id: base + 1, title: t("taskNode.input", "Input"), type: "input" },
-          { id: base + 2, title: t("taskNode.output", "Output"), type: "output" },
+          {
+            id: base + 2,
+            title: t("taskNode.output", "Output"),
+            type: "output",
+          },
         ];
         // Add new task
         const task: Task = {
@@ -607,12 +623,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
       })) || [];
     return workflowTools;
   }, [workspaceData.workflows]);
-  
+
   const availableMcpTools = useMemo(() => {
     return workspaceData.mcpTools;
   }, [workspaceData.mcpTools]);
-
-
 
   return (
     <div className="flex items-center min-h-screen justify-center inset-0 z-50 bg-zinc-900 p-4">
@@ -662,20 +676,20 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           {t("workspaces.workspaceName", "Workspace Name")}{" "}
                           <span className="text-yellow-500">*</span>
                         </label>
-                          <input
-                            type="text"
-                            id="name"
-                            name="name"
-                            value={workspaceData.name}
-                            onChange={handleWorkspaceDataChange}
-                            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                            placeholder={t(
-                              "workspaces.enterWorkspaceName",
-                              "Enter workspace name"
-                            )}
-                            maxLength={40}
-                            required
-                          />
+                        <input
+                          type="text"
+                          id="name"
+                          name="name"
+                          value={workspaceData.name}
+                          onChange={handleWorkspaceDataChange}
+                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                          placeholder={t(
+                            "workspaces.enterWorkspaceName",
+                            "Enter workspace name"
+                          )}
+                          maxLength={40}
+                          required
+                        />
                       </div>
                       <div className="flex flex-col gap-2">
                         <label
@@ -686,23 +700,26 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             "workspaces.workspaceDescription",
                             "Workspace Description"
                           )}
-                           <TooltipHelper
-                             text={t("workspaces.workspaceDescriptionTooltip", "Provide a description that helps you and others to understand the purpose of the workspace")}
-                             position="bottom"
-                           />
-                        </label>
-                          <textarea
-                            id="description"
-                            name="description"
-                            value={workspaceData.description}
-                            onChange={handleWorkspaceDataChange}
-                            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-32"
-                            placeholder={t(
-                              "workspaces.enterWorkspaceDescription",
-                              "Describe the purpose of this workspace..."
+                          <TooltipHelper
+                            text={t(
+                              "workspaces.workspaceDescriptionTooltip",
+                              "Provide a description that helps you and others to understand the purpose of the workspace"
                             )}
-                            maxLength={250}
+                            position="bottom"
                           />
+                        </label>
+                        <textarea
+                          id="description"
+                          name="description"
+                          value={workspaceData.description}
+                          onChange={handleWorkspaceDataChange}
+                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-32"
+                          placeholder={t(
+                            "workspaces.enterWorkspaceDescription",
+                            "Describe the purpose of this workspace..."
+                          )}
+                          maxLength={250}
+                        />
                       </div>
                     </div>
                   </div>
@@ -724,7 +741,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           onChange={(value) =>
                             setSelectedProvider(value as LLMOption["provider"])
                           }
-                          options={llmProviders.map((provider) => ({
+                          options={providerOptions.map((provider) => ({
                             value: provider,
                             label: provider,
                           }))}
@@ -795,18 +812,18 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         {!workspaceData.useSavedCredentials ? (
                           <div>
                             <div className="relative">
-                               <input
-                                 type="password"
-                                 id="apiKey"
-                                 name="apiKey"
-                                 value={workspaceData.apiKey}
-                                 onChange={handleWorkspaceDataChange}
-                                 className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                 placeholder={t(
-                                   "workspaces.enterApiKey",
-                                   "Enter API key"
-                                 )}
-                               />
+                              <input
+                                type="password"
+                                id="apiKey"
+                                name="apiKey"
+                                value={workspaceData.apiKey}
+                                onChange={handleWorkspaceDataChange}
+                                className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                placeholder={t(
+                                  "workspaces.enterApiKey",
+                                  "Enter API key"
+                                )}
+                              />
                               <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                             </div>
                             <div className="flex items-center mt-1">
@@ -921,7 +938,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         : t("workspaces.addAgent", `Add Agent`)}
                     </h3>
 
-                                       <AgentForm
+                    <AgentForm
                       value={{
                         name: newAgent.name,
                         role: newAgent.role,
@@ -1006,7 +1023,9 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       {workspaceData.agents.length > 0 && (
                         <span className="text-gray-400 text-sm">
                           {" "}
-                          {workspaceData.agents.length} {t("workspaces.agents", "agent(s)")} {t("common.add", "added")}
+                          {workspaceData.agents.length}{" "}
+                          {t("workspaces.agents", "agent(s)")}{" "}
+                          {t("common.add", "added")}
                         </span>
                       )}
                     </h3>
@@ -1285,44 +1304,44 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                 <div className="flex flex-col lg:flex-row gap-6 h-full">
                   {/* Add Task Form (Left 2/3) */}
                   <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-2/3 flex flex-col h-full">
-                     <h3 className="text-lg font-medium text-white mb-4 ">
-                       {isEditingTask
-                         ? t(
-                             "workspaces.updateTask",
-                             `Update Task: ${newTask.title}`
-                           )
-                         : t(
-                             "workspaces.addTask",
-                             `Add Task (${workspaceData.tasks.length + 1})`
-                           )}
-                     </h3>
+                    <h3 className="text-lg font-medium text-white mb-4 ">
+                      {isEditingTask
+                        ? t(
+                            "workspaces.updateTask",
+                            `Update Task: ${newTask.title}`
+                          )
+                        : t(
+                            "workspaces.addTask",
+                            `Add Task (${workspaceData.tasks.length + 1})`
+                          )}
+                    </h3>
 
                     <div className="space-y-4 mb-4">
                       <div>
-                         <label
-                           htmlFor="taskName"
-                           className="block text-sm font-medium text-gray-300 mb-1 "
-                         >
-                           {t("workspaces.taskName", "Name")}{" "}
-                           <span className="text-yellow-500">*</span>
-                         </label>
-                          <input
-                            type="text"
-                            id="taskName"
-                            value={newTask.title}
-                            onChange={(e) =>
-                              setNewTask((prev) => ({
-                                ...prev,
-                                title: e.target.value,
-                              }))
-                            }
-                            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                            placeholder={t(
-                              "workspaces.enterTaskName",
-                              "Enter task name"
-                            )}
-                            maxLength={40}
-                          />
+                        <label
+                          htmlFor="taskName"
+                          className="block text-sm font-medium text-gray-300 mb-1 "
+                        >
+                          {t("workspaces.taskName", "Name")}{" "}
+                          <span className="text-yellow-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          id="taskName"
+                          value={newTask.title}
+                          onChange={(e) =>
+                            setNewTask((prev) => ({
+                              ...prev,
+                              title: e.target.value,
+                            }))
+                          }
+                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                          placeholder={t(
+                            "workspaces.enterTaskName",
+                            "Enter task name"
+                          )}
+                          maxLength={40}
+                        />
                       </div>
 
                       <div>
@@ -1332,123 +1351,166 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         >
                           {t("workspaces.taskDescription", "Description")}
                         </label>
-                          <textarea
-                            id="taskDescription"
-                            value={newTask.description}
-                            onChange={(e) =>
-                              setNewTask((prev) => ({
-                                ...prev,
-                                description: e.target.value,
-                              }))
-                            }
-                            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
-                            placeholder={t(
-                              "workspaces.enterTaskDescription",
-                              "Enter task description"
-                            )}
-                            maxLength={1000}
-                          />
+                        <textarea
+                          id="taskDescription"
+                          value={newTask.description}
+                          onChange={(e) =>
+                            setNewTask((prev) => ({
+                              ...prev,
+                              description: e.target.value,
+                            }))
+                          }
+                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
+                          placeholder={t(
+                            "workspaces.enterTaskDescription",
+                            "Enter task description"
+                          )}
+                          maxLength={1000}
+                        />
                       </div>
                       <div>
-                         <label
-                           htmlFor="taskExpectedOutput"
-                           className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-1 "
-                         >
-                           {t(
-                             "workspaces.taskExpectedOutput",
-                             "Expected Output"
-                           )}
-                           <TooltipHelper
-                             text={t("workspaces.taskExpectedOutputTooltip", "This can be output type, format, content or any validation criteria")}
-                             position="bottom"
-                           />
-                         </label>
-                          <textarea
-                            id="taskExpectedOutput"
-                            value={newTask.expectedOutput}
-                            onChange={(e) =>
-                              setNewTask((prev) => ({
-                                ...prev,
-                                expectedOutput: e.target.value,
-                              }))
-                            }
-                            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                            placeholder={t(
-                              "workspaces.enterTaskExpectedOutput",
-                              "Enter task expected output"
+                        <label
+                          htmlFor="taskExpectedOutput"
+                          className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-1 "
+                        >
+                          {t(
+                            "workspaces.taskExpectedOutput",
+                            "Expected Output"
+                          )}
+                          <TooltipHelper
+                            text={t(
+                              "workspaces.taskExpectedOutputTooltip",
+                              "This can be output type, format, content or any validation criteria"
                             )}
-                            maxLength={1000}
+                            position="bottom"
                           />
+                        </label>
+                        <textarea
+                          id="taskExpectedOutput"
+                          value={newTask.expectedOutput}
+                          onChange={(e) =>
+                            setNewTask((prev) => ({
+                              ...prev,
+                              expectedOutput: e.target.value,
+                            }))
+                          }
+                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                          placeholder={t(
+                            "workspaces.enterTaskExpectedOutput",
+                            "Enter task expected output"
+                          )}
+                          maxLength={1000}
+                        />
                       </div>
-                       <div className="flex gap-4">
-                         <div className="flex-1">
-                           <label
-                             htmlFor="type"
-                             className="block text-sm font-medium text-gray-300 mb-1"
-                           >
-                             {t("taskModal.type", "Type")}
-                           </label>
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label
+                            htmlFor="type"
+                            className="block text-sm font-medium text-gray-300 mb-1"
+                          >
+                            {t("taskModal.type", "Type")}
+                          </label>
+                          <Select
+                            id="type"
+                            value={newTask.type}
+                            onChange={(value) => {
+                              setNewTask((prev) => {
+                                let newExecutorId = prev.executorId;
+                                if (
+                                  value === "specific-agent" &&
+                                  workspaceData.agents.length === 1
+                                ) {
+                                  newExecutorId = workspaceData.agents[0].id;
+                                } else if (
+                                  value === "agentic" ||
+                                  value !== prev.type
+                                ) {
+                                  newExecutorId = null;
+                                }
+                                return {
+                                  ...prev,
+                                  type: value,
+                                  executorId: newExecutorId,
+                                };
+                              });
+                            }}
+                            options={[
+                              {
+                                value: "agentic",
+                                label: t(
+                                  "taskModal.agenticAuto",
+                                  "Agentic (Auto)"
+                                ),
+                              },
+                              {
+                                value: "specific-agent",
+                                label: t(
+                                  "taskModal.specificAgent",
+                                  "Specific Agent"
+                                ),
+                              },
+                              {
+                                value: "workflow",
+                                label: t("taskModal.workflow", "Workflow"),
+                              },
+                            ]}
+                          />
+                          <p className="text-xs text-gray-400 mt-1">
+                            {newTask.type === "agentic"
+                              ? t(
+                                  "taskModal.typeNoteAgentic",
+                                  "yaLLMa3 main Agent will decide how to handle the Task"
+                                )
+                              : newTask.type === "specific-agent"
+                              ? t(
+                                  "taskModal.typeNoteSpecific",
+                                  "Select Agent to perform the Task"
+                                )
+                              : t(
+                                  "taskModal.typeNoteWorkflow",
+                                  "The specified Workflow will be used to perform the Task"
+                                )}
+                          </p>
+                        </div>
+                        {newTask.type === "specific-agent" ||
+                        newTask.type === "workflow" ? (
+                          <div className="flex-1">
+                            <label
+                              htmlFor="executorId"
+                              className="block text-sm font-medium text-gray-300 mb-1"
+                            >
+                              {newTask.type === "specific-agent"
+                                ? t("workspaces.selectAgent", "Select Agent")
+                                : t(
+                                    "workspaces.selectWorkflow",
+                                    "Select Workflow"
+                                  )}
+                            </label>
                             <Select
-                              id="type"
-                              value={newTask.type}
-                                onChange={(value) => {
-                                  setNewTask((prev) => {
-                                    let newExecutorId = prev.executorId;
-                                    if (value === "specific-agent" && workspaceData.agents.length === 1) {
-                                      newExecutorId = workspaceData.agents[0].id;
-                                    } else if (value === "agentic" || value !== prev.type) {
-                                      newExecutorId = null;
-                                    }
-                                    return {
-                                      ...prev,
-                                      type: value,
-                                      executorId: newExecutorId,
-                                    };
-                                  });
-                                }}
+                              id="executorId"
+                              value={newTask.executorId || ""}
+                              onChange={(value) => {
+                                setNewTask((prev) => ({
+                                  ...prev,
+                                  executorId: value || null,
+                                }));
+                              }}
                               options={[
-                                { value: "agentic", label: t("taskModal.agenticAuto", "Agentic (Auto)") },
-                                { value: "specific-agent", label: t("taskModal.specificAgent", "Specific Agent") },
-                                { value: "workflow", label: t("taskModal.workflow", "Workflow") },
-                              ]}
-                            />
-                            <p className="text-xs text-gray-400 mt-1">
-                              {newTask.type === "agentic"
-                                ? t("taskModal.typeNoteAgentic", "yaLLMa3 main Agent will decide how to handle the Task")
-                                : newTask.type === "specific-agent"
-                                ? t("taskModal.typeNoteSpecific", "Select Agent to perform the Task")
-                                : t("taskModal.typeNoteWorkflow", "The specified Workflow will be used to perform the Task")}
-                            </p>
-                          </div>
-                         {newTask.type === "specific-agent" ||
-                         newTask.type === "workflow" ? (
-                           <div className="flex-1">
-                              <label
-                                htmlFor="executorId"
-                                className="block text-sm font-medium text-gray-300 mb-1"
-                               >
-                                 {newTask.type === "specific-agent"
-                                   ? t("workspaces.selectAgent", "Select Agent")
-                                   : t("workspaces.selectWorkflow", "Select Workflow")}
-                               </label>
-                             <Select
-                               id="executorId"
-                               value={newTask.executorId || ""}
-                               onChange={(value) => {
-                                 setNewTask((prev) => ({
-                                   ...prev,
-                                   executorId: value || null,
-                                 }));
-                               }}
-                               options={[
-                                  {
-                                    value: "",
-                                    label: newTask.type === "workflow"
-                                      ? t("workspaces.workflowLater", "Not for now, I'll specify later")
+                                {
+                                  value: "",
+                                  label:
+                                    newTask.type === "workflow"
+                                      ? t(
+                                          "workspaces.workflowLater",
+                                          "Not for now, I'll specify later"
+                                        )
                                       : newTask.type === "specific-agent"
-                                      ? t("workspaces.agentLater", "Not for now, I'll select later")
-                                      : t("taskModal.none", "None")
-                                  },
+                                      ? t(
+                                          "workspaces.agentLater",
+                                          "Not for now, I'll select later"
+                                        )
+                                      : t("taskModal.none", "None"),
+                                },
                                 ...(newTask.type === "specific-agent"
                                   ? workspaceData.agents.map((agent) => ({
                                       value: agent.id,
@@ -1459,10 +1521,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                       label: wf.name,
                                     }))),
                               ]}
-                             />
-                           </div>
-                         ) : null}
-                       </div>
+                            />
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
 
                     {isEditingTask ? (
@@ -1486,25 +1548,25 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           <X className="h-4 w-4 mr-1" />
                           {t("workspaces.cancelEdit", "Cancel")}
                         </Button>
-                         <Button
-                           onClick={handleAddTask}
-                           className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center"
-                           disabled={!newTask.title.trim()}
-                         >
+                        <Button
+                          onClick={handleAddTask}
+                          className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center"
+                          disabled={!newTask.title.trim()}
+                        >
                           <Check className="h-4 w-4 mr-1" />
                           {t("workspaces.updateTask", "Update Task")}
                         </Button>
                       </div>
                     ) : (
-                       <Button
-                         onClick={handleAddTask}
-                         className={`w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center ${
-                           newTask.title.trim()
-                             ? "cursor-pointer"
-                             : "cursor-not-allowed"
-                         }`}
-                         disabled={!newTask.title.trim()}
-                       >
+                      <Button
+                        onClick={handleAddTask}
+                        className={`w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center ${
+                          newTask.title.trim()
+                            ? "cursor-pointer"
+                            : "cursor-not-allowed"
+                        }`}
+                        disabled={!newTask.title.trim()}
+                      >
                         <Plus className="h-4 w-4 mr-1" />
                         {t("workspaces.addTask", "Add Task")}
                       </Button>
@@ -1518,7 +1580,9 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       {workspaceData.tasks.length > 0 && (
                         <span className="text-gray-400 text-sm">
                           {" "}
-                          {workspaceData.tasks.length} {t("workspaces.tasks", "task(s)")} {t("common.add", "added")}
+                          {workspaceData.tasks.length}{" "}
+                          {t("workspaces.tasks", "task(s)")}{" "}
+                          {t("common.add", "added")}
                         </span>
                       )}
                     </h3>
@@ -1560,7 +1624,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               {task.description && (
                                 <div className="mt-2">
                                   <span className="text-xs font-medium text-gray-400">
-                                    {t("workspaces.taskDescription", "Description")}:
+                                    {t(
+                                      "workspaces.taskDescription",
+                                      "Description"
+                                    )}
+                                    :
                                   </span>
                                   <p className="text-sm text-gray-300">
                                     {task.description}
@@ -1570,7 +1638,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               {task.expectedOutput && (
                                 <div className="mt-2">
                                   <span className="text-xs font-medium text-gray-400">
-                                    {t("taskNode.expectedOutput", "Expected Output")}:
+                                    {t(
+                                      "taskNode.expectedOutput",
+                                      "Expected Output"
+                                    )}
+                                    :
                                   </span>
                                   <p className="text-sm text-gray-300">
                                     {task.expectedOutput}
@@ -1646,9 +1718,9 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       </div>
                       {workspaceData.description && (
                         <div className="flex">
-                         <span className="text-gray-400 w-40 whitespace-nowrap">
-                           {t("resultDialog.description", "Purpose")}:
-                         </span>
+                          <span className="text-gray-400 w-40 whitespace-nowrap">
+                            {t("resultDialog.description", "Purpose")}:
+                          </span>
                           <span className="text-white">
                             {workspaceData.description}
                           </span>
@@ -1664,7 +1736,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           </span>
                         ) : (
                           <span className="text-white w-40 whitespace-nowrap">
-                            {t("workspaceTab.noModelSelected", "No LLM selected")}
+                            {t(
+                              "workspaceTab.noModelSelected",
+                              "No LLM selected"
+                            )}
                           </span>
                         )}
                       </div>
@@ -1683,7 +1758,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                   "workspaces.noKeySpecified",
                                   "No key specified"
                                 )
-                            : t("workspaceTab.noModelSelected", "No LLM Selected")}
+                            : t(
+                                "workspaceTab.noModelSelected",
+                                "No LLM Selected"
+                              )}
                         </span>
                       </div>
                     </div>
@@ -1710,25 +1788,38 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             key={agent.id}
                             className="bg-zinc-800 rounded-md p-3"
                           >
-                             <div className="flex items-center justify-between font-medium text-white text-base mb-1">
-                               <span>{agent.name}</span>
-                               {agent.llm?.model && (
-                                 <span className={`text-xs px-2 py-0.5 rounded ml-2 ${
-                                   agent.llm.model === workspaceData.mainLLM.model
-                                     ? "bg-blue-700 text-blue-300"
-                                     : "bg-zinc-700 text-yellow-400"
-                                 }`}>
-                                   {agent.llm.model === workspaceData.mainLLM.model
-                                     ? `${t("workspaceTab.mainLLM", "Main LLM")}`
-                                     : `${t("workspaceTab.customLLM", "Custom LLM")}: ${agent.llm.model.name}`}
-                                   {agent.llm.model === workspaceData.mainLLM.model && (
-                                     <span className="ml-1 opacity-75">
-                                       ({t("agentsTab.workspaceDefault", "Workspace Default")})
-                                     </span>
-                                   )}
-                                 </span>
-                               )}
-                             </div>
+                            <div className="flex items-center justify-between font-medium text-white text-base mb-1">
+                              <span>{agent.name}</span>
+                              {agent.llm?.model && (
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded ml-2 ${
+                                    agent.llm.model ===
+                                    workspaceData.mainLLM.model
+                                      ? "bg-blue-700 text-blue-300"
+                                      : "bg-zinc-700 text-yellow-400"
+                                  }`}
+                                >
+                                  {agent.llm.model ===
+                                  workspaceData.mainLLM.model
+                                    ? `${t("workspaceTab.mainLLM", "Main LLM")}`
+                                    : `${t(
+                                        "workspaceTab.customLLM",
+                                        "Custom LLM"
+                                      )}: ${agent.llm.model.name}`}
+                                  {agent.llm.model ===
+                                    workspaceData.mainLLM.model && (
+                                    <span className="ml-1 opacity-75">
+                                      (
+                                      {t(
+                                        "agentsTab.workspaceDefault",
+                                        "Workspace Default"
+                                      )}
+                                      )
+                                    </span>
+                                  )}
+                                </span>
+                              )}
+                            </div>
                             {agent.role && (
                               <div className="text-sm text-yellow-400 mb-1">
                                 {agent.role}
@@ -1748,8 +1839,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                 </p>
                               </div>
                             )}
-
-
 
                             {agent.tools && agent.tools.length > 0 && (
                               <div className="mt-2">
@@ -1799,28 +1888,33 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             key={task.id}
                             className="bg-zinc-800 rounded-md p-3"
                           >
-                             <div className="flex items-center justify-between font-medium text-white text-base mb-1">
-                               <span>{task.title}</span>
-                               <span className="text-xs px-2 py-0.5 rounded ml-2 bg-zinc-700 text-gray-200">
-                                 {getTaskTypeLabel(
-                                   task.type as unknown as string
-                                 )}
-                                 {getExecutorLabel(
-                                   task.type as unknown as string,
-                                   task.executorId as unknown as string | null
-                                 ) && ` - ${getExecutorLabel(
-                                   task.type as unknown as string,
-                                   task.executorId as unknown as string | null
-                                 )}`}
-                               </span>
-                             </div>
+                            <div className="flex items-center justify-between font-medium text-white text-base mb-1">
+                              <span>{task.title}</span>
+                              <span className="text-xs px-2 py-0.5 rounded ml-2 bg-zinc-700 text-gray-200">
+                                {getTaskTypeLabel(
+                                  task.type as unknown as string
+                                )}
+                                {getExecutorLabel(
+                                  task.type as unknown as string,
+                                  task.executorId as unknown as string | null
+                                ) &&
+                                  ` - ${getExecutorLabel(
+                                    task.type as unknown as string,
+                                    task.executorId as unknown as string | null
+                                  )}`}
+                              </span>
+                            </div>
 
                             {/* Task details */}
                             <div className="mt-2 space-y-2">
                               {task.description && (
                                 <div>
                                   <span className="text-xs text-gray-400 whitespace-nowrap">
-                                    {t("workspaces.taskDescription", "Description")}:
+                                    {t(
+                                      "workspaces.taskDescription",
+                                      "Description"
+                                    )}
+                                    :
                                   </span>
                                   <p className="text-sm text-gray-300 mt-0.5">
                                     {task.description}
@@ -1832,7 +1926,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               {task.expectedOutput && (
                                 <div>
                                   <span className="text-xs text-gray-400 whitespace-nowrap">
-                                    {t("taskNode.expectedOutput", "Expected Output")}:
+                                    {t(
+                                      "taskNode.expectedOutput",
+                                      "Expected Output"
+                                    )}
+                                    :
                                   </span>
                                   <p className="text-sm text-gray-300 mt-0.5">
                                     {task.expectedOutput}
@@ -1871,7 +1969,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                 onClick={handlePrevStep}
                 className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium border-0 flex items-center cursor-pointer"
               >
-                {isRTL ? <ChevronRight className="h-4 w-4 mr-2" /> : <ChevronLeft className="h-4 w-4 mr-2" />}
+                {isRTL ? (
+                  <ChevronRight className="h-4 w-4 mr-2" />
+                ) : (
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                )}
                 {t("common.back", "Back")}
               </Button>
             ) : (
@@ -1903,7 +2005,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                   disabled={!getCurrentStepValidation()}
                 >
                   {t("common.next", "Next")}
-                  {isRTL ? <ChevronLeft className="h-4 w-4 ml-2" /> : <ChevronRight className="h-4 w-4 ml-2" />}
+                  {isRTL ? (
+                    <ChevronLeft className="h-4 w-4 ml-2" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  )}
                 </Button>
               </div>
             ) : (

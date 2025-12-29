@@ -1,7 +1,18 @@
 export interface LLMModel {
   name: string;
   id: string;
+  provider?: string;
+  contextWindow?: number;
+  pricing?: {
+    inputPerToken: number;
+    outputPerToken: number;
+    inputPer1MToken: number;
+    outputPer1MToken: number;
+    currency: string;
+  };
 }
+
+// used for fallback if core agent doesn't provide LLMS or request failed
 
 const GroqModels: LLMModel[] = [
   { name: "Llama 3.1 8B", id: "llama-3.1-8b-instant" },

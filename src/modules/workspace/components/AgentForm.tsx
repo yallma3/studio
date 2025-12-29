@@ -5,6 +5,7 @@ import { Button } from "../../../shared/components/ui/button";
 import { TooltipHelper } from "../../../shared/components/ui/tooltip-helper";
 import ToolSelectionPopup from "../../../shared/components/ToolSelectionPopup";
 import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
+import { llmsRegistry } from "../../../shared/LLM/LLMsRegistry";
 import { LLMOption, Tool, Workflow } from "../types/Types";
 import { Plus, X, Key } from "lucide-react";
 
@@ -42,17 +43,31 @@ const AgentForm: React.FC<AgentFormProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const llmProviders = Object.keys(AvailableLLMs) as LLMOption["provider"][];
+  const registryProviders = llmsRegistry.listProviders();
+  const fallbackProviders = Object.keys(
+    AvailableLLMs
+  ) as LLMOption["provider"][];
+  const providerOptions = (
+    registryProviders.length > 0 ? registryProviders : fallbackProviders
+  ) as LLMOption["provider"][];
+
+  const getModelsForProvider = (provider: string): LLMModel[] => {
+    const models = llmsRegistry.getProviderModels(provider);
+    if (models && models.length > 0) {
+      return models;
+    }
+    return AvailableLLMs[provider] || [];
+  };
   const [selectedProvider, setSelectedProvider] = useState<
     LLMOption["provider"]
   >(value.llm.provider || "Groq");
 
   const [llmOptions, setLLMOptions] = useState<LLMModel[]>(
-    AvailableLLMs[selectedProvider]
+    getModelsForProvider(selectedProvider)
   );
 
   useEffect(() => {
-    setLLMOptions(AvailableLLMs[selectedProvider]);
+    setLLMOptions(getModelsForProvider(selectedProvider));
   }, [selectedProvider]);
 
   const [showToolPopup, setShowToolPopup] = useState(false);
@@ -154,11 +169,13 @@ const AgentForm: React.FC<AgentFormProps> = ({
           value={value.role}
           onChange={(e) => onChange({ ...value, role: e.target.value })}
           className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          placeholder={t("agentForm.enterAgentRole", "Enter agent role that reflects its intended specialty or type of activity")}
+          placeholder={t(
+            "agentForm.enterAgentRole",
+            "Enter agent role that reflects its intended specialty or type of activity"
+          )}
           maxLength={100}
         />
       </div>
-
       <div className="flex flex-col gap-1">
         <div className="flex justify-between items-center">
           <label
@@ -330,7 +347,6 @@ const AgentForm: React.FC<AgentFormProps> = ({
           </div>
         )}
       </div>
-
       <div>
         <label className="block text-sm font-medium text-zinc-300 mb-1">
           {t("agentForm.languageModel", "Language Model")}
@@ -343,7 +359,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
               onChange={(value: string) => {
                 setSelectedProvider(value as LLMOption["provider"]);
               }}
-              options={llmProviders.map((provider) => ({
+              options={providerOptions.map((provider) => ({
                 value: provider,
                 label: provider,
               }))}
@@ -363,10 +379,10 @@ const AgentForm: React.FC<AgentFormProps> = ({
                 });
               }}
               options={[
-                { 
-                  value: "", 
-                  label: t("agentForm.selectModel", "Select a model..."), 
-                  disabled: true 
+                {
+                  value: "",
+                  label: t("agentForm.selectModel", "Select a model..."),
+                  disabled: true,
                 },
                 ...llmOptions.map((m) => ({ value: m.id, label: m.name })),
               ]}
@@ -388,9 +404,11 @@ const AgentForm: React.FC<AgentFormProps> = ({
               )}
         </p>
       </div>
-
       <div>
-        <label htmlFor="agentApiKey" className="block text-sm font-medium text-zinc-300 mb-1">
+        <label
+          htmlFor="agentApiKey"
+          className="block text-sm font-medium text-zinc-300 mb-1"
+        >
           {t("agentForm.apiKey", "API Key")}
         </label>
         <div className="relative">
