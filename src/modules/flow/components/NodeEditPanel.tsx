@@ -18,7 +18,7 @@ import {
   NodeValue,
   Socket,
 } from "../types/NodeTypes";
-import { X } from "lucide-react";
+import { X, Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getConfigParameters, setConfigParameter } from "../types/NodeTypes";
 
@@ -116,6 +116,38 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     return _label;
   };
 
+  // Handle file upload
+  const handleFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    param: ConfigParameterType
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = event.target?.result as string;
+      
+      setFormValues((prev) => ({
+        ...prev,
+        [param.parameterName]: base64String,
+      }));
+      
+      if (node) {
+        setConfigParameter(node, param.parameterName, base64String);
+      }
+
+      if (param.isNodeBodyContent) {
+        setValue(base64String as unknown as NodeValue);
+        onSave({
+          title,
+          nodeValue: base64String as unknown as NodeValue,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const renderInputControl = (param: ConfigParameterType) => {
     if (!param) return null;
 
@@ -154,6 +186,35 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
 
     switch (param.parameterType) {
       case "string":
+        if (param.acceptedFileTypes) {
+          return (
+            <div className="space-y-2">
+              <div className="relative">
+                <input
+                  type="file"
+                  id={param.parameterName}
+                  accept={param.acceptedFileTypes}
+                  onChange={(e) => handleFileUpload(e, param)}
+                  className="hidden"
+                />
+                <label
+                  htmlFor={param.parameterName}
+                  className="flex items-center justify-center w-full bg-[#FFC72C]/10 hover:bg-[#FFC72C]/20 text-[#FFC72C] border border-[#FFC72C]/30 rounded-md p-3 cursor-pointer transition-colors"
+                >
+                  <Upload size={18} className="mr-2" />
+                  <span className="text-sm font-medium">
+                    {renderValue ? t("nodeEditPanel.fileUploaded", "File uploaded ✓") : t("nodeEditPanel.chooseFile", "Choose File")}
+                  </span>
+                </label>
+              </div>
+              {renderValue && (
+                <div className="text-xs text-gray-400 truncate">
+                  {String(renderValue).substring(0, 50)}...
+                </div>
+              )}
+            </div>
+          );
+        }
         if (param.sourceList) {
           return (
             <div className="space-y-4">
@@ -171,16 +232,16 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
               </select>
             </div>
           );
-        } else
-          return (
-            <input
-              type="text"
-              id={param.parameterName}
-              value={String(renderValue)}
-              onChange={handleChange}
-              className="w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none"
-            />
-          );
+        }
+        return (
+          <input
+            type="text"
+            id={param.parameterName}
+            value={String(renderValue)}
+            onChange={handleChange}
+            className="w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none"
+          />
+        );       
       case "text":
         return (
           <textarea
