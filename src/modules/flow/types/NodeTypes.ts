@@ -68,6 +68,7 @@ export type ConfigParameterType = {
   paramValue?: string | number | boolean; // The value of the parameter
   isNodeBodyContent?: boolean; // Whether to notify the node when the parameter changes
   description: string;
+  acceptedFileTypes?: string; // MIME types for file upload (e.g., "image/*", ".pdf", etc.)
   i18n?: Record<string, Record<string, { Name: string; Description: string }>>;
 };
 
