@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import WorkspaceTab from '@/modules/workspace/tabs/WorkspaceTab';
-import { WorkspaceData, ConsoleEvent } from '@/modules/workspace/types/Types';
+import { WorkspaceData } from '@/modules/workspace/types/Types';
 
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
@@ -42,17 +42,32 @@ vi.mock('@/shared/components/ui/scroll-area', () => ({
 }));
 
 vi.mock('../../../src/shared/components/ui/select', () => ({
-  default: ({ value, onChange, children }: any) => <select value={value} onChange={onChange}>{children}</select>,
-}));
-
-vi.mock('@/modules/workspace/components/EventResultDialog', () => ({
-  default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="event-result-dialog" /> : null,
+  default: ({ value, onChange, children, options, label }: any) => (
+    <div>
+      {label && <label>{label}</label>}
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        {options?.map((opt: any) => (
+          <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+            {opt.label}
+          </option>
+        ))}
+        {children}
+      </select>
+    </div>
+  ),
 }));
 
 vi.mock('../../../src/shared/LLM/config', () => ({
   AvailableLLMs: {
-    Groq: [{ name: 'llama3-8b', displayName: 'Llama 3 8B' }],
-    OpenAI: [{ name: 'gpt-4', displayName: 'GPT-4' }],
+    Groq: [{ name: 'llama3-8b', displayName: 'Llama 3 8B', id: 'llama3-8b' }],
+    OpenAI: [{ name: 'gpt-4', displayName: 'GPT-4', id: 'gpt-4' }],
+  },
+}));
+
+vi.mock('../../../src/shared/LLM/LLMsRegistry', () => ({
+  llmsRegistry: {
+    listProviders: vi.fn(() => []),
+    getProviderModels: vi.fn(() => []),
   },
 }));
 
@@ -76,7 +91,6 @@ const renderWorkspaceTab = (props: Partial<React.ComponentProps<typeof Workspace
   return render(
     <WorkspaceTab
       workspaceData={mockWorkspaceData}
-      events={[]}
       {...props}
     />
   );
@@ -94,6 +108,15 @@ describe('WorkspaceTab', () => {
     expect(screen.getByText('A test workspace')).toBeInTheDocument();
   });
 
+  it('displays workspace ID and timestamps', () => {
+    renderWorkspaceTab();
+
+    expect(screen.getByText('Workspace ID')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('Created')).toBeInTheDocument();
+    expect(screen.getByText('Last Updated')).toBeInTheDocument();
+  });
+
   it('enters edit mode when edit button is clicked', () => {
     renderWorkspaceTab();
 
@@ -102,6 +125,17 @@ describe('WorkspaceTab', () => {
 
     expect(screen.getByDisplayValue('Test Workspace')).toBeInTheDocument();
     expect(screen.getByDisplayValue('A test workspace')).toBeInTheDocument();
+  });
+
+  it('shows confirm and cancel buttons in edit mode', () => {
+    renderWorkspaceTab();
+
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
+
+    expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
   });
 
   it('calls onUpdateWorkspace when saving changes', async () => {
@@ -114,13 +148,16 @@ describe('WorkspaceTab', () => {
     const nameInput = screen.getByDisplayValue('Test Workspace');
     fireEvent.change(nameInput, { target: { value: 'Updated Workspace' } });
 
+    const descriptionInput = screen.getByDisplayValue('A test workspace');
+    fireEvent.change(descriptionInput, { target: { value: 'Updated description' } });
+
     const saveButton = screen.getByRole('button', { name: /confirm/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
       expect(mockOnUpdateWorkspace).toHaveBeenCalledWith({
         name: 'Updated Workspace',
-        description: 'A test workspace',
+        description: 'Updated description',
         mainLLM: { provider: 'Groq', model: { name: 'Llama 3.1 8B', id: 'llama-3.1-8b-instant' } },
         apiKey: 'test-key',
         useSavedCredentials: false,
@@ -128,154 +165,163 @@ describe('WorkspaceTab', () => {
     });
   });
 
-  it('displays console events', () => {
-    const mockEvents: ConsoleEvent[] = [
-      {
-        id: '1',
-        timestamp: Date.now(),
-        type: 'info',
-        message: 'Test message',
-      },
-    ];
+  it('exits edit mode after saving', async () => {
+    const mockOnUpdateWorkspace = vi.fn().mockResolvedValue(undefined);
+    renderWorkspaceTab({ onUpdateWorkspace: mockOnUpdateWorkspace });
 
-    renderWorkspaceTab({ events: mockEvents });
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
 
-    expect(screen.getByText('Test message')).toBeInTheDocument();
-  });
-
-  it('handles console input submission without pending prompts', () => {
-    const mockOnSendConsoleInput = vi.fn();
-    renderWorkspaceTab({
-      onSendConsoleInput: mockOnSendConsoleInput,
-    });
-
-    const input = screen.getByPlaceholderText('Please enter your input:');
-    fireEvent.change(input, { target: { value: 'Test input' } });
-
-    const submitButton = screen.getByRole('button', { name: 'Send' });
-    fireEvent.click(submitButton);
-
-    expect(mockOnSendConsoleInput).toHaveBeenCalled();
-  });
-
-  it('handles pending prompts correctly', async () => {
-    const mockEvents: ConsoleEvent[] = [
-      {
-        id: '1',
-        timestamp: Date.now(),
-        type: 'input',
-        message: 'Waiting for input',
-        details: 'Waiting for user input',
-        promptId: 'prompt1',
-        nodeId: 1,
-        nodeName: 'Test Node',
-      },
-    ];
-
-    renderWorkspaceTab({ events: mockEvents });
+    const saveButton = screen.getByRole('button', { name: /confirm/i });
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Waiting for input')).toBeInTheDocument();
-    });
-
-    const input = screen.getByPlaceholderText('Waiting for input');
-    fireEvent.change(input, { target: { value: 'User response' } });
-
-    const submitButton = screen.getByRole('button', { name: 'Send' });
-    fireEvent.click(submitButton);
-
-    // After submission, the prompt should be consumed and not reappear
-    // This tests the consumedPromptIds logic
-  });
-
-  it('handles multiple pending prompts sequentially', async () => {
-    const mockEvents: ConsoleEvent[] = [
-      {
-        id: '1',
-        timestamp: Date.now(),
-        type: 'input',
-        message: 'First prompt',
-        details: 'Waiting for user input',
-        promptId: 'prompt1',
-        nodeId: 1,
-        nodeName: 'Test Node',
-      },
-      {
-        id: '2',
-        timestamp: Date.now() + 1000,
-        type: 'input',
-        message: 'Second prompt',
-        details: 'Waiting for user input',
-        promptId: 'prompt2',
-        nodeId: 2,
-        nodeName: 'Test Node 2',
-      },
-    ];
-
-    renderWorkspaceTab({ events: mockEvents });
-
-    // First prompt should appear
-    await waitFor(() => {
-      expect(screen.getByText('First prompt')).toBeInTheDocument();
-    });
-
-    // Submit first prompt
-    const input = screen.getByPlaceholderText('First prompt');
-    fireEvent.change(input, { target: { value: 'Response 1' } });
-    const submitButton = screen.getByRole('button', { name: 'Send' });
-    fireEvent.click(submitButton);
-
-    // Second prompt should appear after first is consumed
-    await waitFor(() => {
-      expect(screen.getByText('Second prompt')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
     });
   });
 
-  it('clears events when clear button is clicked', () => {
-    const mockOnClearEvents = vi.fn();
-    const mockEvents: ConsoleEvent[] = [
-      {
-        id: '1',
-        timestamp: Date.now(),
-        type: 'info',
-        message: 'Test message',
-      },
-    ];
-
-    renderWorkspaceTab({ events: mockEvents, onClearEvents: mockOnClearEvents });
-
-    const clearButton = screen.getByRole('button', { name: 'Clear' });
-    fireEvent.click(clearButton);
-
-    expect(mockOnClearEvents).toHaveBeenCalled();
-  });
-
-  it('toggles console expansion', () => {
+  it('cancels editing and restores original values', () => {
     renderWorkspaceTab();
 
-    const expandButton = screen.getByRole('button', { name: 'Expand' });
-    fireEvent.click(expandButton);
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
 
-    // Check if expanded state is toggled (this might require checking class or state)
+    const nameInput = screen.getByDisplayValue('Test Workspace');
+    fireEvent.change(nameInput, { target: { value: 'Changed Name' } });
+
+    const descriptionInput = screen.getByDisplayValue('A test workspace');
+    fireEvent.change(descriptionInput, { target: { value: 'Changed description' } });
+
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    fireEvent.click(cancelButton);
+
+    expect(screen.getByText('Test Workspace')).toBeInTheDocument();
+    expect(screen.getByText('A test workspace')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Changed Name')).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Changed description')).not.toBeInTheDocument();
   });
 
-  it('opens event result dialog when result button is clicked', () => {
-    const mockEvents: ConsoleEvent[] = [
-      {
-        id: '1',
-        timestamp: Date.now(),
-        type: 'success',
-        message: 'Test message',
-        results: 'Detailed results',
-      },
-    ];
+  it('notifies parent about edit status changes', () => {
+    const mockOnEditStatusChange = vi.fn();
+    renderWorkspaceTab({ onEditStatusChange: mockOnEditStatusChange });
 
-    renderWorkspaceTab({ events: mockEvents });
+    expect(mockOnEditStatusChange).toHaveBeenCalledWith(false);
 
-    // Find the result button by its title
-    const resultButton = screen.getByTitle('View result');
-    fireEvent.click(resultButton);
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
 
-    expect(screen.getByTestId('event-result-dialog')).toBeInTheDocument();
+    expect(mockOnEditStatusChange).toHaveBeenCalledWith(true);
+
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    fireEvent.click(cancelButton);
+
+    expect(mockOnEditStatusChange).toHaveBeenCalledWith(false);
+  });
+
+  it('displays main LLM information', () => {
+    renderWorkspaceTab();
+
+    expect(screen.getByText('Main LLM')).toBeInTheDocument();
+    expect(screen.getByText('Llama 3.1 8B')).toBeInTheDocument();
+  });
+
+  it('shows LLM selection dropdowns in edit mode', () => {
+    renderWorkspaceTab();
+
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
+
+    expect(screen.getByText('Provider')).toBeInTheDocument();
+    expect(screen.getByText('Model')).toBeInTheDocument();
+  });
+
+  it('displays API key configuration in edit mode', () => {
+    renderWorkspaceTab();
+
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
+
+    expect(screen.getByText('API Configuration')).toBeInTheDocument();
+    expect(screen.getByText('New Key')).toBeInTheDocument();
+    expect(screen.getByText('Environment Variables')).toBeInTheDocument();
+  });
+
+  it('shows API key input when "New Key" is selected', () => {
+    renderWorkspaceTab();
+
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
+
+    const newKeyButton = screen.getByText('New Key');
+    fireEvent.click(newKeyButton);
+
+    expect(screen.getByPlaceholderText('Enter API key')).toBeInTheDocument();
+  });
+
+  it('allows changing API key input', () => {
+    renderWorkspaceTab();
+
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
+
+    const apiKeyInput = screen.getByPlaceholderText('Enter API key');
+    fireEvent.change(apiKeyInput, { target: { value: 'new-api-key' } });
+
+    expect(apiKeyInput).toHaveValue('new-api-key');
+  });
+
+  it('switches between new key and environment variables', () => {
+    renderWorkspaceTab();
+
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
+
+    expect(screen.getByPlaceholderText('Enter API key')).toBeInTheDocument();
+
+    const envVarButton = screen.getByText('Environment Variables');
+    fireEvent.click(envVarButton);
+
+    expect(screen.getByText('Environment Variable')).toBeInTheDocument();
+  });
+
+  it('syncs form values when workspace data changes', () => {
+    const { rerender } = renderWorkspaceTab();
+
+    const updatedWorkspaceData = {
+      ...mockWorkspaceData,
+      name: 'Updated Name',
+      description: 'Updated Description',
+    };
+
+    rerender(
+      <WorkspaceTab
+        workspaceData={updatedWorkspaceData}
+      />
+    );
+
+    expect(screen.getByText('Updated Name')).toBeInTheDocument();
+    expect(screen.getByText('Updated Description')).toBeInTheDocument();
+  });
+
+  it('handles workspace with no description', () => {
+    const workspaceWithoutDescription = {
+      ...mockWorkspaceData,
+      description: '',
+    };
+
+    render(<WorkspaceTab workspaceData={workspaceWithoutDescription} />);
+
+    expect(screen.getByText('No description provided')).toBeInTheDocument();
+  });
+
+  it('handles workspace with no name', () => {
+    const workspaceWithoutName = {
+      ...mockWorkspaceData,
+      name: '',
+    };
+
+    render(<WorkspaceTab workspaceData={workspaceWithoutName} />);
+
+    expect(screen.getByText('Content Creation')).toBeInTheDocument();
   });
 });

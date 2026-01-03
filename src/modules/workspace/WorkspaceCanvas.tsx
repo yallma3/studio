@@ -63,7 +63,7 @@ const Toast: React.FC<ToastProps> = ({
 }) => {
   React.useEffect(() => {
     if (!isClosing) {
-            // Auto-hide toast after a delay if not manually closing
+      // Auto-hide toast after a delay if not manually closing
       const autoHideTimer = setTimeout(() => {
         onClose();
       }, 2000); // Show for 2 seconds
@@ -207,12 +207,12 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
       try {
         const exists = await workspaceFileExists(workspaceData);
         if (!exists) {
-                    // Workspace doesn't exist locally, likely imported - mark as unsaved
+          // Workspace doesn't exist locally, likely imported - mark as unsaved
           setHasUnsavedChanges(true);
         }
       } catch (error) {
         console.error("Error checking workspace existence:", error);
-                // On error, assume it's imported and mark as unsaved
+        // On error, assume it's imported and mark as unsaved
         setHasUnsavedChanges(true);
       }
     };
@@ -294,7 +294,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
     setSidecarStatus(sidecarClient.getConnectionStatus());
 
     return () => {
-            // Clean up listeners to prevent duplicates
+      // Clean up listeners to prevent duplicates
       sidecarClient.offCommand(handleSidecarCommand);
       sidecarClient.offStatusChange(handleStatusChange);
     };
@@ -351,7 +351,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
       // Save to storage using workspace ID
       await saveWorkspaceToDefaultLocation(updatedWorkspace);
 
-            // Clear unsaved changes flag
+      // Clear unsaved changes flag
       setHasUnsavedChanges(false);
 
       showToast(
@@ -507,7 +507,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
         updatedAt: Date.now(),
       };
 
-  // Update state to reflect changes immediately in UI
+      // Update state to reflect changes immediately in UI
       setWorkspaceData(updatedWorkspace);
       
       // Mark that there are unsaved changes
@@ -760,6 +760,13 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
               <AiFlowsTab
                 workspaceData={workspaceData}
                 onTabChanges={handleTabChanges}
+              />
+            )}
+            {activeTab === "environment" && (
+              <EnvironmentVariablesTab
+                workspaceData={workspaceData}
+                onTabChanges={handleTabChanges}
+                onUpdateWorkspace={handleUpdateWorkspace}
               />
             )}
           </div>

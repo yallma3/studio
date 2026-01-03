@@ -403,13 +403,28 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                       </button>
                     </div>
 
-                  <div className="h-24">
-                    {!formValues.useSavedCredentials ? (
-                      <div>
-                        <div className="relative">
-                          <input
-                            type="password"
-                            name="apiKey"
+                    <div className="h-24">
+                      {!formValues.useSavedCredentials ? (
+                        <div>
+                          <div className="relative">
+                            <input
+                              type="password"
+                              name="apiKey"
+                              value={formValues.apiKey}
+                              onChange={handleInputChange}
+                              className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                              placeholder={t("workspaceTab.enterApiKey", "Enter API key")}
+                            />
+                            <Key className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+                          </div>
+                          <p className="text-xs text-zinc-400 mt-1">
+                            {t("workspaceTab.apiKeyInfo", "Your API key is stored locally and never shared")}
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <Select
+                            id="savedKey"
                             value={formValues.apiKey}
                             onChange={(value) =>
                               setFormValues((prev) => ({
@@ -434,55 +449,14 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                             {t("workspaceTab.envVarInfo", "Select an API key from your environment variables")}
                           </p>
                         </div>
-                        <p className="text-xs text-zinc-400 mt-1">
-                          {t(
-                            "workspaceTab.apiKeyInfo",
-                            "Your API key is stored locally and never shared"
-                          )}
-                        </p>
-                      </div>
-                    ) : (
-                      <div>
-                        <Select
-                          id="savedKey"
-                          value={formValues.apiKey}
-                          onChange={(value) =>
-                            setFormValues((prev) => ({
-                              ...prev,
-                              apiKey: value,
-                            }))
-                          }
-                          options={[
-                            {
-                              value: "",
-                              label: t(
-                                "workspaceTab.selectSavedKey",
-                                "Select a saved key..."
-                              ),
-                              disabled: true,
-                            },
-                            { value: "key1", label: "Groq API Key" },
-                            { value: "key2", label: "OpenAI API Key" },
-                            { value: "key3", label: "Anthropic API Key" },
-                            { value: "key4", label: "Google API Key" },
-                          ]}
-                          label={t("workspaceTab.savedKey", "Saved Key")}
-                        />
-                        <p className="text-xs text-zinc-400 mt-1">
-                          {t(
-                            "workspaceTab.savedKeyInfo",
-                            "Use a previously saved API key from your vault"
-                          )}
-                        </p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
     </div>
   );
 };
