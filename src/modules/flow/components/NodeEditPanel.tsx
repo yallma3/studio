@@ -124,15 +124,22 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file size (e.g., 5MB limit)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      alert(t("nodeEditPanel.fileTooLarge", "File is too large. Maximum size is 5MB."));
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const base64String = event.target?.result as string;
-      
+
       setFormValues((prev) => ({
         ...prev,
         [param.parameterName]: base64String,
       }));
-      
+
       if (node) {
         setConfigParameter(node, param.parameterName, base64String);
       }
@@ -145,6 +152,11 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
         });
       }
     };
+
+    reader.onerror = () => {
+      alert(t("nodeEditPanel.fileReadError", "Failed to read file. Please try again."));
+    };
+
     reader.readAsDataURL(file);
   };
   
