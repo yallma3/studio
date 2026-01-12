@@ -147,6 +147,78 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     };
     reader.readAsDataURL(file);
   };
+
+  const shouldShowParameter = (param: ConfigParameterType): boolean => {
+    if (!node) return true;
+    
+    const currentProvider = formValues["Provider"] as string || "openai";
+    
+    if (param.parameterName === "API Key") {
+      return currentProvider.toLowerCase() !== "ollama";
+    }
+    
+    if (param.parameterName === "Ollama Base URL") {
+      return currentProvider.toLowerCase() === "ollama";
+    }
+    
+    return true;
+  };
+
+  const getFilteredModelOptions = (param: ConfigParameterType) => {
+    if (!param.sourceList || param.parameterName !== "Model") {
+      return param.sourceList || [];
+    }
+    
+    const currentProvider = formValues["Provider"] as string || "openai";
+    
+    return param.sourceList.filter((option: any) => {
+      if (option.provider) {
+        return option.provider.toLowerCase() === currentProvider.toLowerCase();
+      }
+      return true;
+    });
+  };
+
+  const renderApiKeyOrOllamaUrl = () => {
+    if (!node) return null;
+    
+    const currentProvider = formValues["Provider"] as string || "openai";
+    const isOllama = currentProvider.toLowerCase() === "ollama";
+    
+    if (isOllama) {
+      const ollamaParam = getConfigParameters(node).find(p => p.parameterName === "Ollama Base URL");
+      if (ollamaParam && ollamaParam.UIConfigurable) {
+        return (
+          <div key="ollama-base-url" className="space-y-2">
+            <label
+              htmlFor="Ollama Base URL"
+              className={`block text-sm font-medium text-gray-300 ${textAlignClass}`}
+            >
+              {getValueLabel(ollamaParam)}
+            </label>
+            {renderInputControl(ollamaParam)}
+          </div>
+        );
+      }
+    } else {
+      const apiKeyParam = getConfigParameters(node).find(p => p.parameterName === "API Key");
+      if (apiKeyParam && apiKeyParam.UIConfigurable) {
+        return (
+          <div key="api-key" className="space-y-2">
+            <label
+              htmlFor="API Key"
+              className={`block text-sm font-medium text-gray-300 ${textAlignClass}`}
+            >
+              {getValueLabel(apiKeyParam)}
+            </label>
+            {renderInputControl(apiKeyParam)}
+          </div>
+        );
+      }
+    }
+    
+    return null;
+  };
   
   const renderInputControl = (param: ConfigParameterType) => {
     if (!param) return null;
@@ -173,6 +245,36 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
       }));
       if (node) {
         setConfigParameter(node, param.parameterName, newValue);
+      }else{
+        return;
+      }
+      if (param.parameterName === "Provider") {
+        const modelParam = getConfigParameters(node).find(p => p.parameterName === "Model");
+        if (modelParam && modelParam.sourceList) {
+          const filteredModels = modelParam.sourceList.filter((option: any) => 
+            option.provider && option.provider.toLowerCase() === (newValue as string).toLowerCase()
+          );
+          
+          if (filteredModels.length > 0) {
+            const firstModel = filteredModels[0].key;
+            setFormValues((prev) => ({
+              ...prev,
+              "Model": firstModel,
+            }));
+            
+            if (node) {
+              setConfigParameter(node, "Model", firstModel);
+            }
+            
+            if (modelParam.isNodeBodyContent) {
+              setValue(firstModel as unknown as NodeValue);
+              onSave({
+                title,
+                nodeValue: firstModel as unknown as NodeValue,
+              });
+            }
+          }
+        }
       }
 
       if (param.isNodeBodyContent) {
@@ -216,6 +318,8 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
           );
         }
         if (param.sourceList) {
+          const filteredOptions = getFilteredModelOptions(param);
+          
           return (
             <div className="space-y-4">
               <select
@@ -224,7 +328,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
                 value={String(renderValue)}
                 onChange={handleChange}
               >
-                {param.sourceList.map((option) => (
+                {filteredOptions.map((option) => (
                   <option key={option.key} value={option.key}>
                     {option.label}
                   </option>
@@ -351,7 +455,11 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
           {node &&
             getConfigParameters(node) &&
             getConfigParameters(node).map((param) => {
-              if (param.UIConfigurable) {
+              if (param.parameterName === "API Key" || param.parameterName === "Ollama Base URL") {
+                return null;
+              }
+              
+              if (param.UIConfigurable && shouldShowParameter(param)) {
                 return (
                   <div key={param.parameterName} className="space-y-2">
                     <label
@@ -366,6 +474,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
               }
               return null;
             })}
+          {renderApiKeyOrOllamaUrl()}
         </div>
 
         <div className="space-y-2">
