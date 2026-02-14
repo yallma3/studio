@@ -171,7 +171,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     
     const currentProvider = formValues["Provider"] as string || "openai";
     
-    return param.sourceList.filter((option: any) => {
+    return param.sourceList.filter((option) => {
       if (option.provider) {
         return option.provider.toLowerCase() === currentProvider.toLowerCase();
       }
