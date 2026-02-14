@@ -11,7 +11,7 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import React, { useState, useEffect, MouseEvent, useRef } from "react";
+import React, { useState, useEffect, MouseEvent, useRef, useCallback } from "react";
 import {
   BaseNode,
   ConfigParameterType,
@@ -26,6 +26,11 @@ interface NodeEditPanelProps {
   node: BaseNode | null;
   onClose: () => void;
   onSave: (updatedNode: Partial<BaseNode>) => void;
+}
+interface SourceListOption {
+  key: string;
+  label: string;
+  provider?: string;
 }
 
 const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
@@ -67,6 +72,12 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     }, {} as { [key: string]: string | number | boolean });
     setFormValues(initialValues);
   }, [node]);
+  const handleClose = useCallback(() => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 300); 
+  }, [onClose]);
 
   // Add global click listener to close panel when clicking outside
   useEffect(() => {
@@ -89,16 +100,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isVisible]);
-
-  // Handle close with animation
-  const handleClose = () => {
-    setIsVisible(false);
-    // Wait for animation to complete before calling onClose
-    setTimeout(() => {
-      onClose();
-    }, 300); // Match this duration with the CSS transition
-  };
+  }, [isVisible, handleClose]);
 
   const getValueLabel = (param: ConfigParameterType) => {
     if (!node) return t("nodeEditPanel.valueLabels.default");
@@ -164,14 +166,14 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     return true;
   };
 
-  const getFilteredModelOptions = (param: ConfigParameterType) => {
+  const getFilteredModelOptions = (param: ConfigParameterType): SourceListOption[] => {
     if (!param.sourceList || param.parameterName !== "Model") {
-      return param.sourceList || [];
+      return (param.sourceList as SourceListOption[]) || [];
     }
     
     const currentProvider = formValues["Provider"] as string || "openai";
     
-    return param.sourceList.filter((option: any) => {
+    return (param.sourceList as SourceListOption[]).filter((option: SourceListOption) => {
       if (option.provider) {
         return option.provider.toLowerCase() === currentProvider.toLowerCase();
       }
@@ -251,7 +253,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
       if (param.parameterName === "Provider") {
         const modelParam = getConfigParameters(node).find(p => p.parameterName === "Model");
         if (modelParam && modelParam.sourceList) {
-          const filteredModels = modelParam.sourceList.filter((option: any) => 
+          const filteredModels = (modelParam.sourceList as SourceListOption[]).filter((option: SourceListOption) => 
             option.provider && option.provider.toLowerCase() === (newValue as string).toLowerCase()
           );
           

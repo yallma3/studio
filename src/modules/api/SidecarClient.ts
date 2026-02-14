@@ -17,7 +17,18 @@ export interface SidecarCommand {
     | "pong"
     | "workflow_output"
     | "abort_workspace"
-    | "workspace_stopped";
+    | "workspace_stopped"
+    | "workspace_aborted" 
+    | "register_trigger"
+    | "unregister_trigger"
+    | "trigger_registered"
+    | "trigger_unregistered"
+    | "trigger_status"
+    | "trigger_execution"
+    | "webhook_execution"
+    | "telegram_execution"
+    | "user_prompt_request"    
+    | "user_prompt_response"; 
 
   workspaceId?: string;
   data?: unknown;

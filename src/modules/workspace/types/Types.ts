@@ -13,7 +13,7 @@
 
 import { LLMModel } from "../../../shared/LLM/config";
 import { NodeRegistry } from "../../flow/types/NodeRegistry";
-import { Task, TaskConnection } from "../../task/types/types";
+import { Task, TaskConnection,Trigger } from "../../task/types/types";
 
 // Interfaces for workspace data structure
 export interface Agent {
@@ -79,6 +79,7 @@ export interface WorkspaceData {
   mainLLM: LLMOption;
   apiKey: string;
   useSavedCredentials: boolean;
+  trigger: Trigger | null;
 
   // Step 3: Tasks
   tasks: Task[];

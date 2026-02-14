@@ -23,6 +23,11 @@ import {
   X,
   Key,
   Edit2,
+  Clock,
+  Play,
+  Zap,
+  Webhook,
+  MessageCircle,
 } from "lucide-react";
 import { WorkspaceData, Agent, Tool, LLMOption, Workflow } from "./types/Types";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -33,7 +38,17 @@ import { AvailableLLMs, LLMModel } from "../../shared/LLM/config";
 import { llmsRegistry } from "@/shared/LLM/LLMsRegistry";
 import AgentForm from "./components/AgentForm";
 import type { AgentFormValues } from "./components/AgentForm";
-import { Task, TaskConnection, TaskSocket } from "../task/types/types";
+import { 
+  Task, 
+  TaskConnection, 
+  TaskSocket, 
+  Trigger, 
+  TriggerType, 
+  ManualTrigger, 
+  ScheduledTrigger,
+  WebhookTrigger,
+  TelegramTrigger
+} from "../task/types/types";
 
 interface WorkspaceCreationWizardProps {
   onClose: () => void;
@@ -49,7 +64,51 @@ const generateCleanId = (length: number = 6): string => {
   }
   return result;
 };
-
+const getUserTimezone = (): string => {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+};
+const CRON_PRESETS = [
+ {
+    label: 'Every minute',
+    value: '* * * * *',
+    description: 'Runs every minute',
+  },
+  {
+    label: 'Every 5 minutes',
+    value: '*/5 * * * *',
+    description: 'Runs every 5 minutes',
+  },
+  {
+    label: 'Every 15 minutes',
+    value: '*/15 * * * *',
+    description: 'Runs every 15 minutes',
+  },
+  {
+    label: 'Every 30 minutes',
+    value: '*/30 * * * *',
+    description: 'Runs every 30 minutes',
+  },
+  {
+    label: 'Every hour',
+    value: '0 * * * *',
+    description: 'Runs at the start of every hour',
+  },
+  {
+    label: 'Every day at 9 AM',
+    value: '0 9 * * *',
+    description: 'Runs every day at 9:00 AM',
+  },
+  {
+    label: 'Every Monday at 9 AM',
+    value: '0 9 * * 1',
+    description: 'Runs every Monday at 9:00 AM',
+  },
+  {
+    label: 'First day of month at 9 AM',
+    value: '0 9 1 * *',
+    description: 'Runs on the 1st of every month at 9:00 AM',
+  }
+];
 const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   onClose,
   onCreateWorkspace,
@@ -57,6 +116,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === "ar";
   const [currentStep, setCurrentStep] = useState(1);
+  const [selectedWebhookType, setSelectedWebhookType] = useState<'telegram' | 'http-webhook' | null>(null);
 
   // workspace data state
   const [workspaceData, setWorkspaceData] = useState<WorkspaceData>({
@@ -74,20 +134,26 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     },
     apiKey: "",
     useSavedCredentials: false,
-
-    // Step 3: Tasks
+    agents: [],
     tasks: [],
     connections: [],
-
-    // Step 4: Agents
-    agents: [],
-
-    // Workflows
     workflows: [],
     mcpTools: [],
+    trigger: {
+      id: `trigger-${Date.now()}`,
+      type: "manual",
+      enabled: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      config: {
+        description: "Run workspace manually from UI",
+        requiresConfirmation: false,
+      },
+    } as ManualTrigger,
   });
 
-  // Initialize unique workspace ID when component mounts
+  const [isEditingTrigger, setIsEditingTrigger] = useState(false);
+
   useEffect(() => {
     const initializeWorkspaceId = async () => {
       const uniqueId = await generateUniqueWorkspaceId();
@@ -100,7 +166,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     initializeWorkspaceId();
   }, []);
 
-  // Generate unique task ID - updated format
+   // Generate unique task ID - updated format
   const generateTaskId = (): string => {
     const shortDate = Date.now().toString().slice(-6);
     const randomPart = generateCleanId(3);
@@ -131,7 +197,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   // State for selected provider
   const [selectedProvider, setSelectedProvider] =
     useState<LLMOption["provider"]>("Groq");
-  // remove unused selectedModel state
+    // remove unused selectedModel state
 
   const [llmOptions, setLLMOptions] = useState<LLMModel[]>(
     getModelsForProvider("Groq")
@@ -154,7 +220,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
 
   const [latestOutputSocket, setLatestOutputSocket] = useState<TaskSocket>();
 
-  // Temporary state for new agents
+   // Temporary state for new agents
   type WizardAgentDraft = Omit<Agent, "id" | "tools"> & {
     id?: string;
     tools: Tool[];
@@ -183,11 +249,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
 
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
-  // Track if we're in edit mode
+    // Track if we're in edit mode
   const [isEditingAgent, setIsEditingAgent] = useState(false);
   const [isEditingTask, setIsEditingTask] = useState(false);
 
-  // Step navigation handlers
+    // Step navigation handlers
   const handleNextStep = () => {
     setCurrentStep((prev) => Math.min(prev + 1, 4));
   };
@@ -200,12 +266,9 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     setCurrentStep(step);
   };
 
-  // Form submission handler
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     try {
-      // Call the onCreateWorkspace callback
+        // Call the onCreateWorkspace callback
       onCreateWorkspace(workspaceData);
 
       // Reset form with new unique ID
@@ -227,6 +290,17 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         agents: [],
         workflows: [],
         mcpTools: [],
+        trigger: {
+          id: `trigger-${Date.now()}`,
+          type: "manual",
+          enabled: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          config: {
+            description: "Run workspace manually from UI",
+            requiresConfirmation: false,
+          },
+        } as ManualTrigger,
       });
       setSelectedProvider("Groq");
       setCurrentStep(1);
@@ -237,10 +311,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     }
   };
 
-  // Step validation
+    // Step validation
   const isStep1Valid = workspaceData.name.trim() !== "";
   const isStep2Valid = true; // Can proceed even without tasks
-  const isStep3Valid = true; // Can proceed even without agents
+  const isStep3Valid = true; // Can proceed even without agents 
   const isStep4Valid = true;
 
   // Get current step validation status
@@ -259,7 +333,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     }
   };
 
-  // Handlers for workspace data changes
+    // Handlers for workspace data changes
   const handleWorkspaceDataChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -272,11 +346,143 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     }));
   };
 
-  // On press of add task to add task to workspace's task list and empty form state
+  const handleTriggerTypeChange = (newType: TriggerType, webhookSubType?: 'telegram' | 'http-webhook') => {
+    const baseFields = {
+      id: workspaceData.trigger?.id || `trigger-${Date.now()}`,
+      enabled: workspaceData.trigger?.enabled ?? true,
+      createdAt: workspaceData.trigger?.createdAt || Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    let newTrigger: Trigger;
+
+    switch (newType) {
+      case "manual":
+        newTrigger = {
+          ...baseFields,
+          type: "manual",
+          config: {
+            description: "Run workspace manually from UI",
+            requiresConfirmation: false,
+          },
+        } as ManualTrigger;
+        setSelectedWebhookType(null); 
+        break;
+
+      case "scheduled":
+        newTrigger = {
+          ...baseFields,
+          type: "scheduled",
+          config: {
+            cronExpression: workspaceData.trigger?.type === "scheduled" 
+              ? workspaceData.trigger.config.cronExpression 
+              : "0 9 * * *",
+            timezone: workspaceData.trigger?.type === "scheduled" 
+              ? workspaceData.trigger.config.timezone 
+              : getUserTimezone(),
+            description: "Run on schedule",
+          },
+        } as ScheduledTrigger;
+        setSelectedWebhookType(null); 
+        break;
+
+      case "webhook":
+        if (!webhookSubType) {
+          setSelectedWebhookType('http-webhook');
+          return; 
+        }
+        
+        if (webhookSubType === 'telegram') {
+          newTrigger = {
+            ...baseFields,
+            type: "telegram",
+            config: {
+              botToken: "",
+              updateTypes: ["message"],
+              filterChatId: undefined,
+              filterChatType: undefined,
+            },
+          } as TelegramTrigger;
+          setSelectedWebhookType('telegram');
+        } else {
+          newTrigger = {
+            ...baseFields,
+            type: "webhook",
+            config: {
+              webhookUrl: workspaceData.trigger?.type === "webhook"
+                ? workspaceData.trigger.config.webhookUrl
+                : "",
+              webhookId: workspaceData.trigger?.type === "webhook"
+                ? workspaceData.trigger.config.webhookId
+                : undefined,
+              secret: workspaceData.trigger?.type === "webhook"
+                ? workspaceData.trigger.config.secret
+                : undefined,
+              method: workspaceData.trigger?.type === "webhook"
+                ? workspaceData.trigger.config.method
+                : "POST",
+            },
+          } as WebhookTrigger;
+          setSelectedWebhookType('http-webhook');
+        }
+        break;
+
+      case "telegram":
+        newTrigger = {
+          ...baseFields,
+          type: "telegram",
+          config: {
+            botToken: workspaceData.trigger?.type === "telegram"
+              ? workspaceData.trigger.config.botToken
+              : "",
+            updateTypes: workspaceData.trigger?.type === "telegram"
+              ? workspaceData.trigger.config.updateTypes
+              : ["message"],
+            filterChatId: workspaceData.trigger?.type === "telegram"
+              ? workspaceData.trigger.config.filterChatId
+              : undefined,
+            filterChatType: workspaceData.trigger?.type === "telegram"
+              ? workspaceData.trigger.config.filterChatType
+              : undefined,
+          },
+        } as TelegramTrigger;
+        setSelectedWebhookType('telegram');
+        break;
+
+      default:
+        throw new Error(`Unknown trigger type: ${newType}`);
+    }
+
+    setWorkspaceData((prev) => ({
+      ...prev,
+      trigger: newTrigger,
+    }));
+  };
+
+  const handleTriggerConfigChange = (key: string, value: string | boolean) => {
+    if (!workspaceData.trigger) return;
+
+    setWorkspaceData((prev) => {
+      if (!prev.trigger) return prev;
+
+      return {
+        ...prev,
+        trigger: {
+          ...prev.trigger,
+          updatedAt: Date.now(),
+          config: {
+            ...prev.trigger.config,
+            [key]: value,
+          },
+        } as Trigger,
+      };
+    });
+  };
+
   const handleAddTask = () => {
     if (newTask.title.trim()) {
       if (isEditingTask && taskToEdit) {
-        // Update existing task
+          // Update existing task
         setWorkspaceData((prev) => ({
           ...prev,
           tasks: prev.tasks.map((task) =>
@@ -343,7 +549,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     }
   };
 
-  // Handle editing an existing task
+    // Handle editing an existing task
   const handleEditTask = (id: string) => {
     const task = workspaceData.tasks.find((t) => t.id === id);
     if (!task) return;
@@ -361,11 +567,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     }));
   };
 
-  // On press of add agent to add agent to workspace's agent list and empty form state
+    // On press of add agent to add agent to workspace's agent list and empty form state
   const handleAddAgent = () => {
     if (newAgent.name.trim()) {
       if (isEditingAgent && newAgent.id) {
-        // Update existing agent
+         // Update existing agent
         setWorkspaceData((prev) => ({
           ...prev,
           agents: prev.agents.map((agent) =>
@@ -386,7 +592,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           ),
         }));
       } else {
-        // Add new agent
+          // Add new agent
         const agent: Agent = {
           id: generateAgentId(),
           name: newAgent.name,
@@ -491,12 +697,12 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     }
   };
 
-  // Function to check if an agent has variables without values
+    // Function to check if an agent has variables without values
   const hasEmptyVariables = (variables: Record<string, string> = {}) => {
     return Object.values(variables).some((value) => !value.trim());
   };
 
-  // Function to replace variables in text with their values
+    // Function to replace variables in text with their values
   const replaceVariables = (
     text: string,
     variables: Record<string, string>
@@ -611,7 +817,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     );
   };
 
-  // Available tools derived from workflows (for ToolSelectionPopup)
+   // Available tools derived from workflows (for ToolSelectionPopup)
   const availableTools = useMemo(() => {
     const workflowTools: Tool[] =
       workspaceData.workflows?.map((workflow) => ({
@@ -627,6 +833,55 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   const availableMcpTools = useMemo(() => {
     return workspaceData.mcpTools;
   }, [workspaceData.mcpTools]);
+
+  const getTriggerIcon = (type: string) => {
+    switch (type) {
+      case "manual":
+        return <Play className="h-5 w-5" />;
+      case "scheduled":
+        return <Clock className="h-5 w-5" />;
+      case "webhook":
+        return <Webhook className="h-5 w-5" />;
+      case "telegram":
+        return <MessageCircle className="h-5 w-5" />;
+      default:
+        return <Zap className="h-5 w-5" />;
+    }
+  };
+
+  const getTriggerDisplayName = (trigger: Trigger) => {
+    switch (trigger.type) {
+      case "manual":
+        return t("workspaces.manualTrigger", "Manual Trigger");
+      case "scheduled":
+        return t("workspaces.scheduledTrigger", "Scheduled Trigger");
+      case "webhook":
+        return t("workspaces.webhookTrigger", "Webhook Trigger");
+      case "telegram":
+        return t("workspaces.telegramTrigger", "Telegram Bot Trigger");
+      default:
+        return t("workspaces.trigger", "Trigger");
+    }
+  };
+
+  const getTriggerDescription = (trigger: Trigger) => {
+    switch (trigger.type) {
+      case "manual":
+        return t("workspaces.manualTriggerDesc", "Run manually from UI");
+      case "scheduled":
+        return trigger.config.cronExpression 
+          ? `${trigger.config.cronExpression} (${trigger.config.timezone || "UTC"})`
+          : t("workspaces.scheduledTriggerDesc", "Run on schedule");
+      case "webhook":
+        return trigger.config.webhookUrl
+          ? `${trigger.config.method || "POST"} ${trigger.config.webhookUrl}`
+          : t("workspaces.webhookPending", "Webhook URL will be generated");
+      case "telegram":
+        return t("workspaces.telegramBotDesc", "Receive updates from Telegram bot");
+      default:
+        return "";
+    }
+  };
 
   return (
     <div className="flex items-center min-h-screen justify-center inset-0 z-50 bg-zinc-900 p-4">
@@ -666,7 +921,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                     <h3 className="text-lg font-medium text-white mb-4 ">
                       {t("workspaces.workspaceInfo", "Workspace Information")}
                     </h3>
-
+                    
                     <div className="space-y-4">
                       <div className="flex flex-col gap-2">
                         <label
@@ -733,7 +988,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       </span>
                     </h3>
                     <div className="grid grid-cols-5 gap-4">
-                      {/* Provider Selection */}
+                     {/* Provider Selection */}
                       <div className="mb-6 col-span-2">
                         <Select
                           id="provider"
@@ -769,7 +1024,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
 
                             setWorkspaceData((prev) => ({
                               ...prev,
-                              // set new LLM option
+                               // set new LLM option
                               mainLLM: {
                                 provider: selectedProvider,
                                 model: option,
@@ -807,7 +1062,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
 
                       {/* API Key Input Container with fixed height */}
                       <div className="h-24">
-                        {" "}
+                       {" "}
                         {/* Fixed height container */}
                         {!workspaceData.useSavedCredentials ? (
                           <div>
@@ -850,7 +1105,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             </div>
                           </div>
                         ) : (
-                          /* Keys Vault Selection */
+                           /* Keys Vault Selection */
                           <div>
                             <Select
                               id="savedKey"
@@ -927,7 +1182,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
 
                 {/* Side-by-side layout for agent creation and list */}
                 <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Add Agent Form */}
+                {/* Add Agent Form */}
                   <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-4/7">
                     <h3 className="text-lg font-medium text-white mb-4 ">
                       {isEditingAgent
@@ -983,6 +1238,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               tools: [],
                               llm: workspaceData.mainLLM,
                               apiKey: "",
+                              variables: {},
                             });
                             setIsEditingAgent(false);
                           }}
@@ -1051,25 +1307,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                     </span>
                                   </div>
                                 )}
-                                {agent.objective && (
-                                  <p className="text-sm text-gray-400 mt-1">
-                                    {agent.objective}
-                                  </p>
-                                )}
-                                {agent.capabilities && (
-                                  <p className="text-sm text-gray-400 mt-1">
-                                    {agent.capabilities}
-                                  </p>
-                                )}
-                                {agent.llm?.model &&
-                                  agent.llm.model !==
-                                    workspaceData.mainLLM.model && (
-                                    <div className="mt-1 flex items-center">
-                                      <span className="text-xs text-yellow-400">
-                                        LLM: {agent.llm.model.name}
-                                      </span>
-                                    </div>
-                                  )}
                               </div>
                               <div className="flex space-x-2">
                                 <button
@@ -1087,76 +1324,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               </div>
                             </div>
 
-                            {/* Display background with variables replaced */}
-                            {agent.background && (
-                              <div className="mt-3 p-3 bg-zinc-900/50 border border-zinc-700 rounded-md">
-                                <p className="text-xs text-gray-400 mb-1">
-                                  {t(
-                                    "workspaces.agentBackground",
-                                    "Background:"
-                                  )}
-                                </p>
-                                <p className="text-sm text-gray-300">
-                                  {replaceVariables(
-                                    agent.background,
-                                    agent.variables || {}
-                                  )}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Display variables summary with edit button */}
-                            {agent.variables &&
-                              Object.keys(agent.variables).length > 0 && (
-                                <div className="mt-3 flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-xs text-gray-400">
-                                      {t(
-                                        "workspaces.agentVariables",
-                                        "Variables:"
-                                      )}
-                                    </p>
-                                    <span className="text-xs text-gray-300">
-                                      {Object.keys(agent.variables).length}{" "}
-                                      {t("workspaces.defined", "defined")}
-                                    </span>
-                                    {hasEmptyVariables(agent.variables) && (
-                                      <span className="text-xs text-amber-500 flex items-center gap-1">
-                                        <svg
-                                          xmlns="http://www.w3.org/2000/svg"
-                                          className="h-3 w-3"
-                                          viewBox="0 0 20 20"
-                                          fill="currentColor"
-                                        >
-                                          <path
-                                            fillRule="evenodd"
-                                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                            clipRule="evenodd"
-                                          />
-                                        </svg>
-                                        {t(
-                                          "workspaces.emptyValues",
-                                          "Empty values"
-                                        )}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <button
-                                    onClick={() =>
-                                      handleOpenVariableDialog(agent.id)
-                                    }
-                                    className="text-xs text-yellow-400 hover:text-yellow-500 flex items-center gap-1"
-                                  >
-                                    <Edit2 className="h-3 w-3" />
-                                    {t(
-                                      "workspaces.editVariables",
-                                      "Edit Values"
-                                    )}
-                                  </button>
-                                </div>
-                              )}
-
-                            {/* Display tools */}
                             {agent.tools && agent.tools.length > 0 && (
                               <div className="mt-2">
                                 <span className="text-xs text-gray-400">
@@ -1183,89 +1350,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       </div>
                     )}
                   </div>
-
-                  {/* Variables Editing Dialog */}
-                  {editingAgentVariables && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                      <div className="bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full max-w-lg shadow-xl animate-in fade-in duration-200">
-                        <div className="flex justify-between items-center mb-4">
-                          <h3 className="text-lg font-medium text-white">
-                            {t("workspaces.editVariables", "Edit Variables")}
-                          </h3>
-                          <button
-                            onClick={() => setEditingAgentVariables(null)}
-                            className="text-gray-400 hover:text-white"
-                          >
-                            <X className="h-5 w-5" />
-                          </button>
-                        </div>
-
-                        <div className="mb-4 p-2 max-h-[60vh] overflow-y-auto">
-                          {Object.keys(tempVariables).length > 0 ? (
-                            <div className="space-y-3">
-                              {Object.entries(tempVariables).map(
-                                ([key, value]) => (
-                                  <div
-                                    key={key}
-                                    className="flex flex-col gap-1"
-                                  >
-                                    <div className="flex justify-between items-center">
-                                      <label className="text-sm font-medium text-yellow-400 mb-1">{`{{${key}}}`}</label>
-                                    </div>
-                                    <input
-                                      type="text"
-                                      value={value}
-                                      onChange={(e) => {
-                                        setTempVariables((prev) => ({
-                                          ...prev,
-                                          [key]: e.target.value,
-                                        }));
-                                      }}
-                                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                      placeholder={t(
-                                        "workspaces.enterValue",
-                                        "Enter value"
-                                      )}
-                                    />
-                                  </div>
-                                )
-                              )}
-                            </div>
-                          ) : (
-                            <p className="text-center text-gray-400 py-4">
-                              {t(
-                                "workspaces.noVariables",
-                                "No variables defined"
-                              )}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex items-center justify-between mt-4">
-                          <div></div>
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => setEditingAgentVariables(null)}
-                              className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium border-0"
-                            >
-                              {t("common.cancel", "Cancel")}
-                            </Button>
-                            <Button
-                              onClick={handleSaveVariables}
-                              className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0"
-                            >
-                              {t("common.save", "Save")}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
 
-            {/* Step 3: Define Tasks */}
+            {/* Step 3: Define Tasks WITH TRIGGER NODE */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div>
@@ -1288,367 +1377,679 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       </svg>
                       {t(
                         "workspaces.modifyLater",
-                        "You can always modify Tasks later"
+                        "You can always modify later"
                       )}
                     </span>
                   </div>
                   <p className="text-gray-400 mb-6">
                     {t(
                       "workspaces.defineTasksDescription",
-                      "Define the tasks that your agents will work on."
+                      "Tasks are the breakdown of what you want to accomplish. You can have a single Task (at least one is required), or multiple Tasks. Tasks can be connected in a sequence (which is preferred) or remain independent. You can always connect and modify them after finishing this wizard."
                     )}
                   </p>
                 </div>
 
-                {/* Side-by-side layout for task creation and list */}
                 <div className="flex flex-col lg:flex-row gap-6 h-full">
-                  {/* Add Task Form (Left 2/3) */}
-                  <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-2/3 flex flex-col h-full">
-                    <h3 className="text-lg font-medium text-white mb-4 ">
-                      {isEditingTask
-                        ? t(
-                            "workspaces.updateTask",
-                            `Update Task: ${newTask.title}`
-                          )
-                        : t(
-                            "workspaces.addTask",
-                            `Add Task (${workspaceData.tasks.length + 1})`
-                          )}
-                    </h3>
+                  {/* Task Form - Left side */}
+                  {!isEditingTrigger && (
+                    <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-2/3 flex flex-col h-full">
+                      <h3 className="text-lg font-medium text-white mb-4 ">
+                        {isEditingTask
+                          ? t(
+                              "workspaces.updateTask",
+                              `Update Task: ${newTask.title}`
+                            )
+                          : t("workspaces.addTask", "Add Task")}
+                      </h3>
 
-                    <div className="space-y-4 mb-4">
-                      <div>
-                        <label
-                          htmlFor="taskName"
-                          className="block text-sm font-medium text-gray-300 mb-1 "
-                        >
-                          {t("workspaces.taskName", "Name")}{" "}
-                          <span className="text-yellow-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          id="taskName"
-                          value={newTask.title}
-                          onChange={(e) =>
-                            setNewTask((prev) => ({
-                              ...prev,
-                              title: e.target.value,
-                            }))
-                          }
-                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                          placeholder={t(
-                            "workspaces.enterTaskName",
-                            "Enter task name"
-                          )}
-                          maxLength={40}
-                        />
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor="taskDescription"
-                          className="block text-sm font-medium text-gray-300 mb-1 "
-                        >
-                          {t("workspaces.taskDescription", "Description")}
-                        </label>
-                        <textarea
-                          id="taskDescription"
-                          value={newTask.description}
-                          onChange={(e) =>
-                            setNewTask((prev) => ({
-                              ...prev,
-                              description: e.target.value,
-                            }))
-                          }
-                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
-                          placeholder={t(
-                            "workspaces.enterTaskDescription",
-                            "Enter task description"
-                          )}
-                          maxLength={1000}
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="taskExpectedOutput"
-                          className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-1 "
-                        >
-                          {t(
-                            "workspaces.taskExpectedOutput",
-                            "Expected Output"
-                          )}
-                          <TooltipHelper
-                            text={t(
-                              "workspaces.taskExpectedOutputTooltip",
-                              "This can be output type, format, content or any validation criteria"
-                            )}
-                            position="bottom"
-                          />
-                        </label>
-                        <textarea
-                          id="taskExpectedOutput"
-                          value={newTask.expectedOutput}
-                          onChange={(e) =>
-                            setNewTask((prev) => ({
-                              ...prev,
-                              expectedOutput: e.target.value,
-                            }))
-                          }
-                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                          placeholder={t(
-                            "workspaces.enterTaskExpectedOutput",
-                            "Enter task expected output"
-                          )}
-                          maxLength={1000}
-                        />
-                      </div>
-                      <div className="flex gap-4">
-                        <div className="flex-1">
+                      <div className="space-y-4 mb-4">
+                        <div>
                           <label
-                            htmlFor="type"
-                            className="block text-sm font-medium text-gray-300 mb-1"
+                            htmlFor="taskName"
+                            className="block text-sm font-medium text-gray-300 mb-1 "
                           >
-                            {t("taskModal.type", "Type")}
+                            {t("workspaces.taskName", "Name")}{" "}
+                            <span className="text-yellow-500">*</span>
                           </label>
-                          <Select
-                            id="type"
-                            value={newTask.type}
-                            onChange={(value) => {
-                              setNewTask((prev) => {
-                                let newExecutorId = prev.executorId;
-                                if (
-                                  value === "specific-agent" &&
-                                  workspaceData.agents.length === 1
-                                ) {
-                                  newExecutorId = workspaceData.agents[0].id;
-                                } else if (
-                                  value === "agentic" ||
-                                  value !== prev.type
-                                ) {
-                                  newExecutorId = null;
-                                }
-                                return {
-                                  ...prev,
-                                  type: value,
-                                  executorId: newExecutorId,
-                                };
-                              });
-                            }}
-                            options={[
-                              {
-                                value: "agentic",
-                                label: t(
-                                  "taskModal.agenticAuto",
-                                  "Agentic (Auto)"
-                                ),
-                              },
-                              {
-                                value: "specific-agent",
-                                label: t(
-                                  "taskModal.specificAgent",
-                                  "Specific Agent"
-                                ),
-                              },
-                              {
-                                value: "workflow",
-                                label: t("taskModal.workflow", "Workflow"),
-                              },
-                            ]}
+                          <input
+                            type="text"
+                            id="taskName"
+                            value={newTask.title}
+                            onChange={(e) =>
+                              setNewTask((prev) => ({
+                                ...prev,
+                                title: e.target.value,
+                              }))
+                            }
+                            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                            placeholder={t(
+                              "workspaces.enterTaskName",
+                              "Enter task name"
+                            )}
+                            maxLength={40}
                           />
-                          <p className="text-xs text-gray-400 mt-1">
-                            {newTask.type === "agentic"
-                              ? t(
-                                  "taskModal.typeNoteAgentic",
-                                  "yaLLMa3 main Agent will decide how to handle the Task"
-                                )
-                              : newTask.type === "specific-agent"
-                              ? t(
-                                  "taskModal.typeNoteSpecific",
-                                  "Select Agent to perform the Task"
-                                )
-                              : t(
-                                  "taskModal.typeNoteWorkflow",
-                                  "The specified Workflow will be used to perform the Task"
-                                )}
-                          </p>
                         </div>
-                        {newTask.type === "specific-agent" ||
-                        newTask.type === "workflow" ? (
+
+                        <div>
+                          <label
+                            htmlFor="taskDescription"
+                            className="block text-sm font-medium text-gray-300 mb-1 "
+                          >
+                            {t("workspaces.taskDescription", "Description")}
+                          </label>
+                          <textarea
+                            id="taskDescription"
+                            value={newTask.description}
+                            onChange={(e) =>
+                              setNewTask((prev) => ({
+                                ...prev,
+                                description: e.target.value,
+                              }))
+                            }
+                            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-20"
+                            placeholder={t(
+                              "workspaces.enterTaskDescription",
+                              "Enter a description of the Task in terms of what needs to be done"
+                            )}
+                            maxLength={1000}
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="taskExpectedOutput"
+                            className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-1 "
+                          >
+                            {t(
+                              "workspaces.taskExpectedOutput",
+                              "Expected Output"
+                            )}
+                            <TooltipHelper
+                              text={t(
+                                "workspaces.taskExpectedOutputTooltip",
+                                "Specify what defines completion of the task and success criteria"
+                              )}
+                              position="bottom"
+                            />
+                          </label>
+                          <textarea
+                            id="taskExpectedOutput"
+                            value={newTask.expectedOutput}
+                            onChange={(e) =>
+                              setNewTask((prev) => ({
+                                ...prev,
+                                expectedOutput: e.target.value,
+                              }))
+                            }
+                            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                            placeholder={t(
+                              "workspaces.enterTaskExpectedOutput",
+                              "Specify what defines completion of the task and success criteria"
+                            )}
+                            maxLength={1000}
+                          />
+                        </div>
+                        <div className="flex gap-4">
                           <div className="flex-1">
                             <label
-                              htmlFor="executorId"
+                              htmlFor="type"
                               className="block text-sm font-medium text-gray-300 mb-1"
                             >
-                              {newTask.type === "specific-agent"
-                                ? t("workspaces.selectAgent", "Select Agent")
-                                : t(
-                                    "workspaces.selectWorkflow",
-                                    "Select Workflow"
-                                  )}
+                              {t("taskModal.type", "Type")}
                             </label>
                             <Select
-                              id="executorId"
-                              value={newTask.executorId || ""}
+                              id="type"
+                              value={newTask.type}
                               onChange={(value) => {
-                                setNewTask((prev) => ({
-                                  ...prev,
-                                  executorId: value || null,
-                                }));
+                                setNewTask((prev) => {
+                                  let newExecutorId = prev.executorId;
+                                  if (
+                                    value === "specific-agent" &&
+                                    workspaceData.agents.length === 1
+                                  ) {
+                                    newExecutorId = workspaceData.agents[0].id;
+                                  } else if (
+                                    value === "agentic" ||
+                                    value !== prev.type
+                                  ) {
+                                    newExecutorId = null;
+                                  }
+                                  return {
+                                    ...prev,
+                                    type: value,
+                                    executorId: newExecutorId,
+                                  };
+                                });
                               }}
                               options={[
                                 {
-                                  value: "",
-                                  label:
-                                    newTask.type === "workflow"
-                                      ? t(
-                                          "workspaces.workflowLater",
-                                          "Not for now, I'll specify later"
-                                        )
-                                      : newTask.type === "specific-agent"
-                                      ? t(
-                                          "workspaces.agentLater",
-                                          "Not for now, I'll select later"
-                                        )
-                                      : t("taskModal.none", "None"),
+                                  value: "agentic",
+                                  label: t(
+                                    "taskModal.agenticAuto",
+                                    "Agentic (Auto)"
+                                  ),
                                 },
-                                ...(newTask.type === "specific-agent"
-                                  ? workspaceData.agents.map((agent) => ({
-                                      value: agent.id,
-                                      label: agent.name,
-                                    }))
-                                  : workspaceData.workflows.map((wf) => ({
-                                      value: wf.id,
-                                      label: wf.name,
-                                    }))),
+                                {
+                                  value: "specific-agent",
+                                  label: t(
+                                    "taskModal.specificAgent",
+                                    "Specific Agent"
+                                  ),
+                                },
+                                {
+                                  value: "workflow",
+                                  label: t("taskModal.workflow", "Workflow"),
+                                },
                               ]}
                             />
+                            <p className="text-xs text-gray-400 mt-1">
+                              {newTask.type === "agentic"
+                                ? t(
+                                    "taskModal.typeNoteAgentic",
+                                    "yaLLMa3 main Agent will decide how to handle the Task"
+                                  )
+                                : newTask.type === "specific-agent"
+                                ? t(
+                                    "taskModal.typeNoteSpecific",
+                                    "Select Agent to perform the Task"
+                                  )
+                                : t(
+                                    "taskModal.typeNoteWorkflow",
+                                    "The specified Workflow will be used"
+                                  )}
+                            </p>
                           </div>
-                        ) : null}
+                          {newTask.type === "specific-agent" ||
+                          newTask.type === "workflow" ? (
+                            <div className="flex-1">
+                              <label
+                                htmlFor="executorId"
+                                className="block text-sm font-medium text-gray-300 mb-1"
+                              >
+                                {newTask.type === "specific-agent"
+                                  ? t("workspaces.selectAgent", "Select Agent")
+                                  : t(
+                                      "workspaces.selectWorkflow",
+                                      "Select Workflow"
+                                    )}
+                              </label>
+                              <Select
+                                id="executorId"
+                                value={newTask.executorId || ""}
+                                onChange={(value) => {
+                                  setNewTask((prev) => ({
+                                    ...prev,
+                                    executorId: value || null,
+                                  }));
+                                }}
+                                options={[
+                                  {
+                                    value: "",
+                                    label: t("taskModal.none", "None"),
+                                  },
+                                  ...(newTask.type === "specific-agent"
+                                    ? workspaceData.agents.map((agent) => ({
+                                        value: agent.id,
+                                        label: agent.name,
+                                      }))
+                                    : workspaceData.workflows.map((wf) => ({
+                                        value: wf.id,
+                                        label: wf.name,
+                                      }))),
+                                ]}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
 
-                    {isEditingTask ? (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => {
-                            setNewTask({
-                              id: generateTaskId(),
-                              title: "",
-                              description: "",
-                              expectedOutput: "",
-                              type: "agentic",
-                              executorId: null as string | null,
-                              sockets: [] as TaskSocket[],
-                            });
-                            setTaskToEdit(null);
-                            setIsEditingTask(false);
-                          }}
-                          className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-medium border-0 flex items-center justify-center"
-                        >
-                          <X className="h-4 w-4 mr-1" />
-                          {t("workspaces.cancelEdit", "Cancel")}
-                        </Button>
+                      {isEditingTask ? (
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => {
+                              setNewTask({
+                                id: generateTaskId(),
+                                title: "",
+                                description: "",
+                                expectedOutput: "",
+                                type: "agentic",
+                                executorId: null as string | null,
+                                sockets: [] as TaskSocket[],
+                              });
+                              setTaskToEdit(null);
+                              setIsEditingTask(false);
+                            }}
+                            className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-medium border-0 flex items-center justify-center"
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            {t("workspaces.cancelEdit", "Cancel")}
+                          </Button>
+                          <Button
+                            onClick={handleAddTask}
+                            className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center"
+                            disabled={!newTask.title.trim()}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            {t("workspaces.updateTask", "Update Task")}
+                          </Button>
+                        </div>
+                      ) : (
                         <Button
                           onClick={handleAddTask}
-                          className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center"
+                          className={`w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center ${
+                            newTask.title.trim()
+                              ? "cursor-pointer"
+                              : "cursor-not-allowed"
+                          }`}
                           disabled={!newTask.title.trim()}
                         >
-                          <Check className="h-4 w-4 mr-1" />
-                          {t("workspaces.updateTask", "Update Task")}
+                          <Plus className="h-4 w-4 mr-1" />
+                          {t("workspaces.addTask", "Add Task")}
                         </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={handleAddTask}
-                        className={`w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center ${
-                          newTask.title.trim()
-                            ? "cursor-pointer"
-                            : "cursor-not-allowed"
-                        }`}
-                        disabled={!newTask.title.trim()}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        {t("workspaces.addTask", "Add Task")}
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Task List (Right 1/3) */}
-                  <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-1/3 flex flex-col ">
-                    <h3 className="text-lg font-medium text-white mb-4 ">
-                      {t("workspaces.taskList", "Task List")}{" "}
-                      {workspaceData.tasks.length > 0 && (
-                        <span className="text-gray-400 text-sm">
-                          {" "}
-                          {workspaceData.tasks.length}{" "}
-                          {t("workspaces.tasks", "task(s)")}{" "}
-                          {t("common.add", "added")}
-                        </span>
                       )}
+                    </div>
+                  )}
+
+                  {/* TRIGGER EDIT FORM  */}
+                  {isEditingTrigger && (
+                    <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-2/3 flex flex-col h-full">
+                      <h3 className="text-lg font-medium text-white mb-4 ">
+                        {t("workspaces.editTrigger", "Edit Trigger")}
+                      </h3>
+
+                      <div className="space-y-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-3">
+                            {t("workspaces.triggerType", "Trigger Type")}
+                          </label>
+                          <div className="grid grid-cols-3 gap-4">
+                            {/* Manual Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleTriggerTypeChange("manual")}
+                              className={`p-4 rounded-lg border-2 transition-all ${
+                                workspaceData.trigger?.type === "manual" && selectedWebhookType === null
+                                  ? "border-yellow-500 bg-yellow-500/10"
+                                  : "border-zinc-700 bg-zinc-800 hover:border-zinc-600"
+                              }`}
+                            >
+                              <div className="flex flex-col items-center gap-2">
+                                <Play className="h-8 w-8 text-yellow-400" />
+                                <span className="text-white font-medium">
+                                  {t("workspaces.manual", "Manual")}
+                                </span>
+                                <span className="text-xs text-gray-400 text-center">
+                                  {t(
+                                    "workspaces.manualDescription",
+                                    "Run manually from UI"
+                                  )}
+                                </span>
+                              </div>
+                            </button>
+
+                            {/* Scheduled Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleTriggerTypeChange("scheduled")}
+                              className={`p-4 rounded-lg border-2 transition-all ${
+                                workspaceData.trigger?.type === "scheduled" && selectedWebhookType === null
+                                  ? "border-yellow-500 bg-yellow-500/10"
+                                  : "border-zinc-700 bg-zinc-800 hover:border-zinc-600"
+                              }`}
+                            >
+                              <div className="flex flex-col items-center gap-2">
+                                <Clock className="h-8 w-8 text-blue-400" />
+                                <span className="text-white font-medium">
+                                  {t("workspaces.scheduled", "Scheduled")}
+                                </span>
+                                <span className="text-xs text-gray-400 text-center">
+                                  {t(
+                                    "workspaces.scheduledDescription",
+                                    "Run on schedule"
+                                  )}
+                                </span>
+                              </div>
+                            </button>
+
+                            {/* Webhook Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleTriggerTypeChange("webhook")}
+                              className={`p-4 rounded-lg border-2 transition-all ${
+                                selectedWebhookType !== null
+                                  ? "border-yellow-500 bg-yellow-500/10"
+                                  : "border-zinc-700 bg-zinc-800 hover:border-zinc-600"
+                              }`}
+                            >
+                              <div className="flex flex-col items-center gap-2">
+                                <Webhook className="h-8 w-8 text-green-400" />
+                                <span className="text-white font-medium">
+                                  {t("workspaces.webhook", "Webhook")}
+                                </span>
+                                <span className="text-xs text-gray-400 text-center">
+                                  {t(
+                                    "workspaces.webhookDescription",
+                                    "Trigger via HTTP"
+                                  )}
+                                </span>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/*  Webhook Type Selection */}
+                        {selectedWebhookType !== null && (
+                          <div className="p-4 bg-zinc-900/50 rounded-lg border border-zinc-700">
+                            <label className="block text-sm font-medium text-gray-300 mb-3">
+                              {t("workspaces.webhookType", "Webhook Type")}
+                            </label>
+                            <div className="grid grid-cols-2 gap-4">
+                              {/* Telegram Bot */}
+                              <button
+                                type="button"
+                                onClick={() => handleTriggerTypeChange("webhook", "telegram")}
+                                className={`p-4 rounded-lg border-2 transition-all ${
+                                  workspaceData.trigger?.type === "telegram"
+                                    ? "border-blue-500 bg-blue-500/10"
+                                    : "border-zinc-700 bg-zinc-800 hover:border-zinc-600"
+                                }`}
+                              >
+                                <div className="flex flex-col items-center gap-2">
+                                  <MessageCircle className="h-6 w-6 text-blue-400" />
+                                  <span className="text-white font-medium text-sm">
+                                    {t("workspaces.telegramBot", "Telegram Bot")}
+                                  </span>
+                                  <span className="text-xs text-gray-400 text-center">
+                                    {t("workspaces.telegramDescription", "Receive Telegram updates")}
+                                  </span>
+                                </div>
+                              </button>
+
+                              {/* HTTP Webhook */}
+                              <button
+                                type="button"
+                                onClick={() => handleTriggerTypeChange("webhook", "http-webhook")}
+                                className={`p-4 rounded-lg border-2 transition-all ${
+                                  workspaceData.trigger?.type === "webhook"
+                                    ? "border-green-500 bg-green-500/10"
+                                    : "border-zinc-700 bg-zinc-800 hover:border-zinc-600"
+                                }`}
+                              >
+                                <div className="flex flex-col items-center gap-2">
+                                  <Webhook className="h-6 w-6 text-green-400" />
+                                  <span className="text-white font-medium text-sm">
+                                    {t("workspaces.httpWebhook", "HTTP Webhook")}
+                                  </span>
+                                  <span className="text-xs text-gray-400 text-center">
+                                    {t("workspaces.httpDescription", "Receive HTTP requests")}
+                                  </span>
+                                </div>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Scheduled Trigger Configuration */}
+                        {workspaceData.trigger?.type === "scheduled" && selectedWebhookType === null && (
+                          <div className="space-y-4 p-4 bg-zinc-900/50 rounded-lg border border-zinc-700">
+                            {/* Preset Dropdown */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                {t("workspaces.schedulePreset", "Schedule Preset")}
+                              </label>
+                              <select
+                                value={workspaceData.trigger.config.cronExpression || '0 9 * * *'}
+                                onChange={(e) => handleTriggerConfigChange("cronExpression", e.target.value)}
+                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                              >
+                                {CRON_PRESETS.map((preset) => (
+                                  <option key={preset.value} value={preset.value}>
+                                    {preset.label} - {preset.description}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Timezone */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                {t("workspaces.timezone", "Timezone")}
+                              </label>
+                              <select
+                                value={workspaceData.trigger.config.timezone || getUserTimezone()}
+                                onChange={(e) =>
+                                  handleTriggerConfigChange("timezone", e.target.value)
+                                }
+                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                              >
+                                <option value={getUserTimezone()}>{getUserTimezone()} (Local)</option>
+                                <option value="UTC">UTC</option>
+                                <option value="America/New_York">America/New_York (EST/EDT)</option>
+                                <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                                <option value="Europe/London">Europe/London (GMT/BST)</option>
+                                <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                                <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+                              </select>
+                            </div>
+
+                            {/* Description */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                {t("workspaces.description", "Description")}{" "}
+                                <span className="text-gray-400 text-xs">(Optional)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={workspaceData.trigger.config.description || ""}
+                                onChange={(e) =>
+                                  handleTriggerConfigChange("description", e.target.value)
+                                }
+                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                placeholder="Describe the schedule"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* HTTP Webhook Configuration */}
+                        {workspaceData.trigger?.type === "webhook" && (
+                          <div className="space-y-4 p-4 bg-zinc-900/50 rounded-lg border border-zinc-700">
+                            <div className="p-3 bg-green-900/20 rounded border border-green-700/50">
+                              <p className="text-sm text-green-300 mb-2">
+                                {t("workspaces.webhookInfo", "A unique webhook URL will be automatically generated when you activate this workspace.")}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {t("workspaces.webhookSecure", "The webhook will be secured with a secret token.")}
+                              </p>
+                            </div>
+
+                            {/* Method Selection */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                {t("workspaces.method", "HTTP Method")}
+                              </label>
+                              <div className="flex gap-4">
+                                <button
+                                  type="button"
+                                  onClick={() => handleTriggerConfigChange("method", "POST")}
+                                  className={`flex-1 py-2 px-4 rounded-md border-2 transition-all ${
+                                    workspaceData.trigger.config.method === "POST"
+                                      ? "border-yellow-500 bg-yellow-500/10 text-white"
+                                      : "border-zinc-700 bg-zinc-800 text-gray-400 hover:border-zinc-600"
+                                  }`}
+                                >
+                                  POST
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleTriggerConfigChange("method", "GET")}
+                                  className={`flex-1 py-2 px-4 rounded-md border-2 transition-all ${
+                                    workspaceData.trigger.config.method === "GET"
+                                      ? "border-yellow-500 bg-yellow-500/10 text-white"
+                                      : "border-zinc-700 bg-zinc-800 text-gray-400 hover:border-zinc-600"
+                                  }`}
+                                >
+                                  GET
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Telegram Configuration */}
+                        {workspaceData.trigger?.type === "telegram" && (
+                          <div className="space-y-4 p-4 bg-zinc-900/50 rounded-lg border border-zinc-700">
+                            <div className="p-3 bg-blue-900/20 rounded border border-blue-700/50">
+                              <p className="text-sm text-blue-300">
+                                {t("workspaces.telegramInfo", "Enter your Telegram Bot Token to receive updates from Telegram.")}
+                              </p>
+                            </div>
+
+                            {/* Bot Token */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                {t("workspaces.botToken", "Bot Token")}
+                                <span className="text-yellow-500"> *</span>
+                              </label>
+                              <input
+                                type="password"
+                                value={workspaceData.trigger.config.botToken || ""}
+                                onChange={(e) => handleTriggerConfigChange("botToken", e.target.value)}
+                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                              />
+                              <p className="text-xs text-gray-400 mt-1">
+                                {t("workspaces.botTokenHint", "Get your bot token from @BotFather on Telegram")}
+                              </p>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                {t("workspaces.eventTypes", "Event Types")}
+                              </label>
+                              <p className="text-xs text-gray-400">
+                                {t("workspaces.eventTypesHint", "Bot will receive messages and callbacks (configurable after creation)")}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Manual Trigger Info */}
+                        {workspaceData.trigger?.type === "manual" && selectedWebhookType === null && (
+                          <div className="p-4 bg-zinc-900/50 rounded-lg border border-zinc-700">
+                            <p className="text-sm text-gray-300">
+                              {t(
+                                "workspaces.manualInfo",
+                                "This workspace will only run when manually triggered from the UI."
+                              )}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <Button
+                        onClick={() => {
+                          setIsEditingTrigger(false);
+                          setSelectedWebhookType(null);
+                        }}
+                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium border-0 flex items-center justify-center"
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        {t("workspaces.saveTrigger", "Save Trigger")}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Task & Trigger List */}
+                  <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 lg:w-1/3 flex flex-col">
+                    <h3 className="text-lg font-medium text-white mb-4">
+                      {t("workspaces.taskList", "Task List")}{" "}
+                      <span className="text-gray-400 text-sm">
+                        {workspaceData.tasks.length + 1}{" "}
+                        {t("workspaces.items", "items")}
+                      </span>
                     </h3>
 
-                    {workspaceData.tasks.length > 0 ? (
-                      <div className="space-y-3 flex-grow overflow-y-auto">
-                        {workspaceData.tasks.map((task) => (
+                    <div className="space-y-3 flex-grow overflow-y-auto">
+                      {/* Trigger Node */}
+                      {workspaceData.trigger && (
+                        <div className={`rounded-lg p-4 border-2 relative ${
+                          workspaceData.trigger.type === "webhook"
+                            ? "bg-gradient-to-r from-green-900/20 to-green-800/10 border-green-700/50"
+                            : workspaceData.trigger.type === "telegram"
+                            ? "bg-gradient-to-r from-blue-900/20 to-blue-800/10 border-blue-700/50"
+                            : "bg-gradient-to-r from-yellow-900/20 to-yellow-800/10 border-yellow-700/50"
+                        }`}>
+                          <div className="absolute top-2 right-2">
+                            <span className={`text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              workspaceData.trigger.type === "webhook"
+                                ? "bg-green-700/30 text-green-300"
+                                : workspaceData.trigger.type === "telegram"
+                                ? "bg-blue-700/30 text-blue-300"
+                                : "bg-yellow-700/30 text-yellow-300"
+                            }`}>
+                              {t("workspaces.default", "Default")}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1">
+                              {getTriggerIcon(workspaceData.trigger.type)}
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-medium text-white mb-1">
+                                {getTriggerDisplayName(workspaceData.trigger)}
+                              </h4>
+                              <p className="text-xs text-gray-400">
+                                {getTriggerDescription(workspaceData.trigger)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              onClick={() => setIsEditingTrigger(true)}
+                              className={`transition-colors cursor-pointer flex items-center gap-1 text-sm ${
+                                workspaceData.trigger.type === "webhook"
+                                  ? "text-green-400 hover:text-green-300"
+                                  : workspaceData.trigger.type === "telegram"
+                                  ? "text-blue-400 hover:text-blue-300"
+                                  : "text-yellow-400 hover:text-yellow-300"
+                              }`}
+                            >
+                              <Edit2 className="h-3 w-3" />
+                              {t("common.edit", "Edit")}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tasks */}
+                      {workspaceData.tasks.length > 0 ? (
+                        workspaceData.tasks.map((task) => (
                           <div
                             key={task.id}
-                            className="bg-zinc-800 rounded-lg p-4 flex justify-between items-start w-full"
+                            className="bg-zinc-800 rounded-lg p-4 flex justify-between items-start"
                           >
                             <div className="w-full">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-medium text-white">
-                                  {task.title}
-                                </h4>
-                              </div>
-                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <h4 className="font-medium text-white mb-1">
+                                {task.title}
+                              </h4>
+                              <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-[10px] uppercase tracking-wide bg-zinc-700 text-gray-200 px-2 py-0.5 rounded">
-                                  {getTaskTypeLabel(
-                                    task.type as unknown as string
-                                  )}
+                                  {getTaskTypeLabel(task.type as unknown as string)}
                                 </span>
                                 {getExecutorLabel(
                                   task.type as unknown as string,
                                   task.executorId as unknown as string | null
                                 ) && (
                                   <span className="text-[10px] bg-zinc-700/60 text-gray-300 px-2 py-0.5 rounded">
-                                    {t("taskNode.executor", "Exec")}:{" "}
                                     {getExecutorLabel(
                                       task.type as unknown as string,
-                                      task.executorId as unknown as
-                                        | string
-                                        | null
+                                      task.executorId as unknown as string | null
                                     )}
                                   </span>
                                 )}
                               </div>
-                              {task.description && (
-                                <div className="mt-2">
-                                  <span className="text-xs font-medium text-gray-400">
-                                    {t(
-                                      "workspaces.taskDescription",
-                                      "Description"
-                                    )}
-                                    :
-                                  </span>
-                                  <p className="text-sm text-gray-300">
-                                    {task.description}
-                                  </p>
-                                </div>
-                              )}
-                              {task.expectedOutput && (
-                                <div className="mt-2">
-                                  <span className="text-xs font-medium text-gray-400">
-                                    {t(
-                                      "taskNode.expectedOutput",
-                                      "Expected Output"
-                                    )}
-                                    :
-                                  </span>
-                                  <p className="text-sm text-gray-300">
-                                    {task.expectedOutput}
-                                  </p>
-                                </div>
-                              )}
                             </div>
                             <div className="flex space-x-2 ml-4 flex-shrink-0">
                               <button
@@ -1665,13 +2066,13 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               </button>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center text-gray-400 py-8 bg-zinc-800/30 rounded-lg border border-zinc-700 flex items-center justify-center">
-                        {t("workspaces.noTasks", "No tasks added yet")}
-                      </div>
-                    )}
+                        ))
+                      ) : (
+                        <div className="text-center text-gray-400 py-8 bg-zinc-800/30 rounded-lg border border-zinc-700">
+                          {t("workspaces.noTasks", "No tasks added yet")}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1700,6 +2101,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         {t("workspaces.workspaceBasics", "Workspace Setup")}
                       </h3>
                       <button
+                        type="button"
                         onClick={() => handleGoToStep(1)}
                         className="text-yellow-400 hover:text-yellow-300 text-sm cursor-pointer"
                       >
@@ -1709,7 +2111,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
 
                     <div className="space-y-2">
                       <div className="flex">
-                        <span className="text-gray-400 w-40 whitespace-nowrap">
+                        <span className="text-gray-400 w-40">
                           {t("workspaces.workspaceName", "Workspace Name")}:
                         </span>
                         <span className="text-white font-medium">
@@ -1718,7 +2120,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       </div>
                       {workspaceData.description && (
                         <div className="flex">
-                          <span className="text-gray-400 w-40 whitespace-nowrap">
+                          <span className="text-gray-400 w-40">
                             {t("resultDialog.description", "Purpose")}:
                           </span>
                           <span className="text-white">
@@ -1727,41 +2129,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         </div>
                       )}
                       <div className="flex">
-                        <span className="text-gray-400 w-40 whitespace-nowrap">
+                        <span className="text-gray-400 w-40">
                           {t("workspaces.mainLLM", "Main LLM")}:
                         </span>
-                        {workspaceData.mainLLM?.model ? (
-                          <span className="text-white font-medium">
-                            {workspaceData.mainLLM.model.name}
-                          </span>
-                        ) : (
-                          <span className="text-white w-40 whitespace-nowrap">
-                            {t(
-                              "workspaceTab.noModelSelected",
-                              "No LLM selected"
-                            )}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex">
-                        <span className="text-gray-400 w-40 whitespace-nowrap">
-                          {t("workspaces.credentials", "Credentials")}:
-                        </span>
-                        <span className="text-white">
-                          {workspaceData.mainLLM?.model
-                            ? workspaceData.apiKey
-                              ? t(
-                                  "workspaces.usingSavedCredentials",
-                                  "Using API key"
-                                )
-                              : t(
-                                  "workspaces.noKeySpecified",
-                                  "No key specified"
-                                )
-                            : t(
-                                "workspaceTab.noModelSelected",
-                                "No LLM Selected"
-                              )}
+                        <span className="text-white font-medium">
+                          {workspaceData.mainLLM?.model?.name || t("workspaceTab.noModelSelected", "No LLM selected")}
                         </span>
                       </div>
                     </div>
@@ -1774,6 +2146,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         {t("workspaces.agents", "Agents")}
                       </h3>
                       <button
+                        type="button"
                         onClick={() => handleGoToStep(2)}
                         className="text-yellow-400 hover:text-yellow-300 text-sm cursor-pointer"
                       >
@@ -1788,73 +2161,12 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             key={agent.id}
                             className="bg-zinc-800 rounded-md p-3"
                           >
-                            <div className="flex items-center justify-between font-medium text-white text-base mb-1">
-                              <span>{agent.name}</span>
-                              {agent.llm?.model && (
-                                <span
-                                  className={`text-xs px-2 py-0.5 rounded ml-2 ${
-                                    agent.llm.model ===
-                                    workspaceData.mainLLM.model
-                                      ? "bg-blue-700 text-blue-300"
-                                      : "bg-zinc-700 text-yellow-400"
-                                  }`}
-                                >
-                                  {agent.llm.model ===
-                                  workspaceData.mainLLM.model
-                                    ? `${t("workspaceTab.mainLLM", "Main LLM")}`
-                                    : `${t(
-                                        "workspaceTab.customLLM",
-                                        "Custom LLM"
-                                      )}: ${agent.llm.model.name}`}
-                                  {agent.llm.model ===
-                                    workspaceData.mainLLM.model && (
-                                    <span className="ml-1 opacity-75">
-                                      (
-                                      {t(
-                                        "agentsTab.workspaceDefault",
-                                        "Workspace Default"
-                                      )}
-                                      )
-                                    </span>
-                                  )}
-                                </span>
-                              )}
+                            <div className="font-medium text-white text-base">
+                              {agent.name}
                             </div>
                             {agent.role && (
-                              <div className="text-sm text-yellow-400 mb-1">
+                              <div className="text-sm text-yellow-400">
                                 {agent.role}
-                              </div>
-                            )}
-
-                            {agent.background && (
-                              <div className="mt-2 text-sm">
-                                <span className="text-gray-400 whitespace-nowrap">
-                                  {t("agentsTab.background", "Background")}:
-                                </span>
-                                <p className="text-gray-300 mt-1">
-                                  {replaceVariables(
-                                    agent.background,
-                                    agent.variables || {}
-                                  )}
-                                </p>
-                              </div>
-                            )}
-
-                            {agent.tools && agent.tools.length > 0 && (
-                              <div className="mt-2">
-                                <span className="text-xs text-gray-400">
-                                  {t("agentsTab.tools", "Tools")}:
-                                </span>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {agent.tools.map((tool, index) => (
-                                    <span
-                                      key={index}
-                                      className="text-xs bg-zinc-700 text-gray-300 px-2 py-0.5 rounded"
-                                    >
-                                      {tool.name}
-                                    </span>
-                                  ))}
-                                </div>
                               </div>
                             )}
                           </div>
@@ -1867,13 +2179,14 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                     )}
                   </div>
 
-                  {/* Tasks */}
+                  {/* Tasks & Trigger */}
                   <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
                     <div className="flex justify-between items-center mb-3">
                       <h3 className="text-lg font-medium text-white ">
-                        {t("workspaces.tasks", "Tasks")}
+                        {t("workspaces.tasksAndTrigger", "Tasks & Trigger")}
                       </h3>
                       <button
+                        type="button"
                         onClick={() => handleGoToStep(3)}
                         className="text-yellow-400 hover:text-yellow-300 text-sm cursor-pointer"
                       >
@@ -1881,71 +2194,60 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                       </button>
                     </div>
 
-                    {workspaceData.tasks.length > 0 ? (
-                      <div className="space-y-3">
-                        {workspaceData.tasks.map((task) => (
+                    <div className="space-y-3">
+                      {/* Trigger */}
+                      {workspaceData.trigger && (
+                        <div className={`rounded-md p-3 border ${
+                          workspaceData.trigger.type === "webhook"
+                            ? "bg-gradient-to-r from-green-900/20 to-green-800/10 border-green-700/50"
+                            : workspaceData.trigger.type === "telegram"
+                            ? "bg-gradient-to-r from-blue-900/20 to-blue-800/10 border-blue-700/50"
+                            : "bg-gradient-to-r from-yellow-900/20 to-yellow-800/10 border-yellow-700/50"
+                        }`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            {getTriggerIcon(workspaceData.trigger.type)}
+                            <span className="text-white font-medium">
+                              {getTriggerDisplayName(workspaceData.trigger)}
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ml-auto ${
+                              workspaceData.trigger.type === "webhook"
+                                ? "bg-green-700/30 text-green-300"
+                                : workspaceData.trigger.type === "telegram"
+                                ? "bg-blue-700/30 text-blue-300"
+                                : "bg-yellow-700/30 text-yellow-300"
+                            }`}>
+                              {t("workspaces.trigger", "Trigger")}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-300 ml-7">
+                            {getTriggerDescription(workspaceData.trigger)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Tasks */}
+                      {workspaceData.tasks.length > 0 ? (
+                        workspaceData.tasks.map((task) => (
                           <div
                             key={task.id}
                             className="bg-zinc-800 rounded-md p-3"
                           >
-                            <div className="flex items-center justify-between font-medium text-white text-base mb-1">
-                              <span>{task.title}</span>
-                              <span className="text-xs px-2 py-0.5 rounded ml-2 bg-zinc-700 text-gray-200">
-                                {getTaskTypeLabel(
-                                  task.type as unknown as string
-                                )}
-                                {getExecutorLabel(
-                                  task.type as unknown as string,
-                                  task.executorId as unknown as string | null
-                                ) &&
-                                  ` - ${getExecutorLabel(
-                                    task.type as unknown as string,
-                                    task.executorId as unknown as string | null
-                                  )}`}
+                            <div className="flex items-center justify-between">
+                              <span className="text-white font-medium">
+                                {task.title}
+                              </span>
+                              <span className="text-xs px-2 py-0.5 rounded bg-zinc-700 text-gray-200">
+                                {getTaskTypeLabel(task.type as unknown as string)}
                               </span>
                             </div>
-
-                            {/* Task details */}
-                            <div className="mt-2 space-y-2">
-                              {task.description && (
-                                <div>
-                                  <span className="text-xs text-gray-400 whitespace-nowrap">
-                                    {t(
-                                      "workspaces.taskDescription",
-                                      "Description"
-                                    )}
-                                    :
-                                  </span>
-                                  <p className="text-sm text-gray-300 mt-0.5">
-                                    {task.description}
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Expected output */}
-                              {task.expectedOutput && (
-                                <div>
-                                  <span className="text-xs text-gray-400 whitespace-nowrap">
-                                    {t(
-                                      "taskNode.expectedOutput",
-                                      "Expected Output"
-                                    )}
-                                    :
-                                  </span>
-                                  <p className="text-sm text-gray-300 mt-0.5">
-                                    {task.expectedOutput}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-gray-400">
-                        {t("workspaces.noTasks", "No tasks added yet")}
-                      </div>
-                    )}
+                        ))
+                      ) : (
+                        <div className="text-gray-400 text-sm">
+                          {t("workspaces.noTasks", "No tasks added yet")}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="bg-green-900/20 rounded-lg p-4 border border-green-800">
@@ -1961,7 +2263,8 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
             )}
           </form>
         </div>
-        {/* Navigation and submit buttons - sticky to the bottom */}
+
+        {/* Navigation buttons */}
         <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
           <div className="flex justify-between items-center p-6 border-t border-zinc-800 bg-zinc-900 w-full max-w-6xl shadow-lg">
             {currentStep > 1 ? (
@@ -1989,11 +2292,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
               <div className="flex gap-2">
                 {currentStep != 1 && (
                   <Button
-                    onClick={() =>
-                      handleSubmit(
-                        new Event("submit") as unknown as React.FormEvent
-                      )
-                    }
+                    onClick={handleSubmit}
                     className="bg-red-400 hover:bg-red-500 text-black font-medium border-0 flex items-center cursor-pointer"
                   >
                     {t("common.finish", "Finish")}
@@ -2014,11 +2313,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
               </div>
             ) : (
               <Button
-                onClick={() =>
-                  handleSubmit(
-                    new Event("submit") as unknown as React.FormEvent
-                  )
-                }
+                onClick={handleSubmit}
                 className="bg-green-500 hover:bg-green-600 text-black font-medium border-0 flex items-center cursor-pointer"
                 disabled={!isStep4Valid}
               >
