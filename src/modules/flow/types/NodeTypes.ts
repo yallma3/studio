@@ -57,13 +57,18 @@ export type NodeExecutionContext = {
   node: NodeType;
   getInputValue: (socketId: number) => Promise<NodeValue | undefined>;
 };
+export type SourceListOption = {
+  key: string;
+  label: string;
+  provider?: string; 
+};
 
 export type ConfigParameterType = {
   parameterName: string;
   parameterType: "string" | "text" | "number" | "boolean";
   defaultValue: string | number | boolean;
   UIConfigurable?: boolean; // Whether the parameter is configurable in the UI, needs to be True if ValueSource is UserInput
-  sourceList?: Array<{ key: string; label: string }>; // Optional list of key-value pairs for dropdowns
+  sourceList?: SourceListOption[]; // Optional list of key-value pairs for dropdowns
   valueSource: "UserInput" | "Env" | "Default" | "RuntimeVault"; // Source of the value
   paramValue?: string | number | boolean; // The value of the parameter
   isNodeBodyContent?: boolean; // Whether to notify the node when the parameter changes
