@@ -239,13 +239,13 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   });
 
   // Variables input state moved into AgentForm
-  // State for editing agent variables
-  const [editingAgentVariables, setEditingAgentVariables] = useState<
-    string | null
-  >(null);
-  const [tempVariables, setTempVariables] = useState<Record<string, string>>(
-    {}
-  );
+  // // State for editing agent variables
+  // const [editingAgentVariables, setEditingAgentVariables] = useState<
+  //   string | null
+  // >(null);
+  // const [tempVariables, setTempVariables] = useState<Record<string, string>>(
+  //   {}
+  // );
 
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
@@ -671,50 +671,50 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     }));
   };
 
-  // Tool add/remove now handled inside AgentForm
+  // // Tool add/remove now handled inside AgentForm
 
-  // Function to open the variable editing dialog for an agent
-  const handleOpenVariableDialog = (agentId: string) => {
-    const agent = workspaceData.agents.find((a) => a.id === agentId);
-    if (agent) {
-      setTempVariables(agent.variables || {});
-      setEditingAgentVariables(agentId);
-    }
-  };
+  // // Function to open the variable editing dialog for an agent
+  // const handleOpenVariableDialog = (agentId: string) => {
+  //   const agent = workspaceData.agents.find((a) => a.id === agentId);
+  //   if (agent) {
+  //     setTempVariables(agent.variables || {});
+  //     setEditingAgentVariables(agentId);
+  //   }
+  // };
 
-  // Function to save edited variables
-  const handleSaveVariables = () => {
-    if (editingAgentVariables) {
-      setWorkspaceData((prev) => ({
-        ...prev,
-        agents: prev.agents.map((agent) =>
-          agent.id === editingAgentVariables
-            ? { ...agent, variables: tempVariables }
-            : agent
-        ),
-      }));
-      setEditingAgentVariables(null);
-    }
-  };
+  // // Function to save edited variables
+  // const handleSaveVariables = () => {
+  //   if (editingAgentVariables) {
+  //     setWorkspaceData((prev) => ({
+  //       ...prev,
+  //       agents: prev.agents.map((agent) =>
+  //         agent.id === editingAgentVariables
+  //           ? { ...agent, variables: tempVariables }
+  //           : agent
+  //       ),
+  //     }));
+  //     setEditingAgentVariables(null);
+  //   }
+  // };
 
-    // Function to check if an agent has variables without values
-  const hasEmptyVariables = (variables: Record<string, string> = {}) => {
-    return Object.values(variables).some((value) => !value.trim());
-  };
+  //   // Function to check if an agent has variables without values
+  // const hasEmptyVariables = (variables: Record<string, string> = {}) => {
+  //   return Object.values(variables).some((value) => !value.trim());
+  // };
 
-    // Function to replace variables in text with their values
-  const replaceVariables = (
-    text: string,
-    variables: Record<string, string>
-  ) => {
-    if (!text) return "";
-    let result = text;
-    Object.entries(variables || {}).forEach(([key, value]) => {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
-      result = result.replace(regex, value || `{{${key}}}`);
-    });
-    return result;
-  };
+  //   // Function to replace variables in text with their values
+  // const replaceVariables = (
+  //   text: string,
+  //   variables: Record<string, string>
+  // ) => {
+  //   if (!text) return "";
+  //   let result = text;
+  //   Object.entries(variables || {}).forEach(([key, value]) => {
+  //     const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
+  //     result = result.replace(regex, value || `{{${key}}}`);
+  //   });
+  //   return result;
+  // };
 
   // Task badges helpers
   const getTaskTypeLabel = (type: string) => {

@@ -10,8 +10,7 @@ import {
   Maximize2Icon,
   Plus,
   Trash2,
-  Power, 
-  Settings, 
+  Power
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TaskConnection } from "../types/types";
@@ -392,12 +391,12 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     });
   }, [tasks, triggerPosition, trigger]);
 
-    // Fit to view on mount and when tasks change
-  useEffect(() => {
-    if (tasks.length > 0 || (triggerPosition && trigger)) {
-      fitToView();
-    }
-  }, []);
+// Fit to view on mount and when tasks change
+useEffect(() => {
+  if (tasks.length > 0 || (triggerPosition && trigger)) {
+    fitToView();
+  }
+}, [tasks.length, trigger, triggerPosition, fitToView]);
 
   const handleCanvasContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -591,8 +590,8 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
 
           {/* Task Nodes */}
           {tasks.map((task) => {
-            let x = task.position.x || 0;
-            let y = task.position.y || 0;
+          const x = task.position.x || 0; 
+          const y = task.position.y || 0; 
 
             return (
               <div

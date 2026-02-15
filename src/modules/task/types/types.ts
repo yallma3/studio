@@ -1,4 +1,5 @@
 import { Position } from "../../flow/types/NodeTypes";
+import { LucideIcon } from 'lucide-react';
 
 export interface TaskSocket {
   id: number;
@@ -27,7 +28,7 @@ export interface TaskGraph {
   tasks: Task[];
   connections: TaskConnection[];
 }
-export type TriggerType = 'scheduled' | 'webhook' | 'manual' | 'telegram'; // ✅ UPDATED
+export type TriggerType = 'scheduled' | 'webhook' | 'manual' | 'telegram'; 
 
 export interface BaseTrigger {
   id: string;
@@ -102,7 +103,7 @@ export interface TriggerOption {
   id: TriggerType;
   name: string;
   description: string;
-  icon: any;
+  icon: LucideIcon;
   category: 'automation' | 'integration' | 'control';
   available: boolean;
 }

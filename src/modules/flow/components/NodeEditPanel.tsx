@@ -20,17 +20,12 @@ import {
 } from "../types/NodeTypes";
 import { X, Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { getConfigParameters, setConfigParameter } from "../types/NodeTypes";
+import { getConfigParameters, setConfigParameter,SourceListOption } from "../types/NodeTypes";
 
 interface NodeEditPanelProps {
   node: BaseNode | null;
   onClose: () => void;
   onSave: (updatedNode: Partial<BaseNode>) => void;
-}
-interface SourceListOption {
-  key: string;
-  label: string;
-  provider?: string;
 }
 
 const NodeEditPanel: React.FC<NodeEditPanelProps> = ({

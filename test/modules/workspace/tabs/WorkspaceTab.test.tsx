@@ -85,6 +85,7 @@ const mockWorkspaceData: WorkspaceData = {
   connections: [],
   workflows: [],
   mcpTools: [],
+  trigger: null,
 };
 
 const renderWorkspaceTab = (props: Partial<React.ComponentProps<typeof WorkspaceTab>> = {}) => {

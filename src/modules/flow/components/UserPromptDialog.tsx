@@ -16,7 +16,6 @@ interface UserPromptDialogProps {
 const UserPromptDialog: React.FC<UserPromptDialogProps> = ({
   isOpen,
   promptId,
-  nodeId,
   nodeTitle,
   message,
   onSubmit,
@@ -50,7 +49,8 @@ const UserPromptDialog: React.FC<UserPromptDialogProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Submit on Ctrl/Cmd + Enter
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      handleSubmit(e as any);
+      e.preventDefault(); 
+      handleSubmit(e as React.FormEvent);
     }
   };
 

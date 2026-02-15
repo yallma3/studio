@@ -95,9 +95,10 @@ export function createTelegramTrigger(
 /**
  * Validate manual trigger configuration
  */
-export function validateManualTrigger(config: ManualTrigger['config']): boolean {
+export function validateManualTrigger(_config: ManualTrigger['config']): boolean {
   return true;
 }
+
 
 /**
  * Validate scheduled trigger (basic validation)

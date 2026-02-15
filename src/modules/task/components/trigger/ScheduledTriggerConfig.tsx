@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ArrowLeft, AlertCircle, Clock } from "lucide-react";
 import { Trigger } from "../../types/types";
 import { createScheduledTrigger, getUserTimezone, CRON_PRESETS } from "../../utils/triggerHelpers";
-import CronParser from 'cron-parser';
+import { CronExpressionParser } from 'cron-parser';
 import cronstrue from 'cronstrue';
 
 interface ScheduledTriggerConfigProps {
@@ -41,7 +41,7 @@ const ScheduledTriggerConfig: React.FC<ScheduledTriggerConfigProps> = ({
         currentDate: new Date(),
         tz: timezone 
       };
-      const interval = CronParser.parse(cronExpression, options);
+      const interval = CronExpressionParser.parse(cronExpression, options);
       
       const runs: Date[] = [];
       for (let i = 0; i < 5; i++) {
@@ -50,6 +50,7 @@ const ScheduledTriggerConfig: React.FC<ScheduledTriggerConfigProps> = ({
       setNextRuns(runs);
       setError("");
     } catch (err) {
+       console.error("Cron validation error:", err);
       setError("Invalid cron expression");
       setNextRuns([]);
     }

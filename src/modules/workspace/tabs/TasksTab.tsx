@@ -47,8 +47,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const [showTriggerModal, setShowTriggerModal] = useState(false);
   const [triggerPosition, setTriggerPosition] = useState({ x: 100, y: 100 });
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
-  const [contextMenuItems, setContextMenuItems] = useState<ContextMenuItem[]>([]);
+  const [contextMenuPosition,_setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [contextMenuItems, _setContextMenuItems] = useState<ContextMenuItem[]>([]);
 
   const handleTaskPositionChange = useCallback(
     (taskId: string, position: { x: number; y: number }) => {
@@ -149,11 +149,6 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setShowTriggerModal(false);
   };
 
-  const handleTriggerDelete = () => {
-    if (onTriggerChange) {
-      onTriggerChange(null);
-    }
-  };
 
   const hasMountedRef = useRef(false);
   const onChangeRef = useRef(onChange);

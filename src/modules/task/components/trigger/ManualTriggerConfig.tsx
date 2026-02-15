@@ -24,7 +24,11 @@ const ManualTriggerConfig: React.FC<ManualTriggerConfigProps> = ({
   }, [existingTrigger]);
 
   const handleSave = () => {
-    const trigger = createManualTrigger(description);
+   const trigger = createManualTrigger(description);
+    if (existingTrigger) {
+        trigger.id = existingTrigger.id;
+        trigger.createdAt = existingTrigger.createdAt;
+      }
     onSave(trigger);
   };
 

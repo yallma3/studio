@@ -4,7 +4,6 @@ import {
   Copy, 
   Check, 
   ExternalLink, 
-  Info, 
   MessageCircle, 
   AlertCircle,
   ChevronRight 
@@ -16,6 +15,15 @@ interface TelegramTriggerConfigProps {
   onBack: () => void;
   existingTrigger?: Trigger | null;
 }
+
+// Bot info type definition
+type TelegramBotInfo = {
+  id: number;
+  username: string;
+  first_name: string;
+  can_join_groups: boolean;
+  can_read_all_group_messages: boolean;
+};
 
 // Event type metadata matching n8n
 const updateTypeOptions: {
@@ -88,12 +96,12 @@ const TelegramTriggerConfig: React.FC<TelegramTriggerConfigProps> = ({
   const [botToken, setBotToken] = useState('');
   const [updateTypes, setUpdateTypes] = useState<TelegramUpdateType[]>(['message']);
   const [filterChatId, setFilterChatId] = useState('');
-  const [filterChatType, setFilterChatType] = useState<string>('');
+  const [filterChatType, setFilterChatType] = useState<'private' | 'group' | 'supergroup' | 'channel' | ''>('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   
   // Registration state
   const [webhookUrl, setWebhookUrl] = useState('');
-  const [botInfo, setBotInfo] = useState<any>(null);
+  const [botInfo, setBotInfo] = useState<TelegramBotInfo | undefined>(undefined);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
   useEffect(() => {
@@ -103,7 +111,7 @@ const TelegramTriggerConfig: React.FC<TelegramTriggerConfigProps> = ({
       setFilterChatId(existingTrigger.config.filterChatId || '');
       setFilterChatType(existingTrigger.config.filterChatType || '');
       setWebhookUrl(existingTrigger.config.webhookUrl || '');
-      setBotInfo(existingTrigger.config.botInfo || null);
+      setBotInfo(existingTrigger.config.botInfo || undefined);
     }
   }, [existingTrigger]);
 
@@ -146,7 +154,7 @@ const TelegramTriggerConfig: React.FC<TelegramTriggerConfigProps> = ({
         updateTypes,
         webhookUrl,
         filterChatId: filterChatId || undefined,
-        filterChatType: (filterChatType as any) || undefined,
+        filterChatType: filterChatType || undefined,
         botInfo
       }
     };
@@ -370,7 +378,7 @@ const TelegramTriggerConfig: React.FC<TelegramTriggerConfigProps> = ({
           </label>
           <select
             value={filterChatType}
-            onChange={(e) => setFilterChatType(e.target.value)}
+            onChange={(e) => setFilterChatType(e.target.value as typeof filterChatType)}
             className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500/50"
           >
             <option value="">All chat types</option>
