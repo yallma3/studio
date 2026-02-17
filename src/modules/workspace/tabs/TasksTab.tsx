@@ -15,17 +15,23 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import { WorkspaceData } from "../types/Types";
 import TasksCanvas from "../../task/components/TasksCanvas";
 import TaskModal from "../../task/components/TaskModal";
-// import { ContextMenuItem } from "../../task/components/ContextMenu";
-import { Task, TaskConnection } from "../../task/types/types";
+import TriggerModal from "../../task/components/trigger/TriggerModal";
+import ContextMenu, { type ContextMenuItem } from "../../task/components/ContextMenu";
+import { Task, TaskConnection, Trigger } from "../../task/types/types";
 import { useTranslation } from "react-i18next";
 
 interface TasksTabProps {
   workspaceData: WorkspaceData;
   onTabChanges?: () => void;
   onChange?: (data: { tasks: Task[]; connections: TaskConnection[] }) => void;
+  onTriggerChange?: (trigger: Trigger | null) => void;
 }
 
-const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
+const TasksTab: React.FC<TasksTabProps> = ({ 
+  workspaceData, 
+  onChange,
+  onTriggerChange
+}) => {
   const { t } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>(() => workspaceData.tasks);
   const [connections, setConnections] = useState<TaskConnection[]>(
@@ -37,7 +43,12 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
     x: number;
     y: number;
   } | null>(null);
-  // Context menu state reserved for future use
+
+  const [showTriggerModal, setShowTriggerModal] = useState(false);
+  const [triggerPosition, setTriggerPosition] = useState({ x: 100, y: 100 });
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
+  const [contextMenuPosition,_setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [contextMenuItems, _setContextMenuItems] = useState<ContextMenuItem[]>([]);
 
   const handleTaskPositionChange = useCallback(
     (taskId: string, position: { x: number; y: number }) => {
@@ -89,14 +100,14 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
   const handleSaveTask = useCallback(
     (taskData: Omit<Task, "id" | "position" | "selected">) => {
       if (editingTask) {
-        // Update existing task
+         // Update existing task
         setTasks((prevTasks) =>
           prevTasks.map((task) =>
             task.id === editingTask.id ? { ...task, ...taskData } : task
           )
         );
       } else {
-        // Create new task
+          // Create new task
         const newTask: Task = {
           ...taskData,
           id: `task-${Date.now()}`,
@@ -112,7 +123,7 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
 
   const handleDeleteTask = useCallback(
     (taskId: string) => {
-      // Remove task
+       // Remove task
       setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
 
       // Remove connections involving this task's sockets
@@ -131,7 +142,14 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
     [tasks]
   );
 
-  // Notify parent whenever tasks or connections actually change (skip initial mount)
+  const handleTriggerSave = (trigger: Trigger) => {
+    if (onTriggerChange) {
+      onTriggerChange(trigger);
+    }
+    setShowTriggerModal(false);
+  };
+
+
   const hasMountedRef = useRef(false);
   const onChangeRef = useRef(onChange);
   useEffect(() => {
@@ -148,21 +166,29 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
   }, [tasks, connections]);
 
   return (
-    <div className="space-y-6">
-      <div className="bg-[#121212] rounded-md">
-        <div className="relative w-full h-[calc(100vh)]">
-          <TasksCanvas
-            tasks={tasks}
-            connections={connections}
-            onTaskPositionChange={handleTaskPositionChange}
-            onConnectionCreate={handleConnectionCreate}
-            onConnectionRemove={handleConnectionRemove}
-            onTaskEdit={handleEditTask}
-            onTaskDelete={handleDeleteTask}
-            onTaskAdd={handleCanvasAddTask}
-            onAddTaskButtonClick={handleAddTask}
-          />
-        </div>
+    <div className="h-full flex flex-col">
+      <div className="flex-1 bg-[#121212] rounded-md overflow-hidden relative">
+        <TasksCanvas
+          tasks={tasks}
+          connections={connections}
+          trigger={workspaceData.trigger}
+          triggerPosition={triggerPosition}
+          onTriggerPositionChange={setTriggerPosition}
+          onTriggerEdit={() => setShowTriggerModal(true)}
+          onTriggerDelete={() => onTriggerChange?.(null)}
+          onTriggerToggle={(enabled) => {
+            if (workspaceData.trigger) {
+              onTriggerChange?.({ ...workspaceData.trigger, enabled });
+            }
+          }}
+          onTaskPositionChange={handleTaskPositionChange}
+          onConnectionCreate={handleConnectionCreate}
+          onConnectionRemove={handleConnectionRemove}
+          onTaskEdit={handleEditTask}
+          onTaskDelete={handleDeleteTask}
+          onTaskAdd={handleCanvasAddTask}
+          onAddTaskButtonClick={handleAddTask}
+        />
       </div>
 
       <TaskModal
@@ -178,6 +204,20 @@ const TasksTab: React.FC<TasksTabProps> = ({ workspaceData, onChange }) => {
         tasksCount={tasks.length}
         agents={workspaceData.agents}
         workflows={workspaceData.workflows}
+      />
+
+      <TriggerModal
+        isOpen={showTriggerModal}
+        onClose={() => setShowTriggerModal(false)}
+        onSave={handleTriggerSave}
+        existingTrigger={workspaceData.trigger}
+      />
+
+      <ContextMenu
+        isOpen={isContextMenuOpen}
+        position={contextMenuPosition}
+        items={contextMenuItems}
+        onClose={() => setIsContextMenuOpen(false)}
       />
     </div>
   );

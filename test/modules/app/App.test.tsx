@@ -70,6 +70,7 @@ vi.mock('@/shared/HomeScreen', () => ({
             agents: [],
             workflows: [],
             mcpTools: [],
+            trigger: null,
           })
         }
       >
@@ -137,6 +138,7 @@ describe('App Component', () => {
     agents: [],
     workflows: [],
     mcpTools: [],
+    trigger: null, 
   };
 
   beforeEach(() => {
@@ -276,6 +278,7 @@ describe('App Component', () => {
           agents: [],
           workflows: [],
           mcpTools: [],
+          trigger: null,
         })
       );
     });

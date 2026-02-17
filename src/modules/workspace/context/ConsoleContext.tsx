@@ -212,6 +212,7 @@ export const ConsoleProvider: React.FC<ConsoleProviderProps> = ({
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useConsole = () => {
   const context = useContext(ConsoleContext);
   if (context === undefined) {

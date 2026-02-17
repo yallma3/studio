@@ -159,6 +159,7 @@ describe('TasksTab', () => {
       },
     ],
     mcpTools: [],
+    trigger: null,
   };
 
   const mockOnChange = vi.fn();

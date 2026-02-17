@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
-import { Task } from "../types/types";
+import { Task, Trigger } from "../types/types";
 import TaskNode from "./TaskNode";
+import TriggerNode from "./trigger/TriggerNode";
 import ContextMenu, { type ContextMenuItem } from "./ContextMenu";
 import {
   MinusIcon,
@@ -9,6 +10,7 @@ import {
   Maximize2Icon,
   Plus,
   Trash2,
+  Power
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TaskConnection } from "../types/types";
@@ -16,6 +18,12 @@ import { TaskConnection } from "../types/types";
 interface TasksCanvasProps {
   tasks?: Task[];
   connections?: TaskConnection[];
+  trigger?: Trigger | null;
+  triggerPosition?: { x: number; y: number };
+  onTriggerPositionChange?: (position: { x: number; y: number }) => void;
+  onTriggerEdit?: () => void;
+  onTriggerDelete?: () => void; 
+  onTriggerToggle?: (enabled: boolean) => void; 
   onTaskPositionChange?: (
     taskId: string,
     position: { x: number; y: number }
@@ -37,6 +45,12 @@ interface ViewportState {
 const TasksCanvas: React.FC<TasksCanvasProps> = ({
   tasks = [],
   connections = [],
+  trigger,
+  triggerPosition = { x: 100, y: 100 },
+  onTriggerPositionChange,
+  onTriggerEdit,
+  onTriggerDelete, 
+  onTriggerToggle, 
   onTaskPositionChange,
   onConnectionCreate,
   onConnectionRemove,
@@ -98,34 +112,51 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
 
   const handleTaskPositionChange = useCallback(
     (taskId: string, position: { x: number; y: number }) => {
-      // Position is already in the correct coordinate space (relative to transform container)
+       // Position is already in the correct coordinate space (relative to transform container)
       onTaskPositionChange?.(taskId, position);
     },
     [onTaskPositionChange]
   );
   const getSocketPosition = useCallback(
-    (socketId: number): { x: number; y: number } | null => {
-      // Find the task that contains this socket
-      const task = tasks.find((t) => t.sockets.some((s) => s.id === socketId));
-      if (!task) return null;
-
-      const socket = task.sockets.find((s) => s.id === socketId);
-      if (!socket) return null;
-
-      // Calculate socket position based on task position and socket type
-      const taskX = task.position.x;
-      const taskY = task.position.y;
-
-      const socketOffsetY = 140; // Start from task header
-
-      if (socket.type === "input") {
-        return { x: taskX, y: taskY + socketOffsetY }; // Left side
-      } else {
-        return { x: taskX + 400, y: taskY + socketOffsetY }; // Right side (320px is approximate node width)
+  (socketId: number): { x: number; y: number } | null => {
+    const SOCKET_Y_OFFSET = 140;
+    if (socketId === 9999 && triggerPosition && trigger) {
+      let SOCKET_Y_OFFSET_Trigger = 115;   
+      if (trigger.type === 'webhook') {
+        if (trigger.config.webhookUrl) {
+          SOCKET_Y_OFFSET_Trigger = 150; 
+        } else {
+          SOCKET_Y_OFFSET_Trigger = 115; 
+        }
+      } else if (trigger.type === 'manual') {
+        SOCKET_Y_OFFSET_Trigger = 100; 
+      } else if (trigger.type === 'scheduled') {
+        SOCKET_Y_OFFSET_Trigger = 100; 
       }
-    },
-    [tasks]
-  );
+      return {
+        x: triggerPosition.x + 416,
+        y: triggerPosition.y + SOCKET_Y_OFFSET_Trigger,
+      };
+    }
+    const task = tasks.find((t) => t.sockets.some((s) => s.id === socketId));
+    if (!task) return null;
+
+    const socket = task.sockets.find((s) => s.id === socketId);
+    if (!socket) return null;
+
+          // Calculate socket position based on task position and socket type
+    const taskX = task.position.x;
+    const taskY = task.position.y;
+
+
+    if (socket.type === "input") {
+      return { x: taskX, y: taskY + SOCKET_Y_OFFSET };
+    } else {
+      return { x: taskX + 416, y: taskY + SOCKET_Y_OFFSET };
+    }
+  },
+  [tasks, triggerPosition, trigger]
+);
 
   const handleSocketMouseDown = useCallback(
     (
@@ -139,7 +170,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
         setConnectionStart({ socketId, position, isOutput: true });
         setTempConnectionEnd(position);
       } else {
-        // Starting from input socket - check if there's an existing connection
+                // Starting from input socket - check if there's an existing connection
         const existingConn = connections.find(
           (conn) => conn.toSocket === socketId
         );
@@ -170,7 +201,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
         setIsProcessingConnection(true);
 
         if (isInput && connectionStart.isOutput) {
-          // Create connection from output to input
+           // Create connection from output to input
           const connection: TaskConnection = {
             fromSocket: connectionStart.socketId,
             toSocket: socketId,
@@ -199,12 +230,12 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
           }
         }
 
-        // Reset connection state
+         // Reset connection state
         setIsConnecting(false);
         setConnectionStart(null);
         setTempConnectionEnd(null);
 
-        // Reset processing flag after a brief delay
+          // Reset processing flag after a brief delay
         setTimeout(() => setIsProcessingConnection(false), 50);
       }
     },
@@ -220,7 +251,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
           y: e.clientY - dragStart.y,
         }));
       } else if (isConnecting && connectionStart) {
-        // Update temporary connection end position
+         // Update temporary connection end position
         const transformContainer = document.querySelector(
           "[data-transform-container]"
         );
@@ -242,9 +273,9 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     // Cancel connection if we're connecting but didn't hit a valid target
     // Don't cancel if we're currently processing a socket connection
     if (isConnecting && !isProcessingConnection) {
-      // Use a small timeout to allow socket mouseUp to fire first
+    // Use a small timeout to allow socket mouseUp to fire first
       setTimeout(() => {
-        // Double-check we're still connecting and not processing
+    // Double-check we're still connecting and not processing
         if (isConnecting && !isProcessingConnection) {
           // If we were reconnecting from an input and didn't connect to anything,
           // don't restore the original connection - just remove it
@@ -268,14 +299,14 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
 
       if (newZoom === viewport.zoom) return; // No change needed
 
-      // Get mouse position relative to canvas
+            // Get mouse position relative to canvas
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
 
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
 
-      // Calculate zoom center point
+            // Calculate zoom center point
       const zoomFactor = newZoom / viewport.zoom;
       const newX = mouseX - (mouseX - viewport.x) * zoomFactor;
       const newY = mouseY - (mouseY - viewport.y) * zoomFactor;
@@ -293,11 +324,12 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     (
       start: { x: number; y: number },
       end: { x: number; y: number },
-      isTemp = false
+      isTemp = false,
+      key?: string
     ) => {
       const dx = end.x - start.x;
 
-      // Create a curved path using cubic bezier
+         // Create a curved path using cubic bezier
       const controlPointOffset = Math.max(Math.abs(dx) * 0.5, 100);
       const cp1x = start.x + controlPointOffset;
       const cp1y = start.y;
@@ -308,7 +340,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
 
       return (
         <path
-          key={isTemp ? "temp" : `${start.x}-${start.y}-${end.x}-${end.y}`}
+          key={key || (isTemp ? "temp" : `${start.x}-${start.y}-${end.x}-${end.y}`)}
           d={pathData}
           stroke={isTemp ? "#FFC72C88" : "#FFC72C"}
           strokeWidth="2"
@@ -322,28 +354,31 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
   );
 
   const fitToView = useCallback(() => {
-    if (tasks.length === 0) return;
-
-    // Calculate bounding box of all tasks
     const positions = tasks.map((task) => task.position);
+    if (triggerPosition && trigger) {
+      positions.push(triggerPosition);
+    }
+
+    if (positions.length === 0) return;
+
     const minX = Math.min(...positions.map((p) => p.x)) - 100;
-    const maxX = Math.max(...positions.map((p) => p.x)) + 550; // Account for node width
+    const maxX = Math.max(...positions.map((p) => p.x)) + 550;
     const minY = Math.min(...positions.map((p) => p.y)) - 100;
-    const maxY = Math.max(...positions.map((p) => p.y)) + 450; // Account for node height
+    const maxY = Math.max(...positions.map((p) => p.y)) + 450;
 
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
 
-    // Get canvas dimensions
+        // Get canvas dimensions
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    // Calculate zoom to fit content with some padding
+        // Calculate zoom to fit content with some padding
     const zoomX = (rect.width * 0.9) / contentWidth;
     const zoomY = (rect.height * 0.9) / contentHeight;
-    const fitZoom = Math.min(zoomX, zoomY, 1); // Don't zoom in beyond 100%
+    const fitZoom = Math.min(zoomX, zoomY, 1);// Don't zoom in beyond 100%
 
-    // Center the content
+        // Center the content
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
     const viewportCenterX = rect.width / 2;
@@ -354,14 +389,14 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
       y: viewportCenterY - centerY * fitZoom,
       zoom: fitZoom,
     });
-  }, [tasks]);
+  }, [tasks, triggerPosition, trigger]);
 
-  // Fit to view on mount and when tasks change
-  useEffect(() => {
-    if (tasks.length > 0) {
-      fitToView();
-    }
-  }, []);
+// Fit to view on mount and when tasks change
+useEffect(() => {
+  if (tasks.length > 0 || trigger) {
+    fitToView();
+  }
+}, [tasks.length, trigger, fitToView]);
 
   const handleCanvasContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -398,6 +433,48 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
       setIsContextMenuOpen(true);
     },
     [fitToView, onTaskAdd, viewport.zoom, t]
+  );
+  const handleTriggerContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const items: ContextMenuItem[] = [
+        {
+          label: t("common.edit", "Edit Trigger"),
+          onClick: () => onTriggerEdit?.(),
+          icon: <Edit size={16} className="text-[#FFC72C]" />,
+        },
+      ];
+
+      // ✅ Add toggle option if handler exists
+      if (onTriggerToggle && trigger) {
+        items.push({
+          label: trigger.enabled 
+            ? t("trigger.disable", "Disable Trigger")
+            : t("trigger.enable", "Enable Trigger"),
+          onClick: () => onTriggerToggle?.(!trigger.enabled),
+          icon: <Power size={16} className={trigger.enabled ? "text-orange-400" : "text-green-400"} />,
+        });
+      }
+
+      if (onTriggerDelete) {
+        items.push({
+          label: t("common.delete", "Delete Trigger"),
+          onClick: () => {
+            if (window.confirm(t("trigger.confirmDelete", "Are you sure you want to delete this trigger?"))) {
+              onTriggerDelete?.();
+            }
+          },
+          icon: <Trash2 size={16} className="text-[#FF6B6B]" />,
+        });
+      }
+
+      setContextMenuItems(items);
+      setContextMenuPosition({ x: e.clientX, y: e.clientY });
+      setIsContextMenuOpen(true);
+    },
+    [trigger, onTriggerEdit, onTriggerToggle, onTriggerDelete, t]
   );
 
   return (
@@ -436,6 +513,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
             width: "100%",
             height: "100%",
             pointerEvents: "none",
+            zIndex: 5,
           }}
         >
           <g
@@ -444,13 +522,18 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
               transformOrigin: "0 0",
             }}
           >
-            {/* Render existing connections */}
+            {/* Render all connections */}
             {connections.map((connection) => {
               const startPos = getSocketPosition(connection.fromSocket);
               const endPos = getSocketPosition(connection.toSocket);
 
               if (startPos && endPos) {
-                return renderConnection(startPos, endPos);
+                return renderConnection(
+                  startPos,
+                  endPos,
+                  false,
+                  `conn-${connection.fromSocket}-${connection.toSocket}`
+                );
               }
               return null;
             })}
@@ -482,14 +565,33 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
             height: "100%",
           }}
         >
+          {/* Trigger Node */}
+          {trigger && (
+            <div
+              data-task-node
+              className="absolute pointer-events-auto"
+              style={{
+                left: triggerPosition.x,
+                top: triggerPosition.y,
+                zIndex: 20,
+              }}
+              onContextMenu={handleTriggerContextMenu}
+            >
+              <TriggerNode
+                trigger={trigger}
+                position={triggerPosition}
+                onEdit={() => onTriggerEdit?.()}
+                onPositionChange={onTriggerPositionChange || (() => {})}
+                onSocketMouseDown={handleSocketMouseDown}
+                onSocketMouseUp={handleSocketMouseUp}
+              />
+            </div>
+          )}
+
           {/* Task Nodes */}
           {tasks.map((task) => {
-            // Parse position - handle both string "x,y" format and object {x, y} format
-            let x = 0,
-              y = 0;
-
-            x = task.position.x || 0;
-            y = task.position.y || 0;
+          const x = task.position.x || 0; 
+          const y = task.position.y || 0; 
 
             return (
               <div

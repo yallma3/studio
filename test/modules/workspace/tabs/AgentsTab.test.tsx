@@ -112,6 +112,7 @@ describe("AgentsTab", () => {
           description: "Test MCP tool description",
         },
       ],
+      trigger: null,
     };
   });
 
