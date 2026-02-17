@@ -13,13 +13,15 @@ import {
 export function createScheduledTrigger(
   cronExpression: string,
   timezone: string,
-  description?: string
+  description?: string,
+  existingId?: string,
+  existingCreatedAt?: number
 ): ScheduledTrigger {
   return {
-    id: `trigger-${Date.now()}`,
+    id: existingId || `trigger-${Date.now()}`,
     type: 'scheduled',
     enabled: true,
-    createdAt: Date.now(),
+    createdAt: existingCreatedAt || Date.now(),
     updatedAt: Date.now(),
     config: {
       cronExpression,

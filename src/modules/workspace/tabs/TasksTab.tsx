@@ -175,6 +175,12 @@ const TasksTab: React.FC<TasksTabProps> = ({
           triggerPosition={triggerPosition}
           onTriggerPositionChange={setTriggerPosition}
           onTriggerEdit={() => setShowTriggerModal(true)}
+          onTriggerDelete={() => onTriggerChange?.(null)}
+          onTriggerToggle={(enabled) => {
+            if (workspaceData.trigger) {
+              onTriggerChange?.({ ...workspaceData.trigger, enabled });
+            }
+          }}
           onTaskPositionChange={handleTaskPositionChange}
           onConnectionCreate={handleConnectionCreate}
           onConnectionRemove={handleConnectionRemove}

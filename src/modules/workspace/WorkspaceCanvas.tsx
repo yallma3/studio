@@ -530,7 +530,21 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
           setIsTriggerRegistered(true);
           
           if (command.data && typeof command.data === 'object') {
-            const data = command.data as any;
+            const data = command.data as {
+              webhookUrl?: string;
+              secret?: string;
+              secretToken?: string;
+              botInfo?: {
+                id: number;
+                username: string;
+                first_name: string;
+                can_join_groups: boolean;
+                can_read_all_group_messages: boolean;
+              };
+              nextExecutionTime?: number;
+              success?: boolean;
+              message?: string;
+            };
             
             if (workspaceData.trigger?.type === 'webhook') {
               const updatedTrigger = {
@@ -608,7 +622,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
 
         // Handle scheduled trigger execution
         if (command.type === "trigger_execution") {
-          const data = command.data as any;
+          const data = command.data as { success?: boolean; message?: string; nextExecutionTime?: number };
           
           if (data && data.success !== undefined) {
             if (data.success) {
@@ -641,7 +655,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
         }
 
         if (command.type === "webhook_execution") {
-          const data = command.data as any;
+          const data = command.data as Record<string, unknown>;
           console.log(" Webhook triggered:", data);
           
           showWebhookActivity();
@@ -655,7 +669,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
         }
 
         if (command.type === "telegram_execution") {
-          const data = command.data as any;
+          const data = command.data as Record<string, unknown>;
           console.log(" Telegram update processed:", data);
           
           showWebhookActivity();

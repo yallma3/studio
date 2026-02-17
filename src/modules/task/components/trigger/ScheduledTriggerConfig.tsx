@@ -66,7 +66,14 @@ const ScheduledTriggerConfig: React.FC<ScheduledTriggerConfigProps> = ({
       return;
     }
 
-    const trigger = createScheduledTrigger(cronExpression, timezone);
+    const existingScheduled = existingTrigger?.type === 'scheduled' ? existingTrigger : null;
+    const trigger = createScheduledTrigger(
+      cronExpression,
+      timezone,
+      undefined,
+      existingScheduled?.id,
+      existingScheduled?.createdAt
+    );
     onSave(trigger);
   };
 

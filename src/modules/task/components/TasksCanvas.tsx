@@ -393,10 +393,10 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
 
 // Fit to view on mount and when tasks change
 useEffect(() => {
-  if (tasks.length > 0 || (triggerPosition && trigger)) {
+  if (tasks.length > 0 || trigger) {
     fitToView();
   }
-}, [tasks.length, trigger, triggerPosition, fitToView]);
+}, [tasks.length, trigger, fitToView]);
 
   const handleCanvasContextMenu = useCallback(
     (e: React.MouseEvent) => {
