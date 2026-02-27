@@ -36,4 +36,5 @@ node_modules/
 .env
 
 /release
-src-tauri/bin/server
+src-tauri/bin/yallma3 
+src-tauri/yallma3-bind.*

@@ -23,12 +23,12 @@ import {
   Loader2,
 } from "lucide-react";
 import { Tool } from "../../modules/workspace/types/Types";
-
 interface AddToolOrWorkflowDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSaveWorkflow: (name: string, description: string) => void;
   onSaveMcpTool: (tool: Tool) => void;
+  baseUrl: string;
 }
 
 type DialogStep = "selection" | "workflow" | "mcp";
@@ -38,6 +38,7 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
   onClose,
   onSaveWorkflow,
   onSaveMcpTool,
+  baseUrl,
 }) => {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<DialogStep>("selection");
@@ -113,8 +114,7 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
     };
 
     try {
-      const coreUrl = import.meta.env.VITE_CORE_URL ?? "http://localhost:3001";
-      const res = await fetch(`${coreUrl}/mcp/health`, {
+      const res = await fetch(`${baseUrl}/mcp/health`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -18,7 +18,7 @@ export interface SidecarCommand {
     | "workflow_output"
     | "abort_workspace"
     | "workspace_stopped"
-    | "workspace_aborted" 
+    | "workspace_aborted"
     | "register_trigger"
     | "unregister_trigger"
     | "trigger_registered"
@@ -27,8 +27,8 @@ export interface SidecarCommand {
     | "trigger_execution"
     | "webhook_execution"
     | "telegram_execution"
-    | "user_prompt_request"    
-    | "user_prompt_response"; 
+    | "user_prompt_request"
+    | "user_prompt_response";
 
   workspaceId?: string;
   data?: unknown;
@@ -69,13 +69,11 @@ export class SidecarClient {
   private consoleEventCallbacks: ((event: any) => void)[] = [];
   private pendingPromptsCallbacks: ((prompts: PendingPrompt[]) => void)[] = [];
 
-  constructor(
-    private wsUrl: string = import.meta.env.VITE_CORE_WS ??
-      "ws://localhost:3001"
-  ) {}
+  constructor(private wsUrl?: string) {}
 
-  connect(): void {
-    console.log("Connecting");
+  connect(wsUrl?: string, subprotocol?: string): void {
+    const url = wsUrl ?? this.wsUrl ?? "ws://localhost:3001";
+    console.log("Connecting to:", url, subprotocol ? `with subprotocol: ${subprotocol}` : "");
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       return;
     }
@@ -85,7 +83,7 @@ export class SidecarClient {
     this.shouldReconnect = true;
 
     try {
-      this.ws = new WebSocket(this.wsUrl);
+      this.ws = subprotocol ? new WebSocket(url, [subprotocol]) : new WebSocket(url);
 
       this.ws.onopen = () => {
         console.log("Connected to sidecar WebSocket");

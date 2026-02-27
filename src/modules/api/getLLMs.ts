@@ -28,13 +28,17 @@ function normalizeProviderName(providerKey: string): string {
   }
 }
 
-export async function getLLMs() {
+export async function getLLMs(baseUrl: string, instanceId: string) {
   try {
-    const baseUrl = import.meta.env.VITE_CORE_URL ?? "http://localhost:3001";
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const headers: Record<string, string> = {};
+    if (instanceId) {
+      headers["x-api-key"] = instanceId;
+    }
     const response = await fetch(`${baseUrl}/llm/models`, {
       signal: controller.signal,
+      headers,
     });
     clearTimeout(timeoutId);
 
