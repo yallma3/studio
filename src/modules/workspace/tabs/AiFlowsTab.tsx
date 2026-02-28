@@ -46,6 +46,7 @@ import { DeleteConfirmationDialog } from "../../../shared/components/DeleteConfi
 interface AiFlowsTabProps {
   workspaceData: WorkspaceData;
   onTabChanges?: () => void;
+  baseUrl: string;
 }
 
 // Workflow Edit Dialog Component
@@ -198,6 +199,7 @@ const generateGraphId = (): string => {
 const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
   workspaceData,
   onTabChanges,
+  baseUrl,
 }) => {
   const { t } = useTranslation();
   const [selectedWorkflow, setSelectedWorkflow] = useState<CanvasState | null>(
@@ -912,6 +914,7 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
         onClose={() => setShowCreateDialog(false)}
         onSaveWorkflow={handleCreateWorkflow}
         onSaveMcpTool={handleSaveMcpTool}
+        baseUrl={baseUrl}
       />
 
       {/* Workflow Edit Dialog */}

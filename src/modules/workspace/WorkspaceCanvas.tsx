@@ -105,6 +105,7 @@ type WorkspaceTabSelector = "workspace" | "tasks" | "agents" | "aiflows" | "envi
 interface WorkspaceCanvasProps {
   workspaceData: WorkspaceData;
   onReturnToHome: () => void;
+  baseUrl: string;
 }
 
 // Countdown component - Live updating countdown timer
@@ -243,6 +244,7 @@ interface UserPromptRequestData {
 const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   workspaceData: initialWorkspaceData,
   onReturnToHome,
+  baseUrl,
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
@@ -1246,6 +1248,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
               <AiFlowsTab
                 workspaceData={workspaceData}
                 onTabChanges={handleTabChanges}
+                baseUrl={baseUrl}
               />
             )}
             {activeTab === "environment" && (

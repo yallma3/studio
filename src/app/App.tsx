@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import WorkspaceCanvas from "../modules/workspace/WorkspaceCanvas.tsx";
 import HomeScreen from "../shared/HomeScreen.tsx";
 import {
@@ -26,19 +27,65 @@ import { initFlowSystem } from "../modules/flow/initFlowSystem.ts";
 import { getLLMs } from "../modules/api/getLLMs.ts";
 import { sidecarClient } from "../modules/api/SidecarClient";
 
+const DEFAULT_URL = "http://localhost:3001";
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<"home" | "canvas">("home");
   const [currentWorkspaceData, setCurrentWorkspaceData] =
     useState<WorkspaceData | null>(null);
+  const [baseUrl, setBaseUrl] = useState<string>(DEFAULT_URL);
   const { i18n } = useTranslation();
 
-  // Setup language direction based on current language and initialize directories
   useEffect(() => {
-    console.log("Initializing System");
-    initFlowSystem();
-    getLLMs();
-    initializeDefaultDirectories();
-    sidecarClient.connect();
+    const init = async () => {
+      console.log("Initializing System");
+      let url = DEFAULT_URL;
+      if (import.meta.env.VITE_TAURI_MODE) {
+        const isTauriInit = !!window.__TAURI_INTERNALS__;
+        if (!isTauriInit) {
+          const interval = setInterval(() => {
+            if (window.__TAURI_INTERNALS__) {
+              clearInterval(interval);
+              initTauri();
+            }
+          }, 20);
+        } else {
+          initTauri();
+        }
+
+        async function initTauri() {
+          let instanceId = "";
+          try {
+            const bindJson = await invoke<string>("get_yallma3_binding");
+            const bind = JSON.parse(bindJson);
+            url = `http://${bind.host}:${bind.port}`;
+            instanceId = bind["instance-id"] || "";
+            console.log("Setting baseUrl to:", url);
+            console.log("Setting instanceId (x-api-key):", instanceId);
+            setBaseUrl(url);
+          } catch (e) {
+            console.error(
+              "Failed to get yallma3 URL from Tauri, using default:",
+              e
+            );
+          }
+
+          const wsUrl = url.replace(/^http/, "ws");
+          console.log("Connecting to WebSocket:", wsUrl, "with subprotocol:", instanceId);
+          initFlowSystem(url, instanceId);
+          getLLMs(url, instanceId);
+          initializeDefaultDirectories();
+          sidecarClient.connect(wsUrl, instanceId);
+        }
+      } else {
+        const wsUrl = url.replace(/^http/, "ws");
+        initFlowSystem(url, "");
+        getLLMs(url, "");
+        initializeDefaultDirectories();
+        sidecarClient.connect(wsUrl, "");
+      }
+    };
+    init();
   }, []);
 
   useEffect(() => {
@@ -106,6 +153,7 @@ const App: React.FC = () => {
             <WorkspaceCanvas
               workspaceData={currentWorkspaceData}
               onReturnToHome={handleReturnToHome}
+              baseUrl={baseUrl}
             />
           )}
         </>

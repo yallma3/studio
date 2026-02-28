@@ -13,13 +13,17 @@
 
 import { nodeRegistry } from "./types/NodeRegistry.ts";
 
-export async function initFlowSystem() {
+export async function initFlowSystem(baseUrl: string, instanceId: string) {
   try {
-    const baseUrl = import.meta.env.VITE_CORE_URL ?? "http://localhost:3001";
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const headers: Record<string, string> = {};
+    if (instanceId) {
+      headers["x-api-key"] = instanceId;
+    }
     const response = await fetch(`${baseUrl}/workflow/nodes`, {
       signal: controller.signal,
+      headers,
     });
     clearTimeout(timeoutId);
 
