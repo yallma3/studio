@@ -37,20 +37,38 @@ const App: React.FC = () => {
   const { i18n } = useTranslation();
 
   useEffect(() => {
+    let isMounted = true;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+
     const init = async () => {
       console.log("Initializing System");
       let url = DEFAULT_URL;
-      if (import.meta.env.VITE_TAURI_MODE) {
+      const isTauriMode =
+        String(import.meta.env.VITE_TAURI_MODE).toLowerCase() === "true";
+      if (isTauriMode) {
         const isTauriInit = !!window.__TAURI_INTERNALS__;
         if (!isTauriInit) {
-          const interval = setInterval(() => {
+          let attempts = 0;
+          const maxAttempts = 250;
+
+          interval = setInterval(() => {
             if (window.__TAURI_INTERNALS__) {
-              clearInterval(interval);
-              initTauri();
+              if (interval) clearInterval(interval);
+              if (timeout) clearTimeout(timeout);
+              if (isMounted) initTauri();
+            } else if (++attempts >= maxAttempts) {
+              if (interval) clearInterval(interval);
+              console.warn("Tauri init timeout after 5 seconds");
             }
           }, 20);
+
+          timeout = setTimeout(() => {
+            if (interval) clearInterval(interval);
+            console.warn("Tauri init timeout after 5 seconds");
+          }, 5000);
         } else {
-          initTauri();
+          if (isMounted) initTauri();
         }
 
         async function initTauri() {
@@ -61,8 +79,8 @@ const App: React.FC = () => {
             url = `http://${bind.host}:${bind.port}`;
             instanceId = bind["instance-id"] || "";
             console.log("Setting baseUrl to:", url);
-            console.log("Setting instanceId (x-api-key):", instanceId);
-            setBaseUrl(url);
+            console.log("Setting instanceId (x-api-key):", instanceId ? "*".repeat(instanceId.length - 4) + instanceId.slice(-4) : instanceId);
+            if (isMounted) setBaseUrl(url);
           } catch (e) {
             console.error(
               "Failed to get yallma3 URL from Tauri, using default:",
@@ -85,7 +103,14 @@ const App: React.FC = () => {
         sidecarClient.connect(wsUrl, "");
       }
     };
+
     init();
+
+    return () => {
+      isMounted = false;
+      if (interval) clearInterval(interval);
+      if (timeout) clearTimeout(timeout);
+    };
   }, []);
 
   useEffect(() => {

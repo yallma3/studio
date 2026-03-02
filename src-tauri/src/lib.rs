@@ -2,6 +2,7 @@ use std::fs::{create_dir_all, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use tauri::Manager;
@@ -18,7 +19,31 @@ fn get_yallma3_binding(app: tauri::AppHandle) -> Result<String, String> {
     let state = app.state::<Arc<Mutex<SidecarState>>>();
     let state = state.lock().map_err(|e| e.to_string())?;
 
-    println!("🔗 Yallma3 bind info: {}", state.yallma3_binding);
+    let masked_binding = if let Ok(json) = serde_json::Value::from_str(&state.yallma3_binding) {
+        if let Some(instance_id) = json.get("instance-id").and_then(|v| v.as_str()) {
+            if instance_id.len() > 4 {
+                let masked = format!(
+                    "{}{}",
+                    "*".repeat(instance_id.len() - 4),
+                    &instance_id[instance_id.len() - 4..]
+                );
+                let mut masked_json = json.clone();
+                masked_json["instance-id"] = serde_json::Value::String(masked);
+                Some(masked_json.to_string())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    println!(
+        "🔗 Yallma3 bind info: {}",
+        masked_binding.unwrap_or_else(|| state.yallma3_binding.clone())
+    );
     Ok(state.yallma3_binding.clone())
 }
 
@@ -124,13 +149,17 @@ fn yallma3_server(
     let log_dir = app
         .path()
         .app_log_dir()
-        .unwrap_or_else(|_| app.path().app_data_dir().unwrap());
+        .or_else(|_| app.path().app_data_dir())?;
     create_dir_all(&log_dir)?;
     let log_file_path = log_dir.join("yallma3.log");
 
-    // Bind file path in current working directory
-    let cwd = std::env::current_dir()?;
-    let bind_file_path = cwd.join(format!("yallma3-bind.{}", instance_id));
+    // Bind file path in app data directory
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .or_else(|_| app.path().app_log_dir())?;
+    create_dir_all(&app_data_dir)?;
+    let bind_file_path = app_data_dir.join(format!("yallma3-bind.{}", instance_id));
 
     let mut log_file = OpenOptions::new()
         .create(true)
@@ -142,6 +171,7 @@ fn yallma3_server(
 
     match Command::new(&yallma3_path)
         .arg(format!("--instance-id={}", instance_id))
+        .arg(format!("--bind-file={}", bind_file_path.display()))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -200,17 +230,39 @@ fn yallma3_server(
     println!("⏳ Waiting for bind file to be created...");
     let mut retries = 0;
     let max_retries = 50;
+
+    let cleanup_child = || {
+        if let Ok(mut guard) = yallma3_process.lock() {
+            if let Some(mut child) = guard.take() {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+        }
+    };
+
     let yallma3_binding = loop {
         if bind_file_path.exists() {
             println!("✅ Bind file found!");
-            let content = std::fs::read_to_string(&bind_file_path)?;
+            let content = match std::fs::read_to_string(&bind_file_path) {
+                Ok(content) => content,
+                Err(e) => {
+                    cleanup_child();
+                    return Err(e.into());
+                }
+            };
             println!("📄 Bind file content:\n{}", content);
-            let mut bind_info: serde_json::Value = serde_json::from_str(&content)
-                .map_err(|e| format!("Failed to parse bind file: {}", e))?;
+            let mut bind_info: serde_json::Value = match serde_json::from_str(&content) {
+                Ok(info) => info,
+                Err(e) => {
+                    cleanup_child();
+                    return Err(format!("Failed to parse bind file: {}", e).into());
+                }
+            };
             bind_info["instance-id"] = serde_json::Value::String(instance_id.to_string());
             break bind_info.to_string();
         }
         if retries >= max_retries {
+            cleanup_child();
             return Err("Timed out waiting for bind file to be created".into());
         }
         std::thread::sleep(std::time::Duration::from_millis(100));

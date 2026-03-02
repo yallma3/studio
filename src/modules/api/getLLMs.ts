@@ -28,7 +28,10 @@ function normalizeProviderName(providerKey: string): string {
   }
 }
 
-export async function getLLMs(baseUrl: string, instanceId: string) {
+export async function getLLMs(
+  baseUrl: string,
+  instanceId: string
+): Promise<Record<string, LLMModel[]>> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -72,6 +75,6 @@ export async function getLLMs(baseUrl: string, instanceId: string) {
     return providersMap;
   } catch (error) {
     console.error("Error fetching LLMs:", error);
-    return [];
+    return {};
   }
 }
