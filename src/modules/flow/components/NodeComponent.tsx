@@ -115,6 +115,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
           <div
             className="text-[#FFC72C] font-mono text-sm bg-[#FFC72C11] p-2 rounded text-left m-2.5"
             data-testid="text-value"
+            style={{ overflow: "hidden", wordBreak: "break-all" }} 
           >
             {String(node.nodeValue).slice(0, 80)}
             {String(node.nodeValue).length > 80 ? "..." : ""}
@@ -178,6 +179,35 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
             )}
           </div>
         );
+
+      case "Join": {
+        const modeParam = (node.configParameters ?? []).find(
+          (p) => p.parameterName === "Mode"
+        );
+        const mode = String(modeParam?.paramValue ?? modeParam?.defaultValue ?? "concatenate");
+        const countParam = (node.configParameters ?? []).find(
+          (p) => p.parameterName === "Input Count"
+        );
+        const count = Number(countParam?.paramValue ?? countParam?.defaultValue ?? 2);
+        const bodyPreview = String(node.nodeValue ?? "").slice(0, 60);
+
+        return (
+          <div className="text-[#FFC72C] font-mono text-sm bg-[#FFC72C11] p-2 rounded text-left m-2.5 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[#FFC72C]/50 text-xs uppercase">mode</span>
+              <span className="text-[#FFC72C] font-bold">{mode}</span>
+              <span className="text-[#FFC72C]/50 text-xs ml-auto">{count} inputs</span>
+            </div>
+            <div
+              className="text-[#FFC72C]/70 text-xs truncate"
+              title={String(node.nodeValue ?? "")}
+            >
+              {bodyPreview}{String(node.nodeValue ?? "").length > 60 ? "…" : ""}
+            </div>
+          </div>
+        );
+      }
+
       default:
         // Generic/fallback rendering for any node type
         return (
@@ -283,6 +313,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
         position: "absolute",
         zIndex: isBeingEdited ? 40 : node.selected ? 30 : 10, // Bring edited nodes to the very front
         opacity: isBeingEdited ? 0.8 : 1, // Slightly fade edited nodes
+        // overflow: "hidden", 
       }}
     >
       {/* Input sockets (left side) */}

@@ -120,11 +120,17 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
   const getSocketPosition = useCallback(
   (socketId: number): { x: number; y: number } | null => {
     const SOCKET_Y_OFFSET = 140;
-    if (socketId === 9999 && triggerPosition && trigger) {
+  if (socketId === 9999 && triggerPosition && trigger) {
       let SOCKET_Y_OFFSET_Trigger = 115;   
       if (trigger.type === 'webhook') {
         if (trigger.config.webhookUrl) {
-          SOCKET_Y_OFFSET_Trigger = 150; 
+          SOCKET_Y_OFFSET_Trigger = 160; 
+        } else {
+          SOCKET_Y_OFFSET_Trigger = 115; 
+        }
+      } else if (trigger.type === 'telegram') {
+      if (trigger.config.webhookUrl) {
+          SOCKET_Y_OFFSET_Trigger = 200; 
         } else {
           SOCKET_Y_OFFSET_Trigger = 115; 
         }

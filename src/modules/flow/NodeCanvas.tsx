@@ -1299,6 +1299,26 @@ const NodeCanvas: React.FC<{
               );
               //setEditingNode(null);
               //setIsPanelClosing(false);
+              if (updatedNode.sockets && editingNode?.id != null) {
+                const validSocketIds = new Set(
+                  updatedNode.sockets.map((s) => s.id)
+                );
+                const editedId = editingNode.id;
+
+                setConnections((prev) =>
+                  prev.filter((conn) => {
+                    const fromOwner = Math.floor(conn.fromSocket / 100);
+                    const toOwner   = Math.floor(conn.toSocket   / 100);
+                    if (fromOwner === editedId && !validSocketIds.has(conn.fromSocket)) {
+                      return false;
+                    }
+                    if (toOwner === editedId && !validSocketIds.has(conn.toSocket)) {
+                      return false;
+                    }
+                    return true;
+                  })
+                );
+              }
             }, 300); // Match with transition duration in NodeEditPanel
           }}
         />
