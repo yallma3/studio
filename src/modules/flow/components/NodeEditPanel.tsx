@@ -31,32 +31,51 @@ interface IfElseOperatorMeta {
   description: string;
 }
 
-const IFELSE_OPERATOR_META: Record<string, IfElseOperatorMeta> = {
-  is_not_empty:  { labelA: "Value to Check",    labelB: "Compare (B)",    labelC: "Compare (C)", needsB: false, needsC: false, needsRegex: false, description: "True when the value is not null, empty string, empty array, or empty object." },
-  is_empty:      { labelA: "Value to Check",    labelB: "Compare (B)",    labelC: "Compare (C)", needsB: false, needsC: false, needsRegex: false, description: "True when the value is null, undefined, empty string, empty array, or empty object." },
-  is_null:       { labelA: "Value to Check",    labelB: "Compare (B)",    labelC: "Compare (C)", needsB: false, needsC: false, needsRegex: false, description: "True when the value is exactly null or undefined." },
-  is_number:     { labelA: "Value to Check",    labelB: "Compare (B)",    labelC: "Compare (C)", needsB: false, needsC: false, needsRegex: false, description: "True when the value is a valid number." },
-  is_string:     { labelA: "Value to Check",    labelB: "Compare (B)",    labelC: "Compare (C)", needsB: false, needsC: false, needsRegex: false, description: "True when the value is a string." },
-  is_boolean:    { labelA: "Value to Check",    labelB: "Compare (B)",    labelC: "Compare (C)", needsB: false, needsC: false, needsRegex: false, description: "True when the value is true or false." },
-  is_array:      { labelA: "Value to Check",    labelB: "Compare (B)",    labelC: "Compare (C)", needsB: false, needsC: false, needsRegex: false, description: "True when the value is an array." },
-  eq:            { labelA: "Left Side (A)",     labelB: "Right Side (B)", labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A equals B with type coercion (e.g. '1' == 1)." },
-  neq:           { labelA: "Left Side (A)",     labelB: "Right Side (B)", labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A does not equal B (loose)." },
-  seq:           { labelA: "Left Side (A)",     labelB: "Right Side (B)", labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A equals B with the same type (strict, no coercion)." },
-  sneq:          { labelA: "Left Side (A)",     labelB: "Right Side (B)", labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A does not equal B (strict)." },
-  gt:            { labelA: "Number (A)",        labelB: "Compare To (B)", labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A is greater than B." },
-  gte:           { labelA: "Number (A)",        labelB: "Compare To (B)", labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A is greater than or equal to B." },
-  lt:            { labelA: "Number (A)",        labelB: "Compare To (B)", labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A is less than B." },
-  lte:           { labelA: "Number (A)",        labelB: "Compare To (B)", labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A is less than or equal to B." },
-  between:       { labelA: "Number (A)",        labelB: "Min (B)",        labelC: "Max (C)",     needsB: true,  needsC: true,  needsRegex: false, description: "True if A is between B and C inclusive." },
-  contains:      { labelA: "Text / Array (A)",  labelB: "Search For (B)", labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A contains B. Works on strings and arrays." },
-  not_contains:  { labelA: "Text / Array (A)",  labelB: "Search For (B)", labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A does not contain B." },
-  starts_with:   { labelA: "Text (A)",          labelB: "Prefix (B)",     labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A starts with B." },
-  ends_with:     { labelA: "Text (A)",          labelB: "Suffix (B)",     labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: false, description: "True if A ends with B." },
-  regex:         { labelA: "Text to Test (A)",  labelB: "Pattern (B)",    labelC: "Compare (C)", needsB: true,  needsC: false, needsRegex: true,  description: "True if A matches the regex pattern in B." },
+const IFELSE_OPERATOR_FLAGS: Record<string, Pick<IfElseOperatorMeta, "needsB" | "needsC" | "needsRegex">> = {
+  is_not_empty:  { needsB: false, needsC: false, needsRegex: false },
+  is_empty:      { needsB: false, needsC: false, needsRegex: false },
+  is_null:       { needsB: false, needsC: false, needsRegex: false },
+  is_number:     { needsB: false, needsC: false, needsRegex: false },
+  is_string:     { needsB: false, needsC: false, needsRegex: false },
+  is_boolean:    { needsB: false, needsC: false, needsRegex: false },
+  is_array:      { needsB: false, needsC: false, needsRegex: false },
+  eq:            { needsB: true,  needsC: false, needsRegex: false },
+  neq:           { needsB: true,  needsC: false, needsRegex: false },
+  seq:           { needsB: true,  needsC: false, needsRegex: false },
+  sneq:          { needsB: true,  needsC: false, needsRegex: false },
+  gt:            { needsB: true,  needsC: false, needsRegex: false },
+  gte:           { needsB: true,  needsC: false, needsRegex: false },
+  lt:            { needsB: true,  needsC: false, needsRegex: false },
+  lte:           { needsB: true,  needsC: false, needsRegex: false },
+  between:       { needsB: true,  needsC: true,  needsRegex: false },
+  contains:      { needsB: true,  needsC: false, needsRegex: false },
+  not_contains:  { needsB: true,  needsC: false, needsRegex: false },
+  starts_with:   { needsB: true,  needsC: false, needsRegex: false },
+  ends_with:     { needsB: true,  needsC: false, needsRegex: false },
+  regex:         { needsB: true,  needsC: false, needsRegex: true },
 };
 
 function getIfElseOperatorMeta(op: string): IfElseOperatorMeta {
-  return IFELSE_OPERATOR_META[op] ?? IFELSE_OPERATOR_META["is_not_empty"];
+  const flags = IFELSE_OPERATOR_FLAGS[op] ?? IFELSE_OPERATOR_FLAGS["is_not_empty"];
+  return {
+    labelA: "",
+    labelB: "",
+    labelC: "",
+    description: "",
+    ...flags,
+  };
+}
+
+function getIfElseOperatorMetaLocalized(op: string, t: (key: string) => string): IfElseOperatorMeta {
+  const flags = IFELSE_OPERATOR_FLAGS[op] ?? IFELSE_OPERATOR_FLAGS["is_not_empty"];
+  const prefix = `nodeEditPanel.ifElseOperator.${op}`;
+  return {
+    labelA: t(`${prefix}.labelA`),
+    labelB: t(`${prefix}.labelB`),
+    labelC: t(`${prefix}.labelC`),
+    description: t(`${prefix}.description`),
+    ...flags,
+  };
 }
 
 function isIfElseParamVisible(paramName: string, currentOperator: string): boolean {
@@ -179,7 +198,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
   // For IfElse, override B / C labels to match the selected operator
   const getDynamicLabel = (param: ConfigParameterType): string => {
     if (node?.nodeType !== "IfElse") return getValueLabel(param);
-    const meta = getIfElseOperatorMeta(currentOperator);
+    const meta = getIfElseOperatorMetaLocalized(currentOperator, t);
     if (param.parameterName === "Compare B (literal)") return meta.labelB;
     if (param.parameterName === "Compare C (literal)") return meta.labelC;
     return getValueLabel(param);
@@ -276,12 +295,21 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
       e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
     ) => {
       let newValue: unknown;
-      if (param.parameterType === "number")
-        newValue = Number((e.target as HTMLInputElement).value);
-      else if (param.parameterType === "boolean")
+      if (param.parameterType === "number") {
+        const numeric = Number((e.target as HTMLInputElement).value);
+        if (param.parameterName === "Input Count" && node?.nodeType === "Join") {
+          const clamped = Number.isFinite(numeric)
+            ? Math.min(7, Math.max(1, Math.trunc(numeric)))
+            : 1;
+          newValue = clamped;
+        } else {
+          newValue = numeric;
+        }
+      } else if (param.parameterType === "boolean") {
         newValue = (e.target as HTMLInputElement).checked;
-      else
+      } else {
         newValue = (e.target as HTMLInputElement).value;
+      }
 
       setFormValues((prev) => ({
         ...prev,
@@ -297,7 +325,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
       }
 
       if (param.parameterName === "Input Count" && node.nodeType === "Join") {
-        const newCount = Math.min(7, Math.max(1, Number(newValue)));
+        const newCount = Number(newValue);
         onSave({
           title,
           sockets: buildJoinSockets(node.id, newCount),
@@ -385,15 +413,15 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
               {/* Show a helpful description below the Operator dropdown */}
               {param.parameterName === "Operator" && node?.nodeType === "IfElse" && (
                 <p className="text-xs text-[#FFC72C]/60 italic px-1">
-                  {getIfElseOperatorMeta(currentOperator).description}
+                  {getIfElseOperatorMetaLocalized(currentOperator, t).description}
                 </p>
               )}
               {/* Show a hint below the Mode dropdown for Join node */}
               {param.parameterName === "Mode" && node?.nodeType === "Join" && (
                 <p className="text-xs text-[#FFC72C]/60 italic px-1">
                   {String(renderValue) === "substitute"
-                    ? "Use {{input1}}, {{input2}}, … as placeholders in the template below."
-                    : "All inputs will be joined using the separator below."}
+                    ? t("nodeEditPanel.join.substituteHint")
+                    : t("nodeEditPanel.join.defaultHint")}
                 </p>
               )}
             </div>
@@ -418,8 +446,8 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
             placeholder={
               node?.nodeType === "Join" && param.parameterName === "Separator"
                 ? formValues["Mode"] === "substitute"
-                  ? "e.g. Hello {{input1}}, you said: {{input2}}"
-                  : "Separator (e.g. space, comma, (new line))"
+                  ? t("nodeEditPanel.join.separatorPlaceholder")
+                  : t("nodeEditPanel.join.separatorPlaceholderDefault")
                 : t("nodeEditPanel.textValuePlaceholder", "Text value...")
             }
           />

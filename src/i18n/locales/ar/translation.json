@@ -306,6 +306,35 @@
       "text": "منطقة نصية",
       "number": "رقم",
       "boolean": "منطقي"
+    },
+    "ifElseOperator": {
+      "is_not_empty": { "labelA": "القيمة المراد التحقق", "description": "صحيح عندما القيمة ليست null أو سلسلة فارغة أو مصفوفة فارغة أو كائن فارغ." },
+      "is_empty": { "labelA": "القيمة المراد التحقق", "description": "صحيح عندما القيمة null أو غير معرفة أو سلسلة فارغة أو مصفوفة فارغة أو كائن فارغ." },
+      "is_null": { "labelA": "القيمة المراد التحقق", "description": "صحيح عندما القيمة تكون null أو غير معرفة بالضبط." },
+      "is_number": { "labelA": "القيمة المراد التحقق", "description": "صحيح عندما القيمة رقم صالح." },
+      "is_string": { "labelA": "القيمة المراد التحقق", "description": "صحيح عندما القيمة نص." },
+      "is_boolean": { "labelA": "القيمة المراد التحقق", "description": "صحيح عندما القيمة true أو false." },
+      "is_array": { "labelA": "القيمة المراد التحقق", "description": "صحيح عندما القيمة مصفوفة." },
+      "eq": { "labelA": "الجانب الأيسر (أ)", "labelB": "الجانب الأيمن (ب)", "description": "صحيح إذا كان أ يساوي ب مع تحويل النوع (مثال: '1' == 1)." },
+      "neq": { "labelA": "الجانب الأيسر (أ)", "labelB": "الجانب الأيمن (ب)", "description": "صحيح إذا كان أ لا يساوي ب (مرن)." },
+      "seq": { "labelA": "الجانب الأيسر (أ)", "labelB": "الجانب الأيمن (ب)", "description": "صحيح إذا كان أ يساوي بنفس النوع (م Strict، بدون تحويل)." },
+      "sneq": { "labelA": "الجانب الأيسر (أ)", "labelB": "الجانب الأيمن (ب)", "description": "صحيح إذا كان أ لا يساوي ب (Strict)." },
+      "gt": { "labelA": "الرقم (أ)", "labelB": "مقارنة بـ (ب)", "description": "صحيح إذا كان أ أكبر من ب." },
+      "gte": { "labelA": "الرقم (أ)", "labelB": "مقارنة بـ (ب)", "description": "صحيح إذا كان أ أكبر من أو يساوي ب." },
+      "lt": { "labelA": "الرقم (أ)", "labelB": "مقارنة بـ (ب)", "description": "صحيح إذا كان أ أصغر من ب." },
+      "lte": { "labelA": "الرقم (أ)", "labelB": "مقارنة بـ (ب)", "description": "صحيح إذا كان أ أصغر من أو يساوي ب." },
+      "between": { "labelA": "الرقم (أ)", "labelB": "الحد الأدنى (ب)", "labelC": "الحد الأقصى (ج)", "description": "صحيح إذا كان أ بين ب وج ضمناً." },
+      "contains": { "labelA": "نص / مصفوفة (أ)", "labelB": "البحث عن (ب)", "description": "صحيح إذا كان أ يحتوي على ب. يعمل على النصوص والمصفوفات." },
+      "not_contains": { "labelA": "نص / مصفوفة (أ)", "labelB": "البحث عن (ب)", "description": "صحيح إذا كان أ لا يحتوي على ب." },
+      "starts_with": { "labelA": "نص (أ)", "labelB": "البادئة (ب)", "description": "صحيح إذا كان أ يبدأ بـ ب." },
+      "ends_with": { "labelA": "نص (أ)", "labelB": "اللاحقة (ب)", "description": "صحيح إذا كان أ ينتهي بـ ب." },
+      "regex": { "labelA": "نص للاختبار (أ)", "labelB": "النمط (ب)", "description": "صحيح إذا كان أ يتطابق مع نمط regex في ب." }
+    },
+    "join": {
+      "substituteHint": "استخدم {{input1}}، {{input2}}، … كعناصر Placeholder في القالب أدناه.",
+      "defaultHint": "سيتم ربط جميع المدخلات باستخدام الفاصل أدناه.",
+      "separatorPlaceholder": "مثال: مرحباً {{input1}}، قلت: {{input2}}",
+      "separatorPlaceholderDefault": "فاصل (مثل مسافة، فاصلة، (سطر جديد))"
     }
   },
   "nodeContextMenu": {
@@ -320,7 +349,9 @@
     "startTyping": "ابدأ الكتابة...",
     "noImage": "لا توجد صورة",
     "viewResult": "عرض النتيجة",
-    "editNode": "تعديل العقدة"
+    "editNode": "تعديل العقدة",
+    "joinMode": "الوضع",
+    "inputsCount": "{{count}} مدخلات"
   },
   "canvasContextMenu": {
     "search": "بحث...",

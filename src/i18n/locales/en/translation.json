@@ -302,6 +302,35 @@
       "text": "Text Area",
       "number": "Number",
       "boolean": "Boolean"
+    },
+    "ifElseOperator": {
+      "is_not_empty": { "labelA": "Value to Check", "description": "True when the value is not null, empty string, empty array, or empty object." },
+      "is_empty": { "labelA": "Value to Check", "description": "True when the value is null, undefined, empty string, empty array, or empty object." },
+      "is_null": { "labelA": "Value to Check", "description": "True when the value is exactly null or undefined." },
+      "is_number": { "labelA": "Value to Check", "description": "True when the value is a valid number." },
+      "is_string": { "labelA": "Value to Check", "description": "True when the value is a string." },
+      "is_boolean": { "labelA": "Value to Check", "description": "True when the value is true or false." },
+      "is_array": { "labelA": "Value to Check", "description": "True when the value is an array." },
+      "eq": { "labelA": "Left Side (A)", "labelB": "Right Side (B)", "description": "True if A equals B with type coercion (e.g. '1' == 1)." },
+      "neq": { "labelA": "Left Side (A)", "labelB": "Right Side (B)", "description": "True if A does not equal B (loose)." },
+      "seq": { "labelA": "Left Side (A)", "labelB": "Right Side (B)", "description": "True if A equals B with the same type (strict, no coercion)." },
+      "sneq": { "labelA": "Left Side (A)", "labelB": "Right Side (B)", "description": "True if A does not equal B (strict)." },
+      "gt": { "labelA": "Number (A)", "labelB": "Compare To (B)", "description": "True if A is greater than B." },
+      "gte": { "labelA": "Number (A)", "labelB": "Compare To (B)", "description": "True if A is greater than or equal to B." },
+      "lt": { "labelA": "Number (A)", "labelB": "Compare To (B)", "description": "True if A is less than B." },
+      "lte": { "labelA": "Number (A)", "labelB": "Compare To (B)", "description": "True if A is less than or equal to B." },
+      "between": { "labelA": "Number (A)", "labelB": "Min (B)", "labelC": "Max (C)", "description": "True if A is between B and C inclusive." },
+      "contains": { "labelA": "Text / Array (A)", "labelB": "Search For (B)", "description": "True if A contains B. Works on strings and arrays." },
+      "not_contains": { "labelA": "Text / Array (A)", "labelB": "Search For (B)", "description": "True if A does not contain B." },
+      "starts_with": { "labelA": "Text (A)", "labelB": "Prefix (B)", "description": "True if A starts with B." },
+      "ends_with": { "labelA": "Text (A)", "labelB": "Suffix (B)", "description": "True if A ends with B." },
+      "regex": { "labelA": "Text to Test (A)", "labelB": "Pattern (B)", "description": "True if A matches the regex pattern in B." }
+    },
+    "join": {
+      "substituteHint": "Use {{input1}}, {{input2}}, … as placeholders in the template below.",
+      "defaultHint": "All inputs will be joined using the separator below.",
+      "separatorPlaceholder": "e.g. Hello {{input1}}, you said: {{input2}}",
+      "separatorPlaceholderDefault": "Separator (e.g. space, comma, (new line))"
     }
   },
   "nodeContextMenu": {
@@ -316,7 +345,9 @@
     "startTyping": "Start typing...",
     "noImage": "No image",
     "viewResult": "View Result",
-    "editNode": "Edit Node"
+    "editNode": "Edit Node",
+    "joinMode": "mode",
+    "inputsCount": "{{count}} inputs"
   },
   "canvasContextMenu": {
     "search": "Search...",

@@ -194,9 +194,9 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
         return (
           <div className="text-[#FFC72C] font-mono text-sm bg-[#FFC72C11] p-2 rounded text-left m-2.5 space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-[#FFC72C]/50 text-xs uppercase">mode</span>
+              <span className="text-[#FFC72C]/50 text-xs uppercase">{t("nodeComponent.joinMode")}</span>
               <span className="text-[#FFC72C] font-bold">{mode}</span>
-              <span className="text-[#FFC72C]/50 text-xs ml-auto">{count} inputs</span>
+              <span className="text-[#FFC72C]/50 text-xs ml-auto">{t("nodeComponent.inputsCount", "{{count}} inputs", { count })}</span>
             </div>
             <div
               className="text-[#FFC72C]/70 text-xs truncate"
