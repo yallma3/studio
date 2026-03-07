@@ -99,7 +99,7 @@ function buildJoinSockets(nodeId: number, inputCount: number): Socket[] {
     } as Socket);
   }
   sockets.push({
-    id: nodeId * 100 + 111,
+    id: nodeId * 100 + 99,
     title: "Output",
     type: "output",
     nodeId,
@@ -167,8 +167,11 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
   }, [node]);
   const handleClose = useCallback(() => {
     setIsVisible(false);
+    if (node && title !== node.title && onSave) {
+      onSave({ title });
+    }
     setTimeout(() => onClose(), 300);
-  }, [onClose]);
+  }, [node, title, onClose, onSave]);
 
   useEffect(() => {
     const handleClickOutside = (event: globalThis.MouseEvent) => {
@@ -420,7 +423,10 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
               {param.parameterName === "Mode" && node?.nodeType === "Join" && (
                 <p className="text-xs text-[#FFC72C]/60 italic px-1">
                   {String(renderValue) === "substitute"
-                    ? t("nodeEditPanel.join.substituteHint")
+                    ? t("nodeEditPanel.join.substituteHint", {
+                        input1: "{{input1}}",
+                        input2: "{{input2}}",
+                      })
                     : t("nodeEditPanel.join.defaultHint")}
                 </p>
               )}
@@ -446,7 +452,10 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
             placeholder={
               node?.nodeType === "Join" && param.parameterName === "Separator"
                 ? formValues["Mode"] === "substitute"
-                  ? t("nodeEditPanel.join.separatorPlaceholder")
+                  ? t("nodeEditPanel.join.separatorPlaceholder", {
+                      input1: "{{input1}}",
+                      input2: "{{input2}}",
+                    })
                   : t("nodeEditPanel.join.separatorPlaceholderDefault")
                 : t("nodeEditPanel.textValuePlaceholder", "Text value...")
             }
