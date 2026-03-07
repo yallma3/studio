@@ -142,12 +142,13 @@ export const createNewWorkflow = async (
   description: string,
   canvasState: CanvasState
 ): Promise<WorkflowFile> => {
+  const now = Date.now();
   const workflow: WorkflowFile = {
     id: generateWorkflowId(),
     name,
     description,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: now,
+    updatedAt: now,
     canvasState,
   };
 

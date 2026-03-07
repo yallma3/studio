@@ -19,6 +19,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './test/setup.ts',
+    env: {
+      VITE_TAURI_MODE: 'false',
+    },
     coverage: {
       exclude: ['**/*.js']
     }

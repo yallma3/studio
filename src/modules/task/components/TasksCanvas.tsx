@@ -61,6 +61,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
 }) => {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLDivElement>(null);
+  const fitToViewRef = useRef<() => void>(() => {});
   const [viewport, setViewport] = useState<ViewportState>({
     x: 50, // Start with a small offset to show tasks
     y: 50,
@@ -120,11 +121,17 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
   const getSocketPosition = useCallback(
   (socketId: number): { x: number; y: number } | null => {
     const SOCKET_Y_OFFSET = 140;
-    if (socketId === 9999 && triggerPosition && trigger) {
+  if (socketId === 9999 && triggerPosition && trigger) {
       let SOCKET_Y_OFFSET_Trigger = 115;   
       if (trigger.type === 'webhook') {
         if (trigger.config.webhookUrl) {
-          SOCKET_Y_OFFSET_Trigger = 150; 
+          SOCKET_Y_OFFSET_Trigger = 160; 
+        } else {
+          SOCKET_Y_OFFSET_Trigger = 115; 
+        }
+      } else if (trigger.type === 'telegram') {
+      if (trigger.config.webhookUrl) {
+          SOCKET_Y_OFFSET_Trigger = 200; 
         } else {
           SOCKET_Y_OFFSET_Trigger = 115; 
         }
@@ -391,12 +398,15 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     });
   }, [tasks, triggerPosition, trigger]);
 
+  // Keep ref updated with latest fitToView
+  fitToViewRef.current = fitToView;
+
 // Fit to view on mount and when tasks change
 useEffect(() => {
   if (tasks.length > 0 || trigger) {
-    fitToView();
+    fitToViewRef.current();
   }
-}, [tasks.length, trigger, fitToView]);
+}, [tasks.length, trigger]);
 
   const handleCanvasContextMenu = useCallback(
     (e: React.MouseEvent) => {
