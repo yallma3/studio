@@ -18,9 +18,81 @@ import {
   NodeValue,
   Socket,
 } from "../types/NodeTypes";
-import { X, Upload } from "lucide-react";
+import { X, Upload, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getConfigParameters, setConfigParameter,SourceListOption } from "../types/NodeTypes";
+
+// ---------------------------------------------------------------------------
+// JSON Manipulator operation types
+// ---------------------------------------------------------------------------
+
+type JMOperationType = "extract_field" | "template_substitute";
+type JMOutputFormat  = "string" | "array" | "object" | "count";
+
+interface JMOperationConfig {
+  id: string;
+  type: JMOperationType;
+  label: string;
+  fieldPath?: string;
+  outputFormat?: JMOutputFormat;
+  template?: string;
+}
+
+const JM_DEFAULT_OPERATIONS: JMOperationConfig[] = [
+  {
+    id: "op_1",
+    type: "extract_field",
+    label: "Field Output",
+    fieldPath: "title",
+    outputFormat: "string",
+  },
+];
+const JM_MAX_OPERATIONS = 7;
+
+let _jmOpCounter = 2;
+
+function jmParseOps(raw: string): JMOperationConfig[] {
+  try {
+    const parsed = JSON.parse(raw) as JMOperationConfig[];
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  } catch { /* fall through */ }
+  return JM_DEFAULT_OPERATIONS.map((o) => ({ ...o }));
+}
+
+function jmBuildSockets(nodeId: number, ops: JMOperationConfig[]): Socket[] {
+  const sockets: Socket[] = [
+    {
+      id: nodeId * 100 + 1,
+      title: "JSON Input",
+      type: "input",
+      nodeId,
+      dataType: "string",
+    } as Socket,
+  ];
+  ops.forEach((op, idx) => {
+    sockets.push({
+      id: nodeId * 100 + 10 + idx,
+      title: op.label || `Output ${idx + 1}`,
+      type: "output",
+      nodeId,
+      dataType: "string",
+    } as Socket);
+  });
+  sockets.push({
+    id: nodeId * 100 + 2,
+    title: "Status",
+    type: "output",
+    nodeId,
+    dataType: "string",
+  } as Socket);
+  return sockets;
+}
+
+function jmComputeHeight(opCount: number): number {
+  const totalSockets = opCount + 2;
+  return Math.max(220, 100 + totalSockets * 50);
+}
+
 interface IfElseOperatorMeta {
   labelA: string;
   labelB: string;
@@ -111,6 +183,262 @@ function buildJoinSockets(nodeId: number, inputCount: number): Socket[] {
 function computeJoinHeight(inputCount: number): number {
   return 180 + inputCount * 40;
 }
+const JM_OUTPUT_FORMAT_OPTIONS: { key: JMOutputFormat; label: string }[] = [
+  { key: "string",  label: "String"       },
+  { key: "array",   label: "Array (JSON)" },
+  { key: "object",  label: "Object (JSON)"},
+  { key: "count",   label: "Count"        },
+];
+
+interface OperationCardProps {
+  op: JMOperationConfig;
+  index: number;
+  canRemove: boolean;
+  onChange: (patch: Partial<JMOperationConfig>) => void;
+  onRemove: () => void;
+}
+
+const OperationCard: React.FC<OperationCardProps> = ({
+  op, canRemove, onChange, onRemove,
+}) => {
+  const [expanded, setExpanded] = useState(true);
+
+  const inputCls =
+    "w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none";
+  const selectCls =
+    "w-full bg-[#ecd6d6] text-black border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none";
+  const labelCls = "block text-xs font-medium text-gray-400 mb-1";
+
+  return (
+    <div className="border border-[#FFC72C]/25 rounded-md overflow-hidden">
+
+      {/* ── Card header ── */}
+      {/* CHANGE 2: op.label is read directly from props → updates live as user types */}
+      <div
+        className="flex items-center justify-between px-3 py-2 bg-[#FFC72C]/10 cursor-pointer select-none"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <div className="flex items-center gap-2">
+          {expanded
+            ? <ChevronDown  size={13} className="text-[#FFC72C]/60" />
+            : <ChevronRight size={13} className="text-[#FFC72C]/60" />}
+          {/* Live label only — clean, no index or type badge */}
+          <span className="text-[#FFC72C] text-xs font-bold font-mono truncate max-w-[200px]">
+            {op.label || "—"}
+          </span>
+        </div>
+        {canRemove && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            className="text-red-400/60 hover:text-red-400 transition-colors p-0.5 rounded"
+            title="Remove this output"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
+      </div>
+
+      {/* ── Card body ── */}
+      {expanded && (
+        <div className="p-3 space-y-3 bg-[#0f0f0f]">
+
+          {/* Output Socket Label */}
+          <div>
+            <label className={labelCls}>Output Socket Label</label>
+            <input
+              type="text"
+              className={inputCls}
+              value={op.label}
+              placeholder="e.g. Caption"
+              onChange={(e) => onChange({ label: e.target.value })}
+            />
+          </div>
+
+          {/* Operation Type */}
+          <div>
+            <label className={labelCls}>Operation Type</label>
+            <select
+              className={selectCls}
+              value={op.type}
+              onChange={(e) => onChange({ type: e.target.value as JMOperationType })}
+            >
+              <option value="extract_field">Extract Field</option>
+              <option value="template_substitute">Template Substitute</option>
+            </select>
+          </div>
+
+          {/* ── extract_field fields ── */}
+          {op.type === "extract_field" && (
+            <>
+              <div>
+                <label className={labelCls}>Field Path</label>
+                <input
+                  type="text"
+                  className={inputCls}
+                  value={op.fieldPath ?? ""}
+                  placeholder="e.g. json_input.caption"
+                  onChange={(e) => onChange({ fieldPath: e.target.value })}
+                />
+                <p className="text-[10px] text-[#FFC72C]/40 mt-1 px-1 italic">
+                  Dot-notation. Array inputs return all matching values. Supports index notation e.g. items[0].name
+                </p>
+              </div>
+
+              <div>
+                <label className={labelCls}>Output Format</label>
+                <select
+                  className={selectCls}
+                  value={op.outputFormat ?? "string"}
+                  onChange={(e) => onChange({ outputFormat: e.target.value as JMOutputFormat })}
+                >
+                  {JM_OUTPUT_FORMAT_OPTIONS.map((o) => (
+                    <option key={o.key} value={o.key}>{o.label}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-[#FFC72C]/40 mt-1 px-1 italic">
+                  {op.outputFormat === "string"  && "Joins array values with a comma, or returns the scalar as text."}
+                  {op.outputFormat === "array"   && "Always wraps the result in a JSON array."}
+                  {op.outputFormat === "object"  && "Returns the raw extracted value as pretty-printed JSON."}
+                  {op.outputFormat === "count"   && "Returns the number of matched items."}
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* ── template_substitute fields ── */}
+          {/* CHANGE 4: placeholder now uses json_input instead of message */}
+          {op.type === "template_substitute" && (
+            <div>
+              <label className={labelCls}>Template</label>
+              <textarea
+                className={`${inputCls} h-28 resize-none`}
+                value={op.template ?? ""}
+                placeholder={"Hello {{json_input.from.first_name}},\nyou wrote: {{json_input.text}}"}
+                onChange={(e) => onChange({ template: e.target.value })}
+              />
+              <p className="text-[10px] text-[#FFC72C]/40 mt-1 px-1 italic">
+                {"Use {{json_input.field}} to insert values. E.g. {{json_input.name}}, {{json_input.items[0].title}}"}
+              </p>
+            </div>
+          )}
+
+        </div>
+      )}
+    </div>
+  );
+};
+interface JSONManipulatorSectionProps {
+  node: BaseNode;
+  onSave: (updatedNode: Partial<BaseNode>) => void;
+}
+
+const JSONManipulatorSection: React.FC<JSONManipulatorSectionProps> = ({
+  node, onSave,
+}) => {
+  const readOpsFromNode = (): JMOperationConfig[] => {
+    const param = (node.configParameters ?? []).find(
+      (p) => p.parameterName === "Operations"
+    );
+    const raw = String(param?.paramValue ?? param?.defaultValue ?? "");
+    return jmParseOps(raw);
+  };
+
+  const [ops, setOps] = useState<JMOperationConfig[]>(readOpsFromNode);
+
+  const persistOps = useCallback(
+    (nextOps: JMOperationConfig[]) => {
+      const json = JSON.stringify(nextOps);
+      setConfigParameter(node, "Operations", json);
+      onSave({
+        sockets: jmBuildSockets(node.id, nextOps),
+        height:  jmComputeHeight(nextOps.length),
+      });
+    },
+    [node, onSave]
+  );
+
+  const handleChange = (opId: string, patch: Partial<JMOperationConfig>) => {
+    let next = ops.map((o) => (o.id === opId ? { ...o, ...patch } : o));
+    if (patch.type === "template_substitute") {
+      next = [next.find((o) => o.id === opId)!];
+    }
+
+    setOps(next);
+    persistOps(next);
+  };
+
+  const handleAdd = () => {
+    if (ops.length >= JM_MAX_OPERATIONS) return;
+    const newOp: JMOperationConfig = {
+      id: `op_${_jmOpCounter++}`,
+      type: "extract_field",
+      label: `Output ${ops.length + 1}`,
+      fieldPath: "",
+      outputFormat: "string",
+    };
+    const next = [...ops, newOp];
+    setOps(next);
+    persistOps(next);
+  };
+
+  const handleRemove = (opId: string) => {
+    if (ops.length <= 1) return;
+    const next = ops.filter((o) => o.id !== opId);
+    setOps(next);
+    persistOps(next);
+  };
+
+  // "Add Output" only available when no op is template_substitute.
+  const anySubstitute = ops.some((o) => o.type === "template_substitute");
+  const canAddMore = !anySubstitute && ops.length < JM_MAX_OPERATIONS;
+
+  return (
+    <div className="space-y-3">
+
+      {/* Section header */}
+      <div className="flex items-center justify-between">
+        <span className="block text-sm font-medium text-gray-300">
+          Output Operations
+          {/* Hide count when substitute — only one output makes sense there */}
+          {!anySubstitute && (
+            <span className="ml-2 text-xs text-[#FFC72C]/50 font-mono">
+              {ops.length}/{JM_MAX_OPERATIONS}
+            </span>
+          )}
+        </span>
+        {/* Only show Add Output when at least one op is extract_field */}
+        {canAddMore && (
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-1 text-xs border rounded px-2 py-1 transition-colors text-[#FFC72C] border-[#FFC72C]/30 hover:bg-[#FFC72C]/10 cursor-pointer"
+            title="Add a new output operation"
+          >
+            <Plus size={12} />
+            Add Output
+          </button>
+        )}
+      </div>
+
+      {/* Operation cards */}
+      <div className="space-y-2">
+        {ops.map((op, idx) => (
+          <OperationCard
+            key={op.id}
+            op={op}
+            index={idx}
+            canRemove={ops.length > 1}
+            onChange={(patch) => handleChange(op.id, patch)}
+            onRemove={() => handleRemove(op.id)}
+          />
+        ))}
+      </div>
+
+      <p className="text-[10px] text-[#FFC72C]/30 italic px-1">
+        All outputs share the same JSON input. Each operation runs independently.
+      </p>
+    </div>
+  );
+};
 
 
 interface NodeEditPanelProps {
@@ -506,6 +834,8 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
     return !!param.UIConfigurable && shouldShowParameter(param);
   };
 
+  const isJSONManipulator = node.nodeType === "JSONManipulator";
+
   return (
     <div
       ref={panelRef}
@@ -566,24 +896,29 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({
           />
         </div>
 
-        {/* Config parameters */}
-        <div className="space-y-4">
-          {node &&
-            getConfigParameters(node)
-              .filter(shouldRenderParam)
-              .map((param) => (
-                <div key={param.parameterName} className="space-y-2">
-                  <label
-                    htmlFor={param.parameterName}
-                    className={`block text-sm font-medium text-gray-300 ${textAlignClass}`}
-                  >
-                    {getDynamicLabel(param)}
-                  </label>
-                  {renderInputControl(param)}
-                </div>
-              ))}
-          {renderApiKeyOrOllamaUrl()}
-        </div>
+        {/* ── JSON Manipulator: custom operations UI ── */}
+        {isJSONManipulator ? (
+          <JSONManipulatorSection node={node} onSave={onSave} />
+        ) : (
+          /* ── All other nodes: standard config parameters ── */
+          <div className="space-y-4">
+            {node &&
+              getConfigParameters(node)
+                .filter(shouldRenderParam)
+                .map((param) => (
+                  <div key={param.parameterName} className="space-y-2">
+                    <label
+                      htmlFor={param.parameterName}
+                      className={`block text-sm font-medium text-gray-300 ${textAlignClass}`}
+                    >
+                      {getDynamicLabel(param)}
+                    </label>
+                    {renderInputControl(param)}
+                  </div>
+                ))}
+            {renderApiKeyOrOllamaUrl()}
+          </div>
+        )}
 
         {/* Socket information */}
         <div className="space-y-2">

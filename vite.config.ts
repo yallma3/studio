@@ -14,6 +14,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  define: {
+    'import.meta.env.VITE_TAURI_MODE': JSON.stringify('true'),
+  },
   // @ts-ignore - Vitest test config
   test: {
     globals: true,
