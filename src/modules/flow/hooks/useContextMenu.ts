@@ -70,11 +70,17 @@ export const useContextMenu = (
     const canvasPos = screenToCanvas(e.clientX, e.clientY, transform);
     contextMenuCanvasPosition.current = canvasPos;
 
-    // Show context menu at mouse position for canvas options
+    // Clamp menu position so it never overflows outside the viewport
+    const MENU_WIDTH = 260;
+    const MENU_HEIGHT = 220;
+    const x = Math.min(e.clientX, window.innerWidth - MENU_WIDTH);
+    const y = Math.min(e.clientY, window.innerHeight - MENU_HEIGHT);
+
+    // Show context menu at clamped mouse position for canvas options
     setContextMenu({
       visible: true,
-      x: e.clientX,
-      y: e.clientY,
+      x,
+      y,
       subMenu: null,
     });
   };
@@ -91,11 +97,17 @@ export const useContextMenu = (
     );
     setSelectedNodeIds([nodeId]);
 
-    // Show context menu at mouse position with node-specific options
+    // Clamp menu position so it never overflows outside the viewport
+    const MENU_WIDTH = 220;
+    const MENU_HEIGHT = 180;
+    const x = Math.min(e.clientX, window.innerWidth - MENU_WIDTH);
+    const y = Math.min(e.clientY, window.innerHeight - MENU_HEIGHT);
+
+    // Show context menu at clamped mouse position with node-specific options
     setContextMenu({
       visible: true,
-      x: e.clientX,
-      y: e.clientY,
+      x,
+      y,
       subMenu: null,
       targetNodeId: nodeId,
     });

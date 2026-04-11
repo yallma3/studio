@@ -30,7 +30,7 @@ export interface NodeComponentProps {
   onNodeContextMenu: (e: MouseEvent<HTMLDivElement>, id: number) => void;
   onEditNode?: (nodeId: number) => void;
   onShowResult: (node: NodeType) => void;
-  isBeingEdited?: boolean; // New prop to indicate if this node is being edited
+  isBeingEdited?: boolean;
 }
 
 // Node Component
@@ -45,9 +45,8 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
   isBeingEdited = false,
 }) => {
   const { t, i18n } = useTranslation();
-  const currentLanguage = i18n.language; // Get current language for node translations
+  const currentLanguage = i18n.language;
 
-  // Helper function to get translated fields from node's i18n
   const getTranslatedFields = (node: NodeType, lang: string) => {
     const i18nData = node.i18n?.[lang] || node.i18n?.en;
     return {
@@ -58,24 +57,18 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
 
   const translatedFields = getTranslatedFields(node, currentLanguage);
 
-  // Add state for animation
   const [isAnimating, setIsAnimating] = useState(false);
   const prevResultRef = useRef<unknown>(node.result);
 
-  // Detect result changes and trigger animation
   useEffect(() => {
-    // Always animate when there's a result, ensuring it runs on every update
     if (node.result) {
       setIsAnimating(true);
-      const timer = setTimeout(() => setIsAnimating(false), 800); // Extended animation duration
+      const timer = setTimeout(() => setIsAnimating(false), 800);
       return () => clearTimeout(timer);
     }
     prevResultRef.current = node.result;
   }, [node.result]);
 
-  // Filter input and output sockets
-
-  // Type guards  to narrow socket direction without using `any`
   const isInputSocket = (
     socket: Socket
   ): socket is Socket & { type: "input" } => socket.type === "input";
@@ -86,26 +79,17 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
   const inputSockets = node.sockets.filter(isInputSocket);
   const outputSockets = node.sockets.filter(isOutputSocket);
 
-  // Calculate vertical offset for centering sockets
   const getSocketsVerticalOffset = (socketsCount: number) => {
-    // If only one socket, place it at 80% height
     if (socketsCount === 1) return node.height * 0.8;
-
-    // For multiple sockets, calculate center position to distribute sockets evenly
     const totalSpacing = SOCKET_SPACING * (socketsCount - 1);
     const startY = (node.height - totalSpacing) / 2;
     return startY;
   };
 
-  // Calculate positions for input sockets
   const inputSocketsStartY = getSocketsVerticalOffset(inputSockets.length);
-
-  // Calculate positions for output sockets
   const outputSocketsStartY = getSocketsVerticalOffset(outputSockets.length);
 
-  // Render node value based on node type
   const renderNodeValue = () => {
-    // Extract values outside of case to avoid lexical declaration in case block
     const imageUrl = node.nodeType === "Image" ? String(node.nodeValue) : "";
     const boolValue = node.nodeType === "Boolean" ? !!node.nodeValue : false;
 
@@ -115,7 +99,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
           <div
             className="text-[#FFC72C] font-mono text-sm bg-[#FFC72C11] p-2 rounded text-left m-2.5"
             data-testid="text-value"
-            style={{ overflow: "hidden", wordBreak: "break-all" }} 
+            style={{ overflow: "hidden", wordBreak: "break-all" }}
           >
             {String(node.nodeValue).slice(0, 80)}
             {String(node.nodeValue).length > 80 ? "..." : ""}
@@ -180,6 +164,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
           </div>
         );
 
+      // ── Join: show mode + separator/template preview ───────────────────────
       case "Join": {
         const modeParam = (node.configParameters ?? []).find(
           (p) => p.parameterName === "Mode"
@@ -194,9 +179,9 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
         return (
           <div className="text-[#FFC72C] font-mono text-sm bg-[#FFC72C11] p-2 rounded text-left m-2.5 space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-[#FFC72C]/50 text-xs uppercase">{t("nodeComponent.joinMode")}</span>
+              <span className="text-[#FFC72C]/50 text-xs uppercase">mode</span>
               <span className="text-[#FFC72C] font-bold">{mode}</span>
-              <span className="text-[#FFC72C]/50 text-xs ml-auto">{t("nodeComponent.inputsCount", "{{count}} inputs", { count })}</span>
+              <span className="text-[#FFC72C]/50 text-xs ml-auto">{count} inputs</span>
             </div>
             <div
               className="text-[#FFC72C]/70 text-xs truncate"
@@ -209,7 +194,6 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
       }
 
       default:
-        // Generic/fallback rendering for any node type
         return (
           <div
             className="text-[#FFC72C] font-mono text-sm bg-[#FFC72C11] p-2 rounded text-left m-2.5"
@@ -252,8 +236,6 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
               size={14}
               className={isAnimating ? "animate-spin-slow" : ""}
             />
-
-            {/* Multiple animated rings for a more pronounced effect */}
             {isAnimating && (
               <>
                 <span className="absolute w-full h-full rounded-full bg-[#FFC72C]/40 animate-ripple"></span>
@@ -269,15 +251,12 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
     }
   };
 
-  // Handle right-click on the node
   const handleContextMenu = (e: MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    // Call the parent handler with the node ID
     onNodeContextMenu(e, node.id);
   };
 
-  // Handle click on settings icon
   const handleEditClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     console.log("Edit button clicked for node:", node.id);
@@ -311,23 +290,19 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
         cursor: "move",
         userSelect: "none",
         position: "absolute",
-        zIndex: isBeingEdited ? 40 : node.selected ? 30 : 10, // Bring edited nodes to the very front
-        opacity: isBeingEdited ? 0.8 : 1, // Slightly fade edited nodes
-        // overflow: "hidden", 
+        zIndex: isBeingEdited ? 40 : node.selected ? 30 : 10,
+        opacity: isBeingEdited ? 0.8 : 1,
       }}
     >
       {/* Input sockets (left side) */}
       {inputSockets.map((socket, index) => {
-        // Check if this input socket has a connection
         const hasConnection = connections.some(
           (conn) => conn.toSocket === socket.id
         );
-
-        // Calculate vertical position based on index
         const socketY =
           inputSockets.length === 1
-            ? node.height * 0.8 // Single socket at 80% height
-            : inputSocketsStartY + index * SOCKET_SPACING + node.height * 0.2; // Multiple sockets distributed vertically
+            ? node.height * 0.8
+            : inputSocketsStartY + index * SOCKET_SPACING + node.height * 0.2;
 
         return (
           <div
@@ -354,7 +329,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
               }}
             />
             <p
-              className="text-xs text-[#FFC72C]/80 font-mono "
+              className="text-xs text-[#FFC72C]/80 font-mono"
               style={{
                 position: "absolute",
                 fontSize: SOCKET_SIZE * 0.5,
@@ -370,16 +345,13 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
 
       {/* Output sockets (right side) */}
       {outputSockets.map((socket, index) => {
-        // Check if this output socket has any connections
         const connectionCount = connections.filter(
           (conn) => conn.fromSocket === socket.id
         ).length;
-
-        // Calculate vertical position based on index
         const socketY =
           outputSockets.length === 1
-            ? node.height * 0.8 // Single socket at 80% height
-            : outputSocketsStartY + index * SOCKET_SPACING + node.height * 0.2; // Multiple sockets distributed vertically
+            ? node.height * 0.8
+            : outputSocketsStartY + index * SOCKET_SPACING + node.height * 0.2;
 
         return (
           <div
@@ -401,12 +373,12 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
                 width: SOCKET_SIZE,
                 height: SOCKET_SIZE,
                 borderRadius: "50%",
-                cursor: "pointer", // Always allow creating new connections from outputs
+                cursor: "pointer",
                 zIndex: 20,
               }}
             />
             <p
-              className="text-xs text-[#FFC72C]/80 font-mono "
+              className="text-xs text-[#FFC72C]/80 font-mono"
               style={{
                 position: "absolute",
                 fontSize: SOCKET_SIZE * 0.5,
@@ -419,6 +391,7 @@ export const NodeComponent: React.FC<NodeComponentProps> = ({
           </div>
         );
       })}
+
       <div className="z-3 rounded-md">
         <div
           className={`flex items-center justify-between px-4 py-3 

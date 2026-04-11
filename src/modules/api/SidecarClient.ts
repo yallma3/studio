@@ -5,8 +5,11 @@ export interface SidecarCommand {
     | "run_workspace"
     | "stop_workspace"
     | "run_workflow"
+    | "stop_workflow"        
     | "workflow_result"
     | "workflow_json"
+    | "workflow_iteration"   
+    | "workflow_stopped"       
     | "console_input"
     | "console_prompt"
     | "console_input_resolved"
@@ -59,6 +62,7 @@ export class SidecarClient {
   private maxReconnectAttempts = 5;
   private reconnectInterval = 3000;
   private shouldReconnect = true;
+  private instanceId: string = "";
   private connectionStatus:
     | "disconnected"
     | "connecting"
@@ -74,6 +78,7 @@ export class SidecarClient {
   connect(wsUrl?: string, subprotocol?: string): void {
     const url = wsUrl ?? this.wsUrl ?? "ws://localhost:3001";
     this.wsUrl = url;
+    if (subprotocol) this.instanceId = subprotocol;
     console.log("Connecting to:", url, subprotocol ? `with subprotocol: ${subprotocol}` : "");
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       return;
@@ -235,6 +240,10 @@ export class SidecarClient {
 
   getConnectionStatus(): string {
     return this.connectionStatus;
+  }
+
+  getInstanceId(): string {
+    return this.instanceId;
   }
 
   private notifyStatusChange(): void {

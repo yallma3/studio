@@ -355,8 +355,21 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
     }
   };
 
-  // Handle user prompt cancel
-  const handleUserPromptCancel = () => {
+  // CHANGED: cancel now sends __CANCELLED__ to backend so the chat loop stops
+  const handleUserPromptCancel = async (promptId?: string) => {
+    if (promptId) {
+      try {
+        const message: SidecarCommand = {
+          id: crypto.randomUUID(),
+          type: "user_prompt_response",
+          data: JSON.stringify({ promptId, response: "__CANCELLED__" }),
+          timestamp: new Date().toISOString(),
+        };
+        sidecarClient.sendMessage(message);
+      } catch (error) {
+        console.error("Error sending cancel signal:", error);
+      }
+    }
     setUserPromptDialog(null);
   };
 
@@ -1308,7 +1321,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
         />
       )}
 
-      {/* User Prompt Dialog */}
+      {/* CHANGED: UserPromptDialog now passes onCancel and uses handleUserPromptCancel with promptId */}
       {userPromptDialog && (
         <UserPromptDialog
           isOpen={userPromptDialog.isOpen}
@@ -1317,7 +1330,8 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
           nodeTitle={userPromptDialog.nodeTitle}
           message={userPromptDialog.message}
           onSubmit={handleUserPromptSubmit}
-          onClose={handleUserPromptCancel}
+          onClose={() => handleUserPromptCancel(userPromptDialog.promptId)}
+          onCancel={handleUserPromptCancel}
         />
       )}
 
