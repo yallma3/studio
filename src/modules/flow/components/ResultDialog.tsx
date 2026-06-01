@@ -70,11 +70,12 @@ export const ResultDialog: React.FC<ResultDialogProps> = ({
         className="bg-[#111] border border-[#FFC72C]/50 rounded-md max-w-2xl max-h-[80vh] w-full mx-4 flex flex-col overflow-hidden animate-slide-up shadow-lg"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="result-dialog-title"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-center p-4 bg-gradient-to-r from-[#111] to-[#FFC72C22] border-b border-[#FFC72C]/30 flex-shrink-0">
-          <h3 className="text-[#FFC72C] font-bold flex gap-2 items-center">
+          <h3 id="result-dialog-title" className="text-[#FFC72C] font-bold flex gap-2 items-center">
             <FileText size={16} />
             {t("resultDialog.title", "{{nodeName}} Result", { nodeName: node.title })}
             {nodeIterations.length > 0 && (

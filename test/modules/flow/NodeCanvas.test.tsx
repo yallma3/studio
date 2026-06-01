@@ -58,6 +58,7 @@ vi.mock('@/modules/api/SidecarClient', () => ({
   sidecarClient: {
     executeFlow: vi.fn(),
     onCommand: vi.fn(),
+    offCommand: vi.fn(),
     sendMessage: vi.fn(),
   },
 }));

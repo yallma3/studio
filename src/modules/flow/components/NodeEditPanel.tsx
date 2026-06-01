@@ -56,7 +56,14 @@ let _jmOpCounter = 2;
 function jmParseOps(raw: string): JMOperationConfig[] {
   try {
     const parsed = JSON.parse(raw) as JMOperationConfig[];
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const maxId = parsed.reduce((max, op) => {
+        const match = op.id.match(/^op_(\d+)$/);
+        return match ? Math.max(max, parseInt(match[1], 10)) : max;
+      }, 0);
+      _jmOpCounter = Math.max(_jmOpCounter, maxId + 1);
+      return parsed;
+    }
   } catch { /* fall through */ }
   return JM_DEFAULT_OPERATIONS.map((o) => ({ ...o }));
 }
@@ -841,9 +848,13 @@ const LoopSection: React.FC<LoopSectionProps> = ({ node, formValues, onParamChan
       if (!Array.isArray(extracted)) { setPreviewInfo(null); return; }
 
       const arr = extracted as unknown[];
+      if (arr.length === 0) {
+        setPreviewInfo({ arraySize: 0, currentItem: "—", error: null });
+        return;
+      }
       const idx = Math.max(0, Math.min(itemIndex, arr.length - 1));
       const item = arr[idx];
-      const itemStr = typeof item === "string" ? item : JSON.stringify(item, null, 2);
+      const itemStr = typeof item === "string" ? item : JSON.stringify(item, null, 2) ?? "—";
 
       setPreviewInfo({ arraySize: arr.length, currentItem: itemStr.substring(0, 300), error: null });
     } catch {
@@ -1103,9 +1114,12 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
   }, [node]);
 
   const handleClose = useCallback(() => {
+    if (node && onSave) {
+      onSave({ title });
+    }
     setIsVisible(false);
     setTimeout(() => onClose(), 300);
-  }, [onClose]);
+  }, [node, title, onClose, onSave]);
 
   useEffect(() => {
     const handler = (event: globalThis.MouseEvent) => {

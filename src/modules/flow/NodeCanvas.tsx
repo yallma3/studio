@@ -590,6 +590,9 @@ const NodeCanvas: React.FC<{
           iterationIndex: number;
           results: Record<string, unknown>;
         };
+        if (data.workflowId !== workflowMetaRef.current?.id) {
+          return;
+        }
         setNodesRef.current((prevNodes) =>
           prevNodes.map((node) => {
             const result = data.results[String(node.id)];

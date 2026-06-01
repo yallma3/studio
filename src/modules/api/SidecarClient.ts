@@ -78,8 +78,9 @@ export class SidecarClient {
   connect(wsUrl?: string, subprotocol?: string): void {
     const url = wsUrl ?? this.wsUrl ?? "ws://localhost:3001";
     this.wsUrl = url;
-    if (subprotocol) this.instanceId = subprotocol;
-    console.log("Connecting to:", url, subprotocol ? `with subprotocol: ${subprotocol}` : "");
+    const protocol = subprotocol ?? (this.instanceId || undefined);
+    if (protocol) this.instanceId = protocol;
+    console.log("Connecting to:", url, protocol ? `with subprotocol: ${protocol}` : "");
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       return;
     }
@@ -89,7 +90,7 @@ export class SidecarClient {
     this.shouldReconnect = true;
 
     try {
-      this.ws = subprotocol ? new WebSocket(url, [subprotocol]) : new WebSocket(url);
+      this.ws = protocol ? new WebSocket(url, [protocol]) : new WebSocket(url);
 
       this.ws.onopen = () => {
         console.log("Connected to sidecar WebSocket");

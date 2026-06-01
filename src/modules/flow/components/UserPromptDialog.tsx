@@ -66,8 +66,11 @@ const UserPromptDialog: React.FC<UserPromptDialogProps> = ({
   };
 
   const handleCancel = () => {
-    if (onCancel) onCancel(promptId);
-    onClose();
+    if (onCancel) {
+      onCancel(promptId);
+    } else {
+      onClose();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

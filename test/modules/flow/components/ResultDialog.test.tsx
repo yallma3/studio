@@ -49,6 +49,7 @@ describe("ResultDialog Component", () => {
 
   const defaultProps = {
     node: mockNode,
+    nodes: [] as NodeType[],
     onClose: mockOnClose,
   };
 
