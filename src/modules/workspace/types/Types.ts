@@ -57,8 +57,9 @@ export interface Workflow {
 //   tokenLimit: number;
 // }
 export interface LLMOption {
-  provider: "Groq" | "OpenAI" | "OpenRouter" | "Gemini" | "Anthropic";
+  provider: "Groq" | "OpenAI" | "OpenRouter" | "Gemini" | "Anthropic" | "Ollama";
   model: LLMModel;
+  options?: Record<string, string>;
 }
 export interface EnvironmentVariable {
   id: string;

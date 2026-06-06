@@ -17,7 +17,7 @@ import { AvailableLLMs, LLMModel } from '@/shared/LLM/config';
 describe('LLM Configuration Testing', () => {
   describe('AvailableLLMs structure', () => {
     it('should contain all expected LLM providers', () => {
-      const expectedProviders = ['Groq', 'OpenAI', 'OpenRouter', 'Gemini', 'Anthropic'];
+      const expectedProviders = ['Groq', 'OpenAI', 'OpenRouter', 'Gemini', 'Anthropic', 'Ollama'];
       const actualProviders = Object.keys(AvailableLLMs);
 
       expect(actualProviders).toEqual(expectedProviders);
@@ -119,6 +119,18 @@ describe('LLM Configuration Testing', () => {
         expect(modelIds).toContain('claude-3-7-sonnet-latest');
         expect(modelIds).toContain('claude-3-5-sonnet-latest');
         expect(modelIds).toContain('claude-3-opus-latest');
+      });
+    });
+
+    describe('Ollama models', () => {
+      it('should have expected Ollama models', () => {
+        const ollamaModels = AvailableLLMs.Ollama;
+        expect(ollamaModels).toHaveLength(14);
+
+        const modelIds = ollamaModels.map(m => m.id);
+        expect(modelIds).toContain('llama3.1:8b');
+        expect(modelIds).toContain('mistral:7b');
+        expect(modelIds).toContain('deepseek-r1:8b');
       });
     });
   });

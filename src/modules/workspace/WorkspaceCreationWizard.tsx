@@ -572,7 +572,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     if (newAgent.name.trim()) {
       if (isEditingAgent && newAgent.id) {
          // Update existing agent
-        setWorkspaceData((prev) => ({
+          setWorkspaceData((prev) => ({
           ...prev,
           agents: prev.agents.map((agent) =>
             agent.id === newAgent.id
@@ -632,6 +632,10 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   const handleEditAgent = (id: string) => {
     const agentToEdit = workspaceData.agents.find((agent) => agent.id === id);
     if (agentToEdit) {
+      const llm = { ...agentToEdit.llm };
+      if (!llm.options?.baseUrl && agentToEdit.ollamaBaseUrl) {
+        llm.options = { ...llm.options, baseUrl: agentToEdit.ollamaBaseUrl };
+      }
       setNewAgent({
         id: agentToEdit.id,
         name: agentToEdit.name,
@@ -639,7 +643,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         objective: agentToEdit.objective,
         background: agentToEdit.background,
         capabilities: agentToEdit.capabilities,
-        llm: agentToEdit.llm,
+        llm,
         apiKey: agentToEdit.apiKey,
         variables: agentToEdit.variables || {},
         tools: agentToEdit.tools,
@@ -1212,6 +1216,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           llm: {
                             provider: val.llm.provider,
                             model: val.llm.model || prev.llm.model,
+                            options: val.llm.options,
                           },
                           apiKey: val.apiKey,
                           tools: val.tools,

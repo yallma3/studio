@@ -7,7 +7,7 @@ import ToolSelectionPopup from "../../../shared/components/ToolSelectionPopup";
 import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
 import { llmsRegistry } from "../../../shared/LLM/LLMsRegistry";
 import { LLMOption, Tool, Workflow } from "../types/Types";
-import { Plus, X, Key } from "lucide-react";
+import { Plus, X, Key, Link, RefreshCw } from "lucide-react";
 
 export interface AgentFormValues {
   name: string;
@@ -16,6 +16,7 @@ export interface AgentFormValues {
   llm: {
     provider: LLMOption["provider"];
     model?: LLMModel;
+    options?: Record<string, string>;
   };
   apiKey: string;
   tools: Tool[];
@@ -67,7 +68,43 @@ const AgentForm: React.FC<AgentFormProps> = ({
   );
 
   useEffect(() => {
-    setLLMOptions(getModelsForProvider(selectedProvider));
+    if (selectedProvider !== "Ollama") {
+      setLLMOptions(getModelsForProvider(selectedProvider));
+    }
+  }, [selectedProvider]);
+
+  const [ollamaModels, setOllamaModels] = useState<LLMModel[]>([]);
+  const [ollamaLoading, setOllamaLoading] = useState(false);
+  const [ollamaFetchError, setOllamaFetchError] = useState(false);
+
+  const fetchOllamaModels = async (baseUrl: string) => {
+    setOllamaLoading(true);
+    setOllamaFetchError(false);
+    try {
+      const res = await fetch(`${baseUrl}/api/tags`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const models: LLMModel[] = (data.models || []).map((m: { name: string }) => ({
+        name: m.name,
+        id: m.name,
+      }));
+      setOllamaModels(models);
+    } catch {
+      setOllamaFetchError(true);
+    } finally {
+      setOllamaLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedProvider === "Ollama") {
+      const url = value.llm.options?.baseUrl || "http://localhost:11434";
+      fetchOllamaModels(url);
+    } else {
+      setOllamaModels([]);
+      setOllamaFetchError(false);
+      setOllamaLoading(false);
+    }
   }, [selectedProvider]);
 
   const [showToolPopup, setShowToolPopup] = useState(false);
@@ -356,8 +393,12 @@ const AgentForm: React.FC<AgentFormProps> = ({
             <Select
               id="agent-llm-provider"
               value={selectedProvider}
-              onChange={(value: string) => {
-                setSelectedProvider(value as LLMOption["provider"]);
+              onChange={(val: string) => {
+                const provider = val as LLMOption["provider"];
+                setSelectedProvider(provider);
+                if (provider === "Ollama" && !value.llm.options?.baseUrl) {
+                  onChange({ ...value, llm: { ...value.llm, options: { baseUrl: "http://localhost:11434" } } });
+                }
               }}
               options={providerOptions.map((provider) => ({
                 value: provider,
@@ -367,62 +408,154 @@ const AgentForm: React.FC<AgentFormProps> = ({
             />
           </div>
           <div className="col-span-3">
-            <Select
-              id="agent-llm-model"
-              value={value.llm.model?.id || ""}
-              onChange={(v: string) => {
-                const option = llmOptions.find((m) => m.id == v);
-                if (!option) return;
-                onChange({
-                  ...value,
-                  llm: { provider: selectedProvider, model: option },
-                });
-              }}
-              options={[
-                {
-                  value: "",
-                  label: t("agentForm.selectModel", "Select a model..."),
-                  disabled: true,
-                },
-                ...llmOptions.map((m) => ({ value: m.id, label: m.name })),
-              ]}
-              label={t("agentForm.model", "Model")}
-            />
+            {selectedProvider === "Ollama" ? (
+              <div className="flex flex-col gap-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  {t("agentForm.model", "Model")}
+                </label>
+                {ollamaLoading ? (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-400 text-sm">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    {t("agentForm.loadingModels", "Loading models...")}
+                  </div>
+                ) : ollamaFetchError ? (
+                  <input
+                    type="text"
+                    id="agent-llm-model-manual"
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    value={value.llm.model?.id || ""}
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      onChange({
+                        ...value,
+                        llm: {
+                          provider: "Ollama",
+                          model: name.trim()
+                            ? { name, id: name }
+                            : undefined,
+                        },
+                      });
+                    }}
+                    placeholder={t("agentForm.enterModelName", "Enter model name (e.g. llama3.1:8b)")}
+                  />
+                ) : (
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Select
+                        id="agent-llm-model-ollama"
+                        value={value.llm.model?.id || ""}
+                        onChange={(v: string) => {
+                          const option = ollamaModels.find((m) => m.id == v);
+                          if (!option) return;
+                          onChange({
+                            ...value,
+                            llm: { provider: "Ollama", model: option },
+                          });
+                        }}
+                        options={[
+                          {
+                            value: "",
+                            label: t("agentForm.selectModel", "Select a model..."),
+                            disabled: true,
+                          },
+                          ...ollamaModels.map((m) => ({ value: m.id, label: m.name })),
+                        ]}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fetchOllamaModels(value.llm.options?.baseUrl || "http://localhost:11434")}
+                      disabled={ollamaLoading}
+                      className="self-end px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white rounded-md transition-colors mb-px"
+                      title={t("agentForm.refreshModels", "Refresh models")}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${ollamaLoading ? "animate-spin" : ""}`} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Select
+                id="agent-llm-model"
+                value={value.llm.model?.id || ""}
+                onChange={(v: string) => {
+                  const option = llmOptions.find((m) => m.id == v);
+                  if (!option) return;
+                  onChange({
+                    ...value,
+                    llm: { provider: selectedProvider, model: option },
+                  });
+                }}
+                options={[
+                  {
+                    value: "",
+                    label: t("agentForm.selectModel", "Select a model..."),
+                    disabled: true,
+                  },
+                  ...llmOptions.map((m) => ({ value: m.id, label: m.name })),
+                ]}
+                label={t("agentForm.model", "Model")}
+              />
+            )}
           </div>
         </div>
-        <p className="text-xs text-zinc-400 mt-2">
-          {value.llm.model
-            ? t(
-                "agentForm.customLLMSelected",
-                "LLM selected for this agent"
-              )
-            : t(
-                "agentForm.usingWorkspaceLLM",
-                `Using workspace's main LLM: ${
-                  workspaceMainLLMName || "None selected"
-                }`
-              )}
+        <p className="text-xs mt-2">
+          {ollamaFetchError ? (
+            <span className="text-red-400">
+              {t("agentForm.ollamaFetchFailed", "Could not reach Ollama — enter model name manually")}
+            </span>
+          ) : value.llm.model ? (
+            <span className="text-zinc-400">
+              {t("agentForm.customLLMSelected", "LLM selected for this agent")}
+            </span>
+          ) : (
+            <span className="text-zinc-400">
+              {t("agentForm.usingWorkspaceLLM", `Using workspace's main LLM: ${workspaceMainLLMName || "None selected"}`)}
+            </span>
+          )}
         </p>
       </div>
-      <div>
-        <label
-          htmlFor="agentApiKey"
-          className="block text-sm font-medium text-zinc-300 mb-1"
-        >
-          {t("agentForm.apiKey", "API Key")}
-        </label>
-        <div className="relative">
-          <input
-            id="agentApiKey"
-            type="password"
-            className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-            value={value.apiKey}
-            onChange={(e) => onChange({ ...value, apiKey: e.target.value })}
-            placeholder={t("agentForm.enterApiKey", "Enter agent API Key")}
-          />
-          <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+      {selectedProvider === "Ollama" ? (
+        <div>
+          <label
+            htmlFor="agentOllamaBaseUrl"
+            className="block text-sm font-medium text-zinc-300 mb-1"
+          >
+            {t("agentForm.ollamaBaseUrl", "Ollama Base URL")}
+          </label>
+          <div className="relative">
+            <input
+              id="agentOllamaBaseUrl"
+              type="text"
+              className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+              value={value.llm.options?.baseUrl || ""}
+              onChange={(e) => onChange({ ...value, llm: { ...value.llm, options: { ...value.llm.options, baseUrl: e.target.value } } })}
+              placeholder={t("agentForm.enterOllamaBaseUrl", "http://localhost:11434")}
+            />
+            <Link className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+          </div>
         </div>
-      </div>
+      ) : (
+        <div>
+          <label
+            htmlFor="agentApiKey"
+            className="block text-sm font-medium text-zinc-300 mb-1"
+          >
+            {t("agentForm.apiKey", "API Key")}
+          </label>
+          <div className="relative">
+            <input
+              id="agentApiKey"
+              type="password"
+              className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+              value={value.apiKey}
+              onChange={(e) => onChange({ ...value, apiKey: e.target.value })}
+              placeholder={t("agentForm.enterApiKey", "Enter agent API Key")}
+            />
+            <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col space-y-2">
         <label className="block text-sm font-medium text-zinc-300 mb-1">

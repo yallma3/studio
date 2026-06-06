@@ -78,10 +78,28 @@ const AnthropicModels: LLMModel[] = [
   { name: "Claude 3 Haiku", id: "claude-3-haiku-latest" },
 ];
 
+const OllamaModels: LLMModel[] = [
+  { name: "Llama 3.1 8B", id: "llama3.1:8b" },
+  { name: "Llama 3.2 3B", id: "llama3.2:3b" },
+  { name: "Llama 3.2 1B", id: "llama3.2:1b" },
+  { name: "Mistral 7B", id: "mistral:7b" },
+  { name: "Mixtral 8x7B", id: "mixtral:8x7b" },
+  { name: "Qwen2.5 7B", id: "qwen2.5:7b" },
+  { name: "Qwen2.5 32B", id: "qwen2.5:32b" },
+  { name: "DeepSeek R1 8B", id: "deepseek-r1:8b" },
+  { name: "DeepSeek R1 14B", id: "deepseek-r1:14b" },
+  { name: "CodeGemma 2B", id: "codegemma:2b" },
+  { name: "Codestral 22B", id: "codestral:22b" },
+  { name: "Phi-4", id: "phi-4:14b" },
+  { name: "Command R7B Arabic", id: "command-r7b-arabic:latest" },
+  { name: "Command R+ 104B", id: "command-r-plus:104b" },
+];
+
 export const AvailableLLMs: Record<string, LLMModel[]> = {
   Groq: GroqModels,
   OpenAI: OpenAIModels,
   OpenRouter: OpenRouterModels,
   Gemini: GeminiModels,
   Anthropic: AnthropicModels,
+  Ollama: OllamaModels,
 };

@@ -69,17 +69,21 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
 
   // State for form values
   useEffect(() => {
-    if (isEditing) {
+    if (isEditing && agentToEdit) {
+      const llm = { ...agentToEdit.llm };
+      if (!llm.options?.baseUrl && agentToEdit.ollamaBaseUrl) {
+        llm.options = { ...llm.options, baseUrl: agentToEdit.ollamaBaseUrl };
+      }
       setAgentForm({
-        name: agentToEdit?.name || "",
-        role: agentToEdit?.role || "",
-        objective: agentToEdit?.objective || "",
-        background: agentToEdit?.background || "",
-        capabilities: agentToEdit?.capabilities || "",
-        tools: [...(agentToEdit?.tools || [])],
-        llm: agentToEdit?.llm || workspaceData.mainLLM,
-        apiKey: agentToEdit?.apiKey || "",
-        variables: agentToEdit?.variables,
+        name: agentToEdit.name || "",
+        role: agentToEdit.role || "",
+        objective: agentToEdit.objective || "",
+        background: agentToEdit.background || "",
+        capabilities: agentToEdit.capabilities || "",
+        tools: [...(agentToEdit.tools || [])],
+        llm,
+        apiKey: agentToEdit.apiKey || "",
+        variables: agentToEdit.variables,
       });
     }
   }, [isEditing, agentToEdit, workspaceData.mainLLM]);
@@ -98,6 +102,10 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
       setIsEditing(isEdit);
       setAgentToEdit(agent);
 
+      const llm = { ...agent.llm };
+      if (!llm.options?.baseUrl && agent.ollamaBaseUrl) {
+        llm.options = { ...llm.options, baseUrl: agent.ollamaBaseUrl };
+      }
       setAgentForm({
         name: agent.name,
         role: agent.role,
@@ -105,7 +113,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         background: agent.background,
         capabilities: agent.capabilities,
         tools: [...agent.tools],
-        llm: agent.llm,
+        llm,
         apiKey: agent.apiKey,
         variables: agent.variables,
       });
@@ -439,6 +447,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                         val.llm.model ??
                         agentForm.llm.model ??
                         workspaceData.mainLLM.model,
+                      options: val.llm.options,
                     },
                     apiKey: val.apiKey,
                     tools: val.tools,
