@@ -27,7 +27,7 @@ import { initFlowSystem } from "../modules/flow/initFlowSystem.ts";
 import { getLLMs } from "../modules/api/getLLMs.ts";
 import { sidecarClient } from "../modules/api/SidecarClient";
 
-const DEFAULT_URL = "http://localhost:3001";
+const DEFAULT_URL = import.meta.env.VITE_YALLMA3_URL || "http://localhost:3001";
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<"home" | "canvas">("home");
