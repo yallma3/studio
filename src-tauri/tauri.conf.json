@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "yaLLMa3 Studio",
+  "productName": "yaLLMa3-Studio",
   "version": "0.2.0",
   "identifier": "org.yallma3.studio",
   "build": {
