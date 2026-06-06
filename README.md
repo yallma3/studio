@@ -10,7 +10,7 @@ This repo contains the IDE for yaLLMa3 (yaLLMa3-studio), which is a visual IDE t
 
 ### Prerequisites
 
-- [node >=20](https://nodejs.org/en/download/)
+- [node >=24](https://nodejs.org/en/download/)
 - [rust](https://rustup.rs/)
 - [yarn](https://yarnpkg.com/getting-started/install)
 
