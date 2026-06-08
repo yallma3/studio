@@ -58,7 +58,7 @@ export interface Workflow {
 // }
 export interface LLMOption {
   provider: "Groq" | "OpenAI" | "OpenRouter" | "Gemini" | "Anthropic" | "Ollama";
-  model: LLMModel;
+  model?: LLMModel;
   options?: Record<string, string>;
 }
 export interface EnvironmentVariable {

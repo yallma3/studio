@@ -85,6 +85,7 @@ const mockWorkspaceData: WorkspaceData = {
   connections: [],
   workflows: [],
   mcpTools: [],
+  environmentVariables: [{ id: '1', key: 'GROQ_KEY', value: 'gsk_abc', sensitive: true, createdAt: Date.now(), updatedAt: Date.now() }],
   trigger: null,
 };
 
@@ -242,9 +243,9 @@ describe('WorkspaceTab', () => {
     const editButton = screen.getByRole('button', { name: /edit/i });
     fireEvent.click(editButton);
 
-    expect(screen.getByText('API Configuration')).toBeInTheDocument();
+    expect(screen.getByText('API Key')).toBeInTheDocument();
     expect(screen.getByText('New Key')).toBeInTheDocument();
-    expect(screen.getByText('Environment Variables')).toBeInTheDocument();
+    expect(screen.getByText('Saved Key')).toBeInTheDocument();
   });
 
   it('shows API key input when "New Key" is selected', () => {
@@ -271,18 +272,13 @@ describe('WorkspaceTab', () => {
     expect(apiKeyInput).toHaveValue('new-api-key');
   });
 
-  it('switches between new key and environment variables', () => {
+  it('shows API key input in edit mode when new key is active', () => {
     renderWorkspaceTab();
 
     const editButton = screen.getByRole('button', { name: /edit/i });
     fireEvent.click(editButton);
 
     expect(screen.getByPlaceholderText('Enter API key')).toBeInTheDocument();
-
-    const envVarButton = screen.getByText('Environment Variables');
-    fireEvent.click(envVarButton);
-
-    expect(screen.getByText('Environment Variable')).toBeInTheDocument();
   });
 
   it('syncs form values when workspace data changes', () => {

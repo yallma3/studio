@@ -70,10 +70,6 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
   // State for form values
   useEffect(() => {
     if (isEditing && agentToEdit) {
-      const llm = { ...agentToEdit.llm };
-      if (!llm.options?.baseUrl && agentToEdit.ollamaBaseUrl) {
-        llm.options = { ...llm.options, baseUrl: agentToEdit.ollamaBaseUrl };
-      }
       setAgentForm({
         name: agentToEdit.name || "",
         role: agentToEdit.role || "",
@@ -81,7 +77,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         background: agentToEdit.background || "",
         capabilities: agentToEdit.capabilities || "",
         tools: [...(agentToEdit.tools || [])],
-        llm,
+        llm: { ...agentToEdit.llm },
         apiKey: agentToEdit.apiKey || "",
         variables: agentToEdit.variables,
       });
@@ -101,11 +97,6 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
       // Find the agent to edit
       setIsEditing(isEdit);
       setAgentToEdit(agent);
-
-      const llm = { ...agent.llm };
-      if (!llm.options?.baseUrl && agent.ollamaBaseUrl) {
-        llm.options = { ...llm.options, baseUrl: agent.ollamaBaseUrl };
-      }
       setAgentForm({
         name: agent.name,
         role: agent.role,
@@ -113,7 +104,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         background: agent.background,
         capabilities: agent.capabilities,
         tools: [...agent.tools],
-        llm,
+        llm: { ...agent.llm },
         apiKey: agent.apiKey,
         variables: agent.variables,
       });

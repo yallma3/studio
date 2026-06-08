@@ -21,7 +21,6 @@ import {
   ChevronLeft,
   Check,
   X,
-  Key,
   Edit2,
   Clock,
   Play,
@@ -29,13 +28,11 @@ import {
   Webhook,
   MessageCircle,
 } from "lucide-react";
-import { WorkspaceData, Agent, Tool, LLMOption, Workflow } from "./types/Types";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { WorkspaceData, Agent, Tool, Workflow } from "./types/Types";
 import { TooltipHelper } from "../../shared/components/ui/tooltip-helper";
 import Select from "../../shared/components/ui/select";
 import { generateUniqueWorkspaceId } from "./utils/storageUtils";
-import { AvailableLLMs, LLMModel } from "../../shared/LLM/config";
-import { llmsRegistry } from "@/shared/LLM/LLMsRegistry";
+import LLMPicker from "../../shared/components/LLMPicker";
 import AgentForm from "./components/AgentForm";
 import type { AgentFormValues } from "./components/AgentForm";
 import { 
@@ -180,33 +177,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     return `ag-${shortDate}${randomPart}`;
   };
 
-  // LLM providers/models derived from AvailableLLMs
-  const llmProviders = llmsRegistry.listProviders();
-  const fallbackProviders = Object.keys(AvailableLLMs);
-  const providerOptions =
-    llmProviders.length > 0 ? llmProviders : fallbackProviders;
-
-  const getModelsForProvider = (provider: string): LLMModel[] => {
-    const models = llmsRegistry.getProviderModels(provider);
-    if (models && models.length > 0) {
-      return models;
-    }
-    return AvailableLLMs[provider] || [];
-  };
-
-  // State for selected provider
-  const [selectedProvider, setSelectedProvider] =
-    useState<LLMOption["provider"]>("Groq");
-    // remove unused selectedModel state
-
-  const [llmOptions, setLLMOptions] = useState<LLMModel[]>(
-    getModelsForProvider("Groq")
-  );
-
-  useEffect(() => {
-    setLLMOptions(getModelsForProvider(selectedProvider));
-  }, [selectedProvider]);
-
   // Temporary state for new items
   const [newTask, setNewTask] = useState({
     id: generateTaskId(),
@@ -302,7 +272,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           },
         } as ManualTrigger,
       });
-      setSelectedProvider("Groq");
       setCurrentStep(1);
       onClose();
     } catch (error) {
@@ -632,10 +601,6 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   const handleEditAgent = (id: string) => {
     const agentToEdit = workspaceData.agents.find((agent) => agent.id === id);
     if (agentToEdit) {
-      const llm = { ...agentToEdit.llm };
-      if (!llm.options?.baseUrl && agentToEdit.ollamaBaseUrl) {
-        llm.options = { ...llm.options, baseUrl: agentToEdit.ollamaBaseUrl };
-      }
       setNewAgent({
         id: agentToEdit.id,
         name: agentToEdit.name,
@@ -643,7 +608,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         objective: agentToEdit.objective,
         background: agentToEdit.background,
         capabilities: agentToEdit.capabilities,
-        llm,
+        llm: { ...agentToEdit.llm },
         apiKey: agentToEdit.apiKey,
         variables: agentToEdit.variables || {},
         tools: agentToEdit.tools,
@@ -991,159 +956,16 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         ({t("workspaces.optional", "Optional")})
                       </span>
                     </h3>
-                    <div className="grid grid-cols-5 gap-4">
-                     {/* Provider Selection */}
-                      <div className="mb-6 col-span-2">
-                        <Select
-                          id="provider"
-                          value={selectedProvider}
-                          onChange={(value) =>
-                            setSelectedProvider(value as LLMOption["provider"])
-                          }
-                          options={providerOptions.map((provider) => ({
-                            value: provider,
-                            label: provider,
-                          }))}
-                          placeholder={t(
-                            "workspaces.selectProviderPlaceholder",
-                            "Select a provider..."
-                          )}
-                          label={t(
-                            "workspaces.selectProvider",
-                            "Select Provider"
-                          )}
-                        />
-                      </div>
-
-                      {/* Model Selection */}
-                      <div className="mb-6 col-span-3">
-                        <Select
-                          id="model"
-                          value={workspaceData.mainLLM.model?.id || ""}
-                          onChange={(value) => {
-                            const option = llmOptions.find(
-                              (m) => m.id == value
-                            );
-                            if (!option) return;
-
-                            setWorkspaceData((prev) => ({
-                              ...prev,
-                               // set new LLM option
-                              mainLLM: {
-                                provider: selectedProvider,
-                                model: option,
-                              },
-                            }));
-                          }}
-                          options={[
-                            {
-                              value: "",
-                              label: t(
-                                "workspaces.selectModelPlaceholder",
-                                "Select a model..."
-                              ),
-                              disabled: true,
-                            },
-                            ...(llmOptions || []).map((m) => ({
-                              value: m.id,
-                              label: m.name,
-                            })),
-                          ]}
-                          disabled={!selectedProvider}
-                          label={t("workspaces.selectModel", "Select Model")}
-                        />
-                      </div>
-                    </div>
-
-                    {/* API Key Section */}
-                    <div className="mb-8 space-y-4">
-                      <label
-                        htmlFor="apiKeyOption"
-                        className="block text-sm font-medium text-gray-300 mb-2 "
-                      >
-                        {t("workspaces.apiKey", "API Key")}
-                      </label>
-
-                      {/* API Key Input Container with fixed height */}
-                      <div className="h-24">
-                       {" "}
-                        {/* Fixed height container */}
-                        {!workspaceData.useSavedCredentials ? (
-                          <div>
-                            <div className="relative">
-                              <input
-                                type="password"
-                                id="apiKey"
-                                name="apiKey"
-                                value={workspaceData.apiKey}
-                                onChange={handleWorkspaceDataChange}
-                                className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                placeholder={t(
-                                  "workspaces.enterApiKey",
-                                  "Enter API key"
-                                )}
-                              />
-                              <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            </div>
-                            <div className="flex items-center mt-1">
-                              <p className="text-xs text-gray-400">
-                                {t(
-                                  "workspaces.apiKeyInfo",
-                                  "Your API key is stored locally and never shared"
-                                )}
-                              </p>
-                              {selectedProvider === "Groq" && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    openUrl("https://console.groq.com/keys")
-                                  }
-                                  className="text-xs text-yellow-400 hover:text-yellow-300 ml-2 underline cursor-pointer"
-                                >
-                                  {t(
-                                    "workspaces.getGroqApiKey",
-                                    "Get Groq API Key"
-                                  )}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                           /* Keys Vault Selection */
-                          <div>
-                            <Select
-                              id="savedKey"
-                              value={workspaceData.apiKey}
-                              onChange={(value) =>
-                                setWorkspaceData((prev) => ({
-                                  ...prev,
-                                  apiKey: value,
-                                }))
-                              }
-                              options={[
-                                {
-                                  value: "",
-                                  label: t(
-                                    "workspaces.selectSavedKey",
-                                    "Select a saved key..."
-                                  ),
-                                  disabled: true,
-                                },
-                                { value: "key1", label: "Groq API Key" },
-                                { value: "key2", label: "OpenAI API Key" },
-                              ]}
-                              label={t("workspaces.savedKey", "Saved Key")}
-                            />
-                            <p className="text-xs text-gray-400 mt-1">
-                              {t(
-                                "workspaces.savedKeyInfo",
-                                "Use a previously saved API key from your vault"
-                              )}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <LLMPicker
+                      value={workspaceData.mainLLM}
+                      onChange={(llm) =>
+                        setWorkspaceData((prev) => ({ ...prev, mainLLM: llm }))
+                      }
+                      apiKey={workspaceData.apiKey}
+                      onApiKeyChange={(key) =>
+                        setWorkspaceData((prev) => ({ ...prev, apiKey: key }))
+                      }
+                    />
                   </div>
                 </div>
               </div>

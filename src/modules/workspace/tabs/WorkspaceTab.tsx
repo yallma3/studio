@@ -12,7 +12,7 @@
 */
 import React, { useState, useEffect } from "react";
 
-import { WorkspaceData, LLMOption } from "../types/Types";
+import { WorkspaceData } from "../types/Types";
 import {
   Edit,
   Hash,
@@ -20,10 +20,7 @@ import {
   Calendar,
   Clock,
   X,
-  Key,
   Check,
-  Link,
-  RefreshCw,
 } from "lucide-react";
 
 import {
@@ -34,9 +31,7 @@ import {
   CardContent,
 } from "../../../shared/components/ui/card";
 import { Button } from "../../../shared/components/ui/button";
-import Select from "../../../shared/components/ui/select";
-import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
-import { llmsRegistry } from "../../../shared/LLM/LLMsRegistry";
+import LLMPicker from "../../../shared/components/LLMPicker";
 import { useTranslation } from "react-i18next";
 
 interface WorkspaceTabProps {
@@ -55,75 +50,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   const [formValues, setFormValues] = useState({
     name: workspaceData.name || "",
     description: workspaceData.description || "",
-      mainLLM: workspaceData.mainLLM,
-      apiKey: workspaceData.apiKey || "",
-      ollamaBaseUrl: workspaceData.mainLLM.options?.baseUrl || "",
-      useSavedCredentials: workspaceData.useSavedCredentials || false,
+    mainLLM: workspaceData.mainLLM,
+    apiKey: workspaceData.apiKey || "",
+    useSavedCredentials: workspaceData.useSavedCredentials || false,
   });
-
-  const registryProviders = llmsRegistry.listProviders();
-  const fallbackProviders = Object.keys(
-    AvailableLLMs
-  ) as LLMOption["provider"][];
-  const providerOptions = (
-    registryProviders.length > 0 ? registryProviders : fallbackProviders
-  ) as LLMOption["provider"][];
-
-  const getModelsForProvider = (provider: string): LLMModel[] => {
-    const models = llmsRegistry.getProviderModels(provider);
-    if (models && models.length > 0) {
-      return models;
-    }
-    return AvailableLLMs[provider] || [];
-  };
-
-  // State for selected provider
-  const [selectedProvider, setSelectedProvider] =
-    useState<LLMOption["provider"]>("Groq");
-
-  const [llmOptions, setLLMOptions] = useState<LLMModel[]>(
-    getModelsForProvider("Groq")
-  );
-
-  useEffect(() => {
-    if (selectedProvider !== "Ollama") {
-      setLLMOptions(getModelsForProvider(selectedProvider));
-    }
-  }, [selectedProvider]);
-
-  const [ollamaModels, setOllamaModels] = useState<LLMModel[]>([]);
-  const [ollamaLoading, setOllamaLoading] = useState(false);
-  const [ollamaFetchError, setOllamaFetchError] = useState(false);
-
-  const fetchOllamaModels = async (baseUrl: string) => {
-    setOllamaLoading(true);
-    setOllamaFetchError(false);
-    try {
-      const res = await fetch(`${baseUrl}/api/tags`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const models: LLMModel[] = (data.models || []).map((m: { name: string }) => ({
-        name: m.name,
-        id: m.name,
-      }));
-      setOllamaModels(models);
-    } catch {
-      setOllamaFetchError(true);
-    } finally {
-      setOllamaLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (selectedProvider === "Ollama") {
-      const url = formValues.ollamaBaseUrl || "http://localhost:11434";
-      fetchOllamaModels(url);
-    } else {
-      setOllamaModels([]);
-      setOllamaFetchError(false);
-      setOllamaLoading(false);
-    }
-  }, [selectedProvider]);
 
   // State for editing mode
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -134,13 +64,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
       onEditStatusChange(isEditing);
     }
   }, [isEditing, onEditStatusChange]);
-
-  // State for form values
-  useEffect(() => {
-    if (isEditing) {
-      setSelectedProvider(workspaceData.mainLLM.provider);
-    }
-  }, [isEditing, workspaceData.mainLLM.provider]);
 
   // Handle input changes
   const handleInputChange = (
@@ -156,14 +79,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
   // Handle save
   const handleSave = async () => {
     if (onUpdateWorkspace) {
-      const mainLLM = { ...formValues.mainLLM };
-      if (formValues.ollamaBaseUrl) {
-        mainLLM.options = { ...mainLLM.options, baseUrl: formValues.ollamaBaseUrl };
-      }
       await onUpdateWorkspace({
         name: formValues.name,
         description: formValues.description,
-        mainLLM,
+        mainLLM: formValues.mainLLM,
         apiKey: formValues.apiKey,
         useSavedCredentials: formValues.useSavedCredentials,
       });
@@ -178,7 +97,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
       description: workspaceData.description || "",
       mainLLM: workspaceData.mainLLM,
       apiKey: workspaceData.apiKey || "",
-      ollamaBaseUrl: workspaceData.mainLLM.options?.baseUrl || "",
       useSavedCredentials: workspaceData.useSavedCredentials || false,
     });
     setIsEditing(false);
@@ -191,7 +109,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
       description: workspaceData.description || "",
       mainLLM: workspaceData.mainLLM,
       apiKey: workspaceData.apiKey || "",
-      ollamaBaseUrl: workspaceData.mainLLM.options?.baseUrl || "",
       useSavedCredentials: workspaceData.useSavedCredentials || false,
     });
   }, [workspaceData]);
@@ -319,143 +236,28 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 <Brain className="h-4 w-4 text-zinc-500" />
                 {isEditing ? (
                   <div className="flex-1">
-                    <div className="grid grid-cols-5 gap-4">
-                      <div className="col-span-2">
-                        <Select
-                          id="workspace-llm-provider"
-                          value={selectedProvider}
-                          onChange={(value) => {
-                            const provider = value as LLMOption["provider"];
-                            setSelectedProvider(provider);
-                            if (provider === "Ollama" && !formValues.ollamaBaseUrl) {
-                              setFormValues((prev) => ({
-                                ...prev,
-                                ollamaBaseUrl: "http://localhost:11434",
-                              }));
-                            }
-                          }}
-                          options={providerOptions.map((p) => ({
-                            value: p,
-                            label: p,
-                          }))}
-                          label={t("workspaceTab.provider", "Provider")}
-                        />
-                      </div>
-                      <div className="col-span-3">
-                        {selectedProvider === "Ollama" ? (
-                          <div className="flex flex-col gap-1">
-                            <label className="block text-sm font-medium text-gray-300 mb-1">
-                              {t("workspaceTab.model", "Model")}
-                            </label>
-                            {ollamaLoading ? (
-                              <div className="flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-400 text-sm">
-                                <RefreshCw className="h-4 w-4 animate-spin" />
-                                {t("agentForm.loadingModels", "Loading models...")}
-                              </div>
-                            ) : ollamaFetchError ? (
-                              <input
-                                type="text"
-                                id="workspace-llm-model-manual"
-                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                value={formValues.mainLLM.model?.id || ""}
-                                onChange={(value) => {
-                                  const name = (value.target as HTMLInputElement).value;
-                                  setFormValues((prev) => ({
-                                    ...prev,
-                                    mainLLM: {
-                                      provider: "Ollama",
-                                      model: name.trim()
-                                        ? { name, id: name }
-                                        : undefined,
-                                    },
-                                  }));
-                                }}
-                                placeholder={t("agentForm.enterModelName", "Enter model name (e.g. llama3.1:8b)")}
-                              />
-                            ) : (
-                              <div className="flex gap-2">
-                                <div className="flex-1">
-                                  <Select
-                                    id="workspace-llm-model-ollama"
-                                    value={formValues.mainLLM.model?.id || ""}
-                                    onChange={(value) => {
-                                      const option = ollamaModels.find((m) => m.id === value);
-                                      if (!option) return;
-                                      setFormValues((prev) => ({
-                                        ...prev,
-                                        mainLLM: {
-                                          provider: "Ollama",
-                                          model: option,
-                                        },
-                                      }));
-                                    }}
-                                    options={[
-                                      {
-                                        value: "",
-                                        label: t("workspaceTab.selectModel", "Select a model..."),
-                                        disabled: true,
-                                      },
-                                      ...ollamaModels.map((m) => ({
-                                        value: m.id,
-                                        label: m.name,
-                                      })),
-                                    ]}
-                                  />
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => fetchOllamaModels(formValues.ollamaBaseUrl || "http://localhost:11434")}
-                                  disabled={ollamaLoading}
-                                  className="self-end px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white rounded-md transition-colors mb-px"
-                                  title={t("agentForm.refreshModels", "Refresh models")}
-                                >
-                                  <RefreshCw className={`h-4 w-4 ${ollamaLoading ? "animate-spin" : ""}`} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <Select
-                            id="workspace-llm-model"
-                            value={formValues.mainLLM.model.id}
-                            onChange={(value) => {
-                              const option = llmOptions.find(
-                                (m) => m.id === value
-                              );
-                              if (!option) return;
-
-                              setFormValues((prev) => ({
-                                ...prev,
-                                mainLLM: {
-                                  provider: selectedProvider,
-                                  model: option,
-                                },
-                              }));
-                            }}
-                            options={[
-                              {
-                                value: "",
-                                label: t(
-                                  "workspaceTab.selectModel",
-                                  "Select a model..."
-                                ),
-                                disabled: true,
-                              },
-                              ...llmOptions.map((m) => ({
-                                value: m.id,
-                                label: m.name,
-                              })),
-                            ]}
-                            disabled={!selectedProvider}
-                            label={t("workspaceTab.model", "Model")}
-                          />
-                        )}
-                      </div>
-                    </div>
+                    <LLMPicker
+                      value={formValues.mainLLM}
+                      onChange={(llm) =>
+                        setFormValues((prev) => ({ ...prev, mainLLM: llm }))
+                      }
+                      apiKey={formValues.apiKey}
+                      onApiKeyChange={(key) =>
+                        setFormValues((prev) => ({ ...prev, apiKey: key }))
+                      }
+                      savedKeyOptions={(workspaceData.environmentVariables || []).map((envVar) => ({
+                        value: envVar.value,
+                        label: envVar.key,
+                      }))}
+                      useSavedCredentials={formValues.useSavedCredentials}
+                      onUseSavedCredentialsChange={(use) =>
+                        setFormValues((prev) => ({ ...prev, useSavedCredentials: use }))
+                      }
+                    />
                   </div>
                 ) : (
                   <span className="text-sm text-[#FFC72C] font-medium">
-                    {workspaceData.mainLLM?.model.name ||
+                    {workspaceData.mainLLM.model?.name ||
                       t("workspaceTab.noModelSelected", "No model selected")}
                   </span>
                 )}
@@ -482,126 +284,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 </span>
               </div>
             </div>
-
-              {/* API Key Section - Only show when editing */}
-              {isEditing && (
-                selectedProvider === "Ollama" ? (
-                  <div className="col-span-2">
-                    <label className="text-sm text-zinc-400 block mb-2">
-                      {t("workspaceTab.apiConfiguration", "API Configuration")}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        id="workspace-ollama-base-url"
-                        value={formValues.ollamaBaseUrl}
-                        onChange={(e) =>
-                          setFormValues((prev) => ({
-                            ...prev,
-                            ollamaBaseUrl: e.target.value,
-                          }))
-                        }
-                        className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                        placeholder={t("agentForm.enterOllamaBaseUrl", "http://localhost:11434")}
-                      />
-                      <Link className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                    </div>
-                    <p className="text-xs text-zinc-400 mt-1">
-                      {t("agentForm.ollamaBaseUrl", "Ollama Base URL")}
-                    </p>
-                  </div>
-                ) : formValues.mainLLM.model ? (
-                  <div className="col-span-2">
-                    <label className="text-sm text-zinc-400 block mb-2">
-                      {t("workspaceTab.apiConfiguration", "API Configuration")}
-                    </label>
-                    
-                    {/* API Key Options */}
-                    <div className="flex gap-2 mb-4">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormValues((prev) => ({
-                            ...prev,
-                            useSavedCredentials: false,
-                          }))
-                        }
-                        className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
-                          !formValues.useSavedCredentials
-                            ? "bg-[#FFC72C] text-black font-medium"
-                            : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
-                        }`}
-                      >
-                        {t("workspaceTab.newKey", "New Key")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormValues((prev) => ({
-                            ...prev,
-                            useSavedCredentials: true,
-                          }))
-                        }
-                        className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
-                          formValues.useSavedCredentials
-                            ? "bg-[#FFC72C] text-black font-medium"
-                            : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
-                        }`}
-                      >
-                        {t("workspaceTab.environmentVariables", "Environment Variables")}
-                      </button>
-                    </div>
-
-                    <div className="h-24">
-                      {!formValues.useSavedCredentials ? (
-                        <div>
-                          <div className="relative">
-                            <input
-                              type="password"
-                              name="apiKey"
-                              value={formValues.apiKey}
-                              onChange={handleInputChange}
-                              className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                              placeholder={t("workspaceTab.enterApiKey", "Enter API key")}
-                            />
-                            <Key className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                          </div>
-                          <p className="text-xs text-zinc-400 mt-1">
-                            {t("workspaceTab.apiKeyInfo", "Your API key is stored locally and never shared")}
-                          </p>
-                        </div>
-                      ) : (
-                        <div>
-                          <Select
-                            id="savedKey"
-                            value={formValues.apiKey}
-                            onChange={(value) =>
-                              setFormValues((prev) => ({
-                                ...prev,
-                                apiKey: value,
-                              }))
-                            }
-                            options={[
-                              {
-                                value: "",
-                                label: t("workspaceTab.selectEnvVar", "Select an environment variable..."),
-                                disabled: true,
-                              },
-                              ...(workspaceData.environmentVariables || []).map((envVar) => ({
-                                value: envVar.value,
-                                label: envVar.key,
-                              })),
-                            ]}
-                            label={t("workspaceTab.environmentVariable", "Environment Variable")}
-                          />
-                          <p className="text-xs text-zinc-400 mt-1">
-                            {t("workspaceTab.envVarInfo", "Select an API key from your environment variables")}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : null)}
             </div>
           </CardContent>
         </Card>

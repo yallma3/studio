@@ -26,6 +26,7 @@ import {
   SourceListOption,
 } from "../types/NodeTypes";
 import { sidecarClient } from "../../api/SidecarClient";
+import NodeLLMPicker from "./NodeLLMPicker";
 
 type JMOperationType = "extract_field" | "template_substitute";
 type JMOutputFormat  = "string" | "array" | "object" | "count";
@@ -1175,12 +1176,6 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
   const shouldShowParameter = (param: ConfigParameterType): boolean => {
     if (!node) return true;
 
-    const currentProvider = (formValues["Provider"] as string) || "openai";
-    if (param.parameterName === "API Key")
-      return currentProvider.toLowerCase() !== "ollama";
-    if (param.parameterName === "Ollama Base URL")
-      return currentProvider.toLowerCase() === "ollama";
-
     const LEGACY_MCP_NODE_TYPES = ["McpDiscovery", "McpToolCall", "McpGetPrompt", "McpGetResource"];
     if (LEGACY_MCP_NODE_TYPES.includes(node.nodeType)) {
       const transport = ((formValues["Transport Type"] as string) || "http").toLowerCase();
@@ -1213,30 +1208,7 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
   };
 
   const getFilteredModelOptions = (param: ConfigParameterType): SourceListOption[] => {
-    if (!param.sourceList || param.parameterName !== "Model")
-      return (param.sourceList as SourceListOption[]) || [];
-    const currentProvider = (formValues["Provider"] as string) || "openai";
-    return (param.sourceList as SourceListOption[]).filter((o: SourceListOption) =>
-      o.provider ? o.provider.toLowerCase() === currentProvider.toLowerCase() : true
-    );
-  };
-
-  const renderApiKeyOrOllamaUrl = () => {
-    if (!node) return null;
-    const currentProvider = (formValues["Provider"] as string) || "openai";
-    const isOllama  = currentProvider.toLowerCase() === "ollama";
-    const paramName = isOllama ? "Ollama Base URL" : "API Key";
-    const paramObj  = getConfigParameters(node).find((p) => p.parameterName === paramName);
-    if (!paramObj?.UIConfigurable) return null;
-    return (
-      <div key={paramName} className="space-y-2">
-        <label htmlFor={paramName}
-          className={`block text-sm font-medium text-gray-300 ${textAlignClass}`}>
-          {getValueLabel(paramObj)}
-        </label>
-        {renderInputControl(paramObj)}
-      </div>
-    );
+    return (param.sourceList as SourceListOption[]) || [];
   };
 
   const renderInputControl = (param: ConfigParameterType) => {
@@ -1272,25 +1244,6 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
           sockets: buildJoinSockets(node.id, newCount),
           height: computeJoinHeight(newCount),
         });
-      }
-
-      if (param.parameterName === "Provider") {
-        const modelParam = getConfigParameters(node).find((p) => p.parameterName === "Model");
-        if (modelParam?.sourceList) {
-          const filtered = (modelParam.sourceList as SourceListOption[]).filter(
-            (o: SourceListOption) =>
-              o.provider && o.provider.toLowerCase() === (newValue as string).toLowerCase()
-          );
-          if (filtered.length > 0) {
-            const first = filtered[0].key;
-            setFormValues((prev) => ({ ...prev, Model: first }));
-            setConfigParameter(node, "Model", first);
-            if (modelParam.isNodeBodyContent) {
-              setValue(first as unknown as NodeValue);
-              onSave({ title, nodeValue: first as unknown as NodeValue });
-            }
-          }
-        }
       }
 
       if (param.isNodeBodyContent) {
@@ -1417,6 +1370,15 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
 
   const textAlignClass = i18n.language === "ar" ? "text-right" : "text-left";
 
+  const handleFormValueChange = (name: string, value: string | number | boolean) => {
+    setFormValues((prev) => ({ ...prev, [name]: value }));
+    if (node) setConfigParameter(node, name, value);
+  };
+
+  const hasLLMConfig = getConfigParameters(node).some(
+    (p) => p.parameterName === "Provider"
+  );
+
   const isJSONManipulator = node.nodeType === "JSONManipulator";
   const isLoop            = node.nodeType === "Loop";
   const isMcpClient =
@@ -1427,7 +1389,12 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
 
   const shouldRenderParam = (param: ConfigParameterType): boolean => {
     if (isMcpClient) return false;
-    if (param.parameterName === "API Key" || param.parameterName === "Ollama Base URL")
+    if (
+      param.parameterName === "API Key" ||
+      param.parameterName === "Ollama Base URL" ||
+      param.parameterName === "Provider" ||
+      param.parameterName === "Model"
+    )
       return false;
     if (node.nodeType === "IfElse")
       return isIfElseParamVisible(param.parameterName, currentOperator);
@@ -1520,7 +1487,13 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
                     {renderInputControl(param)}
                   </div>
                 ))}
-            {renderApiKeyOrOllamaUrl()}
+            {hasLLMConfig && (
+              <NodeLLMPicker
+                node={node}
+                formValues={formValues}
+                onFormValueChange={handleFormValueChange}
+              />
+            )}
           </div>
         )}
 

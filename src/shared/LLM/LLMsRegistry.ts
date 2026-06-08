@@ -16,6 +16,7 @@ import type { LLMModel } from "./config";
 // Registry for storing all available LLMs grouped by provider
 export class LLMsRegistry {
   private providers: Record<string, LLMModel[]> = {};
+  private ollamaCache: Map<string, LLMModel[]> = new Map();
 
   // Replace the entire providers map (used when loading from the core API)
   setProviders(providers: Record<string, LLMModel[]>) {
@@ -50,6 +51,35 @@ export class LLMsRegistry {
   // Get the raw providers map
   getAll(): Record<string, LLMModel[]> {
     return this.providers;
+  }
+
+  // Fetch Ollama models with URL-based caching
+  async fetchOllamaModels(baseUrl: string): Promise<LLMModel[]> {
+    const normalizedUrl = baseUrl.replace(/\/+$/, "");
+    const cached = this.ollamaCache.get(normalizedUrl);
+    if (cached) {
+      return cached;
+    }
+
+    const res = await fetch(`${normalizedUrl}/api/tags`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const models: LLMModel[] = (data.models || []).map((m: { name: string }) => ({
+      name: m.name,
+      id: m.name,
+    }));
+    this.ollamaCache.set(normalizedUrl, models);
+    return models;
+  }
+
+  // Clear Ollama cache for a specific URL or all
+  clearOllamaCache(baseUrl?: string) {
+    if (baseUrl) {
+      const normalizedUrl = baseUrl.replace(/\/+$/, "");
+      this.ollamaCache.delete(normalizedUrl);
+    } else {
+      this.ollamaCache.clear();
+    }
   }
 }
 
