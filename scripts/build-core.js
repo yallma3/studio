@@ -5,7 +5,8 @@ import fs from "fs";
 const repoUrl = "https://github.com/yallma3/yallma3-core.git";
 const coreDir = path.resolve(".yallma3-core"); // cloned here temporarily
 const outputDir = path.resolve("src-tauri/bin");
-const outputFile = path.join(outputDir, "yallma3");
+const binaryName = process.platform === "win32" ? "yallma3.exe" : "yallma3";
+const outputFile = path.join(outputDir, binaryName);
 
 if (!fs.existsSync(coreDir)) {
   console.log("Cloning yallma3-core...");

@@ -1,88 +1,100 @@
 <h1 align="center"><img src="https://yallma3.org/yallma3.svg" alt="yaLLMa3 Logo"></h1>
 
-# yaLLMa3
+# yaLLMa3 Studio
 
-ِyaLLMa3 is a framework for building AI agents that are capable of learning from their environment and interacting with it. This project is inspired by the [Rivet](https://github.com/Ironclad/rivet) project, however it is taking a different approach to building agents, deployment and integration of agents into applications. More information about the project approach and goals can be found in the [web site](https://yallma3.org).
+yaLLMa3 is a framework for building AI agents that are capable of learning from their environment and interacting with it. This project is inspired by the [Rivet](https://github.com/Ironclad/rivet) project, however it is taking a different approach to building agents, deployment and integration of agents into applications. More information about the project approach and goals can be found on the [website](https://yallma3.org).
 
-This repo contains the IDE for yaLLMa3 (yaLLMa3-studio), which is a visual IDE that allows you to build agents and packages that can be used to build applications.
+This repo contains the IDE for yaLLMa3 (yaLLMa3 Studio), a visual IDE for building agents and packages.
 
-## Running from Source
+## Prerequisites
 
-### Prerequisites
+- [Node >=24](https://nodejs.org/en/download/)
+- [Rust](https://rustup.rs/)
+- [Yarn](https://yarnpkg.com/getting-started/install)
+- [Bun](https://bun.sh/) (for building the sidecar binary)
 
-- [node >=20](https://nodejs.org/en/download/)
-- [rust](https://rustup.rs/)
-- [yarn](https://yarnpkg.com/getting-started/install)
-
-### Building and Running
-
-To build and run the app, follow these steps:
-
-1. Clone the repository to your local machine, for example using SSH:
+## Development
 
 ```bash
 git clone git@github.com:yaLLMa3/studio.git
+cd studio
+yarn install
+yarn dev
 ```
 
-2. `cd` into the cloned folder and run `yarn` in the root folder
-3. Start the app in development mode by running `yarn dev`
+This starts the Tauri desktop app in dev mode. The first `yarn dev` builds the `yallma3-core` sidecar binary automatically via `pretauri:build`.
 
-# yaLLma3 Studio
+### Browser-only dev (no Tauri)
 
-A modular application for creating and managing AI projects, agents, and flows.
+Set in `.env`:
+
+```env
+VITE_TAURI_MODE=false
+```
+
+Then run `yarn start` (Vite dev server at `http://localhost:3000`). The browser connects to `http://localhost:3001` by default.
+
+### Using a remote yallma3 core
+
+Create `.env.local` (gitignored, won't be committed):
+
+```env
+VITE_SPAWN_CORE=false
+VITE_YALLMA3_URL=http://192.168.1.50:3001
+```
+
+This skips spawning the local sidecar binary and points the frontend at the remote core.
+
+## Building for Distribution
+
+### Local builds
+
+```bash
+yarn tauri-build
+```
+
+Output files use the convention `{product-name}_{version}_{arch}.{ext}` (e.g. `yallma3-studio_0.2.0_amd64.deb`).
+
+### macOS universal builds
+
+```bash
+bash scripts/build-macos-both.sh   # separate Intel + ARM DMGs
+bash scripts/build-universal.sh    # same, alternative script
+```
+
+### Release workflow
+
+Push a tag matching `v*.*.*` to trigger the CI release workflow (`.github/workflows/release.yml`). The workflow builds for macOS, Linux, and Windows, then creates a GitHub Release with all artifacts.
+
+## Environment Variables
+
+| Var | File | Used in |
+|---|---|---|
+| `VITE_TAURI_MODE` | `.env` (shared) | Frontend — enables Tauri IPC path |
+| `VITE_SPAWN_CORE` | `.env.local` (personal) | Rust — skips sidecar spawn when `false` |
+| `VITE_YALLMA3_URL` | `.env.local` (personal) | Frontend — remote core URL fallback |
+
+`.env` is committed and shared. `.env.local` is gitignored for personal overrides.
 
 ## Project Structure
 
-The project is organized into three main feature modules:
-
-### 1. Projects Module
-
-Located in `src/modules/projects/`:
-
-- `components/` - UI components specific to projects
-- `utils/` - Utility functions for project management
-- `index.ts` - Exports from the projects module
-
-### 2. Agents Module
-
-Located in `src/modules/agents/`:
-
-- `components/` - UI components specific to agents
-- `utils/` - Utility functions for agent management
-- `index.ts` - Exports from the agents module
-
-### 3. Flows Module
-
-Located in `src/modules/flow/`:
-
-- `components/` - UI components for flow management and visualization
-- `utils/` - Utility functions for flow operations
-- `types/` - Type definitions for flows (nodes, connections, etc.)
-- `index.ts` - Exports from the flows module
-
-### Shared Components
-
-Located in `src/components/`:
-
-- `ui/` - Reusable UI components (buttons, tabs, etc.)
-- `HomeScreen.tsx` - Main application screen with tabs for Projects, Agents, and Flows
-
-## Getting Started
-
-### Installation
-
-```bash
-npm install
 ```
-
-### Running the Development Server
-
-```bash
-npm run dev
+src/
+├── app/          — Root app component, initialization
+├── modules/
+│   ├── agents/   — Agent management UI
+│   ├── api/      — Sidecar client, LLM API helpers
+│   ├── flow/     — Node-based workflow editor
+│   ├── projects/ — Project management UI
+│   └── workspace/— Canvas and workspace state
+├── components/   — Shared UI components
+└── shared/       — Shared types and utilities
+src-tauri/
+├── src/lib.rs    — Tauri backend, sidecar process management
+├── bin/          — Sidecar binary output (gitignored)
+└── tauri.conf.json — Tauri configuration
+scripts/
+├── build-core.js      — Builds yallma3-core sidecar binary
+├── build-macos-both.sh — macOS Intel + ARM DMG build
+└── build-universal.sh  — Alternative macOS dual-arch build
 ```
-
-## modules
-
-- **Projects**: Create and manage AI development projects
-- **Agents**: Build and customize AI agents
-- **Flows**: Design, edit, and execute agent workflows using a node-based interface

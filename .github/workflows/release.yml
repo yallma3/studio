@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - '*'
+      - "*"
 
 jobs:
   get-version:
@@ -37,8 +37,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: 'yarn'
+          node-version: 24
+          cache: "yarn"
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -53,20 +53,25 @@ jobs:
       - name: Update version in tauri.conf.json
         run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); p.version = '${{ needs.get-version.outputs.version }}'; fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(p, null, 2) + '\n');"
 
+      - name: Get product name and set env
+        run: |
+          PRODUCT_NAME=$(jq -r '.productName' src-tauri/tauri.conf.json | tr '[:upper:]' '[:lower:]')
+          echo "PRODUCT_NAME=$PRODUCT_NAME" >> $GITHUB_ENV
+
       - name: Build for Intel (x86_64)
         run: yarn tauri-build --target x86_64-apple-darwin
 
       - name: Rename Intel DMG
         run: |
           mkdir -p release
-          cp src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg release/yaLLMa3_Studio_Intel.dmg
+          cp src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg "release/${PRODUCT_NAME}_${{ needs.get-version.outputs.version }}_Intel.dmg"
 
       - name: Build for Apple Silicon (aarch64)
         run: yarn tauri-build --target aarch64-apple-darwin
 
       - name: Rename ARM DMG
         run: |
-          cp src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg release/yaLLMa3_Studio_AppleSilicon.dmg
+          cp src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg "release/${PRODUCT_NAME}_${{ needs.get-version.outputs.version }}_AppleSilicon.dmg"
 
       - name: Upload DMGs
         uses: actions/upload-artifact@v4
@@ -83,8 +88,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: 'yarn'
+          node-version: 24
+          cache: "yarn"
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -128,8 +133,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: 'yarn'
+          node-version: 24
+          cache: "yarn"
 
       - uses: oven-sh/setup-bun@v2
         with:
