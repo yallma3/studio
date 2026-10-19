@@ -107,8 +107,8 @@ describe('TaskModal Component', () => {
     it('should render type select with correct options', () => {
       render(<TaskModal {...defaultProps} />);
       expect(screen.getByText('Type')).toBeInTheDocument();
-      expect(screen.getByText('Agentic (Auto)')).toBeInTheDocument();
-      openSelect('Agentic (Auto)');
+      expect(screen.getByText('Auto')).toBeInTheDocument();
+      openSelect('Auto');
       expect(screen.getByText('Specific Agent')).toBeInTheDocument();
       expect(screen.getByText('Workflow')).toBeInTheDocument();
     });
@@ -120,7 +120,7 @@ describe('TaskModal Component', () => {
       expect(screen.getByLabelText('Title *')).toHaveValue('');
       expect(screen.getByLabelText('Description')).toHaveValue('');
       expect(screen.getByLabelText('Expected Output')).toHaveValue('');
-      expect(screen.getByText('Agentic (Auto)')).toBeInTheDocument();
+      expect(screen.getByText('Auto')).toBeInTheDocument();
     });
 
     it('should initialize form with task data when editing', () => {
@@ -128,7 +128,7 @@ describe('TaskModal Component', () => {
       expect(screen.getByLabelText('Title *')).toHaveValue('Test Task');
       expect(screen.getByLabelText('Description')).toHaveValue('A test task description');
       expect(screen.getByLabelText('Expected Output')).toHaveValue('Expected output');
-      expect(screen.getByText('Agentic (Auto)')).toBeInTheDocument();
+      expect(screen.getByText('Auto')).toBeInTheDocument();
     });
 
     it('should update form data when inputs change', () => {
@@ -156,7 +156,7 @@ describe('TaskModal Component', () => {
 
     it('should show agent selector when type is specific-agent', () => {
       render(<TaskModal {...defaultProps} />);
-      openSelect('Agentic (Auto)');
+      openSelect('Auto');
       selectOption('Specific Agent');
 
       expect(screen.getByText('Select Agent')).toBeInTheDocument();
@@ -164,7 +164,7 @@ describe('TaskModal Component', () => {
 
     it('should show workflow selector when type is workflow', () => {
       render(<TaskModal {...defaultProps} />);
-      openSelect('Agentic (Auto)');
+      openSelect('Auto');
       selectOption('Workflow');
 
       expect(screen.getByText('Select Workflow')).toBeInTheDocument();
@@ -172,7 +172,7 @@ describe('TaskModal Component', () => {
 
     it('should populate agent options correctly', () => {
       render(<TaskModal {...defaultProps} />);
-      openSelect('Agentic (Auto)');
+      openSelect('Auto');
       selectOption('Specific Agent');
 
       expect(screen.getByText('Select Agent')).toBeInTheDocument();
@@ -183,7 +183,7 @@ describe('TaskModal Component', () => {
 
     it('should populate workflow options correctly', () => {
       render(<TaskModal {...defaultProps} />);
-      openSelect('Agentic (Auto)');
+      openSelect('Auto');
       selectOption('Workflow');
 
       expect(screen.getByText('Select Workflow')).toBeInTheDocument();
@@ -196,7 +196,7 @@ describe('TaskModal Component', () => {
       render(<TaskModal {...defaultProps} />);
 
       // First set to specific-agent and select an agent
-      openSelect('Agentic (Auto)');
+      openSelect('Auto');
       selectOption('Specific Agent');
 
       openSelect("Not for now, I'll select later");
@@ -204,7 +204,7 @@ describe('TaskModal Component', () => {
 
       // Then change back to agentic
       openSelect('Specific Agent');
-      selectOption('Agentic (Auto)');
+      selectOption('Auto');
 
       // executorId should be cleared (not visible in form, but handled in state)
        expect(screen.queryByText('Select Agent')).not.toBeInTheDocument();
@@ -278,7 +278,7 @@ describe('TaskModal Component', () => {
       const titleInput = screen.getByLabelText('Title *');
       const submitButton = screen.getByText('Create Task');
 
-      openSelect('Agentic (Auto)');
+      openSelect('Auto');
       selectOption('Specific Agent');
 
       openSelect("Not for now, I'll select later");
@@ -299,7 +299,7 @@ describe('TaskModal Component', () => {
       const titleInput = screen.getByLabelText('Title *');
       const submitButton = screen.getByText('Create Task');
 
-      openSelect('Agentic (Auto)');
+      openSelect('Auto');
       selectOption('Workflow');
 
       openSelect("Not for now, I'll specify later");
