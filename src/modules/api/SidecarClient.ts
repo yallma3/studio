@@ -36,6 +36,12 @@ export interface SidecarCommand {
 
   workspaceId?: string;
   /**
+   * Correlation id used by some server messages. `error` responses echo the
+   * originating request's `requestId`; `workflow_result`/`workflow_json`
+   * carry the workflow's own id in this field.
+   */
+  id?: string;
+  /**
    * Payload for the command.
    *
    * **Double-serialization contract**: For commands like `run_workspace`, the

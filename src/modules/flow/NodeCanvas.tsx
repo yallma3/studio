@@ -631,7 +631,7 @@ const NodeCanvas: React.FC<{
         return;
       }
 
-      if (command.type === "workflow_result" && command.requestId == workflowMetaRef.current?.id) {
+      if (command.type === "workflow_result" && command.id == workflowMetaRef.current?.id) {
         const results =
           command.data &&
           typeof command.data === "object" &&

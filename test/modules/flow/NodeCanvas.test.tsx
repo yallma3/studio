@@ -593,4 +593,44 @@ describe('NodeCanvas Component', () => {
       expect(await screen.findByText('Workflow boom')).toBeInTheDocument();
     });
   });
+
+  describe('workflow_result correlation', () => {
+    it('matches on the workflow id echoed in command.id, not requestId', async () => {
+      const graph = createMockCanvasState();
+      const workflowMeta = { id: 'wf-123', name: 'Test Workflow' } as never;
+
+      render(
+        <NodeCanvas
+          graph={graph}
+          onReturnToHome={mockOnReturnToHome}
+          workflowMeta={workflowMeta}
+        />
+      );
+
+      const handler = vi
+        .mocked(sidecarClient.onCommand)
+        .mock.calls.at(-1)?.[0] as (command: SidecarCommand) => void;
+      expect(handler).toBeTypeOf('function');
+
+      // A result for a different workflow id must be ignored.
+      act(() => {
+        handler({
+          type: 'workflow_result',
+          id: 'some-other-workflow',
+          data: { results: {} },
+        } as unknown as SidecarCommand);
+      });
+      expect(screen.queryByText('canvas.executionComplete')).not.toBeInTheDocument();
+
+      // A result for this workflow surfaces the completion toast.
+      act(() => {
+        handler({
+          type: 'workflow_result',
+          id: 'wf-123',
+          data: { results: {} },
+        } as unknown as SidecarCommand);
+      });
+      expect(await screen.findByText('canvas.executionComplete')).toBeInTheDocument();
+    });
+  });
 });
