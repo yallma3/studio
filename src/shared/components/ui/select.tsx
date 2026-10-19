@@ -11,7 +11,7 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 interface SelectOption {
@@ -46,6 +46,13 @@ const Select: React.FC<SelectProps> = ({
   label,
   helpText,
 }) => {
+  // Wire the trigger and popup to the label with stable ids so the control is
+  // programmatically labelled and exposes combobox/listbox semantics.
+  const generatedId = useId();
+  const selectId = id ?? generatedId;
+  const labelId = `${selectId}-label`;
+  const listboxId = `${selectId}-listbox`;
+
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [dropPosition, setDropPosition] = useState<'bottom' | 'top'>('bottom');
@@ -138,13 +145,20 @@ const Select: React.FC<SelectProps> = ({
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-1">
+        <label id={labelId} htmlFor={selectId} className="block text-sm font-medium text-gray-300 mb-1">
           {label}
         </label>
       )}
       
       <div 
         ref={containerRef}
+        id={selectId}
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? listboxId : undefined}
+        aria-labelledby={label ? labelId : undefined}
+        aria-disabled={disabled || undefined}
         className={`relative ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         onKeyDown={handleKeyDown}
         tabIndex={disabled ? -1 : 0}
@@ -163,6 +177,9 @@ const Select: React.FC<SelectProps> = ({
         
         {isOpen && !disabled && (
           <div 
+            id={listboxId}
+            role="listbox"
+            aria-labelledby={label ? labelId : selectId}
             className={`absolute z-50 w-full ${dropPosition === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'} bg-zinc-800/95 border border-zinc-700 rounded-md shadow-xl drop-shadow-lg max-h-60 overflow-auto backdrop-blur-sm animate-dropdown custom-scrollbar`}
             style={{
               boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4)'
@@ -171,6 +188,9 @@ const Select: React.FC<SelectProps> = ({
             {options.map((option, index) => (
               <div
                 key={option.value}
+                role="option"
+                aria-selected={option.value === value}
+                aria-disabled={option.disabled || undefined}
                 className={`px-3 py-2 cursor-pointer transition-colors duration-150 ${
                   option.disabled 
                     ? 'text-gray-500 cursor-not-allowed' 
