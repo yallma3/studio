@@ -24,6 +24,7 @@ import { join } from "@tauri-apps/api/path";
 import { appDataDir } from "@tauri-apps/api/path";
 import { WorkspaceData } from "../types/Types";
 import { EncryptedWorkspace, hasEncryptedApiKeys } from "./encryptionUtils";
+import { normalizeWorkspaceData } from "./normalizeWorkspace";
 
 export interface WorkspaceState {
   workspaceId: string;
@@ -282,7 +283,9 @@ export const loadWorkspaceState = async (): Promise<WorkspaceSaveResult> => {
     }
 
     // Regular unencrypted flow
-    const originalWorkspaceData = JSON.parse(fileContent) as WorkspaceData;
+    const originalWorkspaceData = normalizeWorkspaceData(
+      JSON.parse(fileContent) as WorkspaceData
+    );
 
     // Regenerate all IDs for the imported workspace
     const workspaceStateWithNewIds = await regenerateWorkspaceIds(
@@ -308,7 +311,9 @@ export const loadWorkspaceStateFromPath = async (
   try {
     const configPath = await join(path, `${id}.yallma3`);
     const fileContent = await readTextFile(configPath);
-    const originalWorkspaceData = JSON.parse(fileContent) as WorkspaceData;
+    const originalWorkspaceData = normalizeWorkspaceData(
+      JSON.parse(fileContent) as WorkspaceData
+    );
 
     // Regenerate all IDs for the imported workspace
     const workspaceDataWithNewIds = await regenerateWorkspaceIds(
@@ -345,7 +350,9 @@ export const loadAllWorkspaces = async (): Promise<WorkspaceData[]> => {
           const filePath = await join(workspacesDirPath, entry.name);
           const fileContent = await readTextFile(filePath);
           if (!isWorkspaceEncrypted(fileContent)) {
-            const workspaceData = JSON.parse(fileContent) as WorkspaceData;
+            const workspaceData = normalizeWorkspaceData(
+              JSON.parse(fileContent) as WorkspaceData
+            );
             workspaces.push(workspaceData);
           }
         } catch (error) {

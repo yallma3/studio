@@ -11,9 +11,14 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CanvasContextMenu from '@/modules/flow/components/CanvasContextMenu';
+import { nodeRegistry } from '@/modules/flow/types/NodeRegistry';
+
+vi.mock('@/modules/flow/initFlowSystem', () => ({
+  retryFetchNodes: vi.fn().mockResolvedValue(false),
+}));
 
 describe('CanvasContextMenu Component', () => {
   const mockOnAddNode = vi.fn();
@@ -26,6 +31,7 @@ describe('CanvasContextMenu Component', () => {
       y: 100,
       targetNodeId: undefined,
     },
+    nodeCounts: {},
     onAddNode: mockOnAddNode,
     onContextMenuAction: mockOnContextMenuAction,
   };
@@ -116,6 +122,24 @@ describe('CanvasContextMenu Component', () => {
   });
 
   describe('Menu interactions', () => {
+    beforeEach(() => {
+      nodeRegistry.clear();
+      nodeRegistry.registerNode({
+        id: 0,
+        category: 'Test',
+        title: 'Test Node',
+        nodeType: 'TestNode',
+        description: 'A test node',
+        x: 0, y: 0, width: 100, height: 100,
+        sockets: [],
+      });
+      nodeRegistry.registerCategories(['Test']);
+    });
+
+    afterEach(() => {
+      nodeRegistry.clear();
+    });
+
     it('should show submenu on hover for Add menu item', async () => {
       render(<CanvasContextMenu {...defaultProps} />);
 
@@ -154,6 +178,66 @@ describe('CanvasContextMenu Component', () => {
       fireEvent.click(clearViewButton);
 
       expect(mockOnContextMenuAction).toHaveBeenCalledWith('clearView', expect.any(Object));
+    });
+  });
+
+  describe('Node limits', () => {
+    beforeEach(() => {
+      nodeRegistry.clear();
+      nodeRegistry.registerNode({
+        id: 0,
+        category: 'Test',
+        title: 'Test Node',
+        nodeType: 'TestNode',
+        description: 'A test node',
+        allowedCount: 1,
+        x: 0, y: 0, width: 100, height: 100,
+        sockets: [],
+      });
+      nodeRegistry.registerCategories(['Test']);
+    });
+
+    afterEach(() => {
+      nodeRegistry.clear();
+    });
+
+    it('shows the "Limit reached" tooltip on hover while keeping pointer events enabled', () => {
+      render(<CanvasContextMenu {...defaultProps} nodeCounts={{ TestNode: 1 }} />);
+
+      fireEvent.change(screen.getByPlaceholderText('Search...'), {
+        target: { value: 'Test' },
+      });
+
+      const item = screen.getByRole('listitem');
+      fireEvent.mouseEnter(item);
+
+      expect(screen.getByText(/Limit reached/)).toBeInTheDocument();
+      // Pointer events must stay enabled so the tooltip can appear on hover.
+      expect(item.style.pointerEvents).not.toBe('none');
+    });
+
+    it('does not add a node when a limited entry is clicked', () => {
+      render(<CanvasContextMenu {...defaultProps} nodeCounts={{ TestNode: 1 }} />);
+
+      fireEvent.change(screen.getByPlaceholderText('Search...'), {
+        target: { value: 'Test' },
+      });
+
+      fireEvent.click(screen.getByRole('listitem'));
+
+      expect(mockOnAddNode).not.toHaveBeenCalled();
+    });
+
+    it('still adds a node when under the limit', () => {
+      render(<CanvasContextMenu {...defaultProps} nodeCounts={{ TestNode: 0 }} />);
+
+      fireEvent.change(screen.getByPlaceholderText('Search...'), {
+        target: { value: 'Test' },
+      });
+
+      fireEvent.click(screen.getByRole('listitem'));
+
+      expect(mockOnAddNode).toHaveBeenCalledWith('TestNode', expect.any(Object));
     });
   });
 

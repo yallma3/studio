@@ -31,7 +31,7 @@ export interface ContextMenuState {
  * Custom hook for managing context menus
  */
 export const useContextMenu = (
-  // nodes: Node[],
+  nodes: NodeType[],
   setNodes: React.Dispatch<React.SetStateAction<NodeType[]>>,
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<number[]>>,
   transform: CanvasTransform,
@@ -120,14 +120,17 @@ export const useContextMenu = (
   ) => {
     e?.stopPropagation?.(); // Prevent the menu from closing immediately
 
+    const template = nodeRegistry.getNode(nodeType);
+    if (template?.allowedCount != null) {
+      const currentCount = nodes.filter((n) => n.nodeType === nodeType).length;
+      if (currentCount >= template.allowedCount) return;
+    }
+
     // Get the next unique node ID
     const id = nextNodeId.current++;
-    const node = nodeRegistry.getNode(nodeType);
-    if (node) {
-      // Create the node at the stored canvas position
-      // Use the last stored canvas position (from right-click) for node creation
+    if (template) {
       const pos = contextMenuCanvasPosition.current || { x: 0, y: 0 };
-      const newNode = createNode(id, pos, node);
+      const newNode = createNode(id, pos, template);
 
       // Add the new node and select it
       if (newNode) {

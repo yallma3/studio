@@ -1,5 +1,6 @@
 import CryptoJS from 'crypto-js';
 import { WorkspaceData, Agent, EnvironmentVariable } from '../types/Types';
+import { normalizeWorkspaceData } from './normalizeWorkspace';
 
 export interface EncryptedWorkspace {
   version: "1.0";
@@ -133,7 +134,9 @@ export const decryptWorkspaceData = (
         throw new Error("Invalid password");
       }
       
-      const workspaceData = JSON.parse(decryptedString) as WorkspaceData;
+      const workspaceData = normalizeWorkspaceData(
+        JSON.parse(decryptedString) as WorkspaceData
+      );
       
       if (!workspaceData.id) {
         throw new Error("Decrypted data is not a valid workspace");
@@ -144,7 +147,9 @@ export const decryptWorkspaceData = (
 
     // Otherwise, it's a workspace with encrypted API keys
     // Deep clone to avoid mutations
-    const workspaceData = JSON.parse(JSON.stringify(encryptedData)) as WorkspaceData;
+    const workspaceData = normalizeWorkspaceData(
+      JSON.parse(JSON.stringify(encryptedData)) as WorkspaceData
+    );
 
     // Decrypt main workspace API key if encrypted
     if (isEncryptedApiKey(workspaceData.apiKey)) {

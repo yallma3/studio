@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import Select from "../../../shared/components/ui/select";
 import { Button } from "../../../shared/components/ui/button";
 import { TooltipHelper } from "../../../shared/components/ui/tooltip-helper";
 import ToolSelectionPopup from "../../../shared/components/ToolSelectionPopup";
-import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
-import { llmsRegistry } from "../../../shared/LLM/LLMsRegistry";
 import { LLMOption, Tool, Workflow } from "../types/Types";
-import { Plus, X, Key } from "lucide-react";
+import { LLMModel } from "../../../shared/LLM/config";
+import LLMPicker from "../../../shared/components/LLMPicker";
+import { Plus, X } from "lucide-react";
 
 export interface AgentFormValues {
   name: string;
@@ -16,6 +15,7 @@ export interface AgentFormValues {
   llm: {
     provider: LLMOption["provider"];
     model?: LLMModel;
+    options?: Record<string, string>;
   };
   apiKey: string;
   tools: Tool[];
@@ -42,33 +42,6 @@ const AgentForm: React.FC<AgentFormProps> = ({
   workspaceMainLLMName,
 }) => {
   const { t } = useTranslation();
-
-  const registryProviders = llmsRegistry.listProviders();
-  const fallbackProviders = Object.keys(
-    AvailableLLMs
-  ) as LLMOption["provider"][];
-  const providerOptions = (
-    registryProviders.length > 0 ? registryProviders : fallbackProviders
-  ) as LLMOption["provider"][];
-
-  const getModelsForProvider = (provider: string): LLMModel[] => {
-    const models = llmsRegistry.getProviderModels(provider);
-    if (models && models.length > 0) {
-      return models;
-    }
-    return AvailableLLMs[provider] || [];
-  };
-  const [selectedProvider, setSelectedProvider] = useState<
-    LLMOption["provider"]
-  >(value.llm.provider || "Groq");
-
-  const [llmOptions, setLLMOptions] = useState<LLMModel[]>(
-    getModelsForProvider(selectedProvider)
-  );
-
-  useEffect(() => {
-    setLLMOptions(getModelsForProvider(selectedProvider));
-  }, [selectedProvider]);
 
   const [showToolPopup, setShowToolPopup] = useState(false);
 
@@ -351,77 +324,23 @@ const AgentForm: React.FC<AgentFormProps> = ({
         <label className="block text-sm font-medium text-zinc-300 mb-1">
           {t("agentForm.languageModel", "Language Model")}
         </label>
-        <div className="grid grid-cols-5 gap-4">
-          <div className="col-span-2">
-            <Select
-              id="agent-llm-provider"
-              value={selectedProvider}
-              onChange={(value: string) => {
-                setSelectedProvider(value as LLMOption["provider"]);
-              }}
-              options={providerOptions.map((provider) => ({
-                value: provider,
-                label: provider,
-              }))}
-              label={t("agentForm.provider", "Provider")}
-            />
-          </div>
-          <div className="col-span-3">
-            <Select
-              id="agent-llm-model"
-              value={value.llm.model?.id || ""}
-              onChange={(v: string) => {
-                const option = llmOptions.find((m) => m.id == v);
-                if (!option) return;
-                onChange({
-                  ...value,
-                  llm: { provider: selectedProvider, model: option },
-                });
-              }}
-              options={[
-                {
-                  value: "",
-                  label: t("agentForm.selectModel", "Select a model..."),
-                  disabled: true,
-                },
-                ...llmOptions.map((m) => ({ value: m.id, label: m.name })),
-              ]}
-              label={t("agentForm.model", "Model")}
-            />
-          </div>
-        </div>
-        <p className="text-xs text-zinc-400 mt-2">
-          {value.llm.model
-            ? t(
-                "agentForm.customLLMSelected",
-                "LLM selected for this agent"
-              )
-            : t(
-                "agentForm.usingWorkspaceLLM",
-                `Using workspace's main LLM: ${
-                  workspaceMainLLMName || "None selected"
-                }`
-              )}
+        <LLMPicker
+          value={value.llm}
+          onChange={(llm) => onChange({ ...value, llm })}
+          apiKey={value.apiKey}
+          onApiKeyChange={(key) => onChange({ ...value, apiKey: key })}
+        />
+        <p className="text-xs mt-2">
+          {value.llm.model ? (
+            <span className="text-zinc-400">
+              {t("agentForm.customLLMSelected", "LLM selected for this agent")}
+            </span>
+          ) : (
+            <span className="text-zinc-400">
+              {t("agentForm.usingWorkspaceLLM", `Using workspace's main LLM: ${workspaceMainLLMName || "None selected"}`)}
+            </span>
+          )}
         </p>
-      </div>
-      <div>
-        <label
-          htmlFor="agentApiKey"
-          className="block text-sm font-medium text-zinc-300 mb-1"
-        >
-          {t("agentForm.apiKey", "API Key")}
-        </label>
-        <div className="relative">
-          <input
-            id="agentApiKey"
-            type="password"
-            className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-            value={value.apiKey}
-            onChange={(e) => onChange({ ...value, apiKey: e.target.value })}
-            placeholder={t("agentForm.enterApiKey", "Enter agent API Key")}
-          />
-          <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-        </div>
       </div>
 
       <div className="flex flex-col space-y-2">

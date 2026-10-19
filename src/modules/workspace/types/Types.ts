@@ -57,8 +57,9 @@ export interface Workflow {
 //   tokenLimit: number;
 // }
 export interface LLMOption {
-  provider: "Groq" | "OpenAI" | "OpenRouter" | "Gemini" | "Anthropic";
-  model: LLMModel;
+  provider: "Groq" | "OpenAI" | "OpenRouter" | "Gemini" | "Anthropic" | "Ollama";
+  model?: LLMModel;
+  options?: Record<string, string>;
 }
 export interface EnvironmentVariable {
   id: string;
@@ -94,7 +95,7 @@ export interface WorkspaceData {
   //MCP tools:
   mcpTools: Tool[];
   // Environment Variables
-  environmentVariables?: EnvironmentVariable[]; 
+  environmentVariables: EnvironmentVariable[]; 
 }
 
 export interface ConsoleEvent {

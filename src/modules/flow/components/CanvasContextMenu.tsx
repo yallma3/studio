@@ -11,10 +11,11 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 import React, { useEffect, useRef, useState } from "react";
-import { Plus, Settings, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Settings, Trash2, ChevronRight, AlertTriangle } from "lucide-react";
 import { nodeRegistry } from "../types/NodeRegistry";
 import { useTranslation } from "react-i18next";
 import type { BaseNode } from "../types/NodeTypes";
+import { retryFetchNodes } from "../initFlowSystem";
 
 interface ContextMenuPosition {
   visible: boolean;
@@ -25,6 +26,7 @@ interface ContextMenuPosition {
 
 interface CanvasContextMenuProps {
   contextMenu: ContextMenuPosition;
+  nodeCounts: Record<string, number>;
   // kept signature the same as your original; for keyboard Enter we cast the event
   onAddNode: (
     nodeType: string,
@@ -35,6 +37,7 @@ interface CanvasContextMenuProps {
 
 const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   contextMenu,
+  nodeCounts,
   onAddNode,
   onContextMenuAction,
 }) => {
@@ -44,6 +47,8 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [retryStatus, setRetryStatus] = useState<"idle" | "loading" | "failed">("idle");
+  const hasRetriedRef = useRef(false);
   const hoverTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -68,11 +73,20 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   useEffect(() => {
     if (contextMenu.visible) {
       setTimeout(() => inputRef.current?.focus(), 0);
+      if (nodeRegistry.listCategories().length === 0 && !hasRetriedRef.current) {
+        hasRetriedRef.current = true;
+        setRetryStatus("loading");
+        retryFetchNodes().then((ok) => {
+          setRetryStatus(ok ? "idle" : "failed");
+        });
+      }
     } else {
       setSearchQuery("");
       setSelectedIndex(0);
       setSubmenuPath([]);
       setHoveredNode(null);
+      hasRetriedRef.current = false;
+      setRetryStatus("idle");
     }
   }, [contextMenu.visible]);
 
@@ -239,7 +253,12 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (matches[selectedIndex]) {
-        onAddNode(matches[selectedIndex].nodeType, undefined);
+        const selectedNode = matches[selectedIndex];
+        const template = nodeRegistry.getNode(selectedNode.nodeType);
+        const isAtLimit = template?.allowedCount != null && (nodeCounts[selectedNode.nodeType] || 0) >= template.allowedCount;
+        if (!isAtLimit) {
+          onAddNode(selectedNode.nodeType, undefined);
+        }
       }
     } else if (e.key === "Escape") {
       setSearchQuery("");
@@ -248,12 +267,31 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     }
   };
 
+  const registryEmpty = nodeRegistry.listCategories().length === 0;
+
   const renderAddNodeSubmenu = () => (
     <div style={subMenuStyle}>
-      <div style={categoryHeaderStyle}>
-        {t("canvasContextMenu.categories", "Categories")}
-      </div>
-      {nodeRegistry.listCategories().map((category) => {
+      {registryEmpty && retryStatus === "loading" && (
+        <div style={{ ...menuItemStyle, justifyContent: "center", pointerEvents: "none", padding: "16px 14px" }}>
+          <span style={{ color: "#888", fontSize: "13px" }}>
+            {t("canvasContextMenu.loading", "Loading nodes...")}
+          </span>
+        </div>
+      )}
+      {registryEmpty && retryStatus === "failed" && (
+        <div style={{ ...menuItemStyle, justifyContent: "flex-start", pointerEvents: "none", padding: "16px 14px", whiteSpace: "normal", maxWidth: "260px" }}>
+          <AlertTriangle size={16} style={{ color: "#FFC72C", marginRight: "8px", flexShrink: 0 }} />
+          <span style={{ color: "#ccc", fontSize: "12px", lineHeight: "1.4" }}>
+            {t("canvasContextMenu.coreNotConnected", "yaLLMa3 core is not connected. Re-connect from workspace window and try again.")}
+          </span>
+        </div>
+      )}
+      {!registryEmpty && (
+        <div style={categoryHeaderStyle}>
+          {t("canvasContextMenu.categories", "Categories")}
+        </div>
+      )}
+      {!registryEmpty && nodeRegistry.listCategories().map((category) => {
         const categoryNode = allNodes.find((n) => n.category === category);
         const translatedCategory = categoryNode
           ? categoryNode.translatedCategory
@@ -281,6 +319,9 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                     (n) => n.nodeType === nodeType
                   );
                   if (!nodeDetails) return null;
+                  const isAtLimit =
+                    nodeDetails.allowedCount != null &&
+                    (nodeCounts[nodeType] || 0) >= nodeDetails.allowedCount;
                   const translatedTitle = nodeDetails.translatedTitle;
                   const translatedNodeType = nodeDetails.translatedNodeType;
                   const translatedDescription =
@@ -292,10 +333,19 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                         ...menuItemStyle,
                         justifyContent: "flex-start",
                         position: "relative",
+                        ...(isAtLimit ? {
+                          opacity: 0.4,
+                          cursor: "not-allowed",
+                        } : {}),
                       }}
                       onMouseEnter={() => setHoveredNode(nodeType)}
                       onMouseLeave={() => setHoveredNode(null)}
-                      onClick={(e) => onAddNode(nodeType, e)}
+                      onClick={(e) => {
+                        // Keep pointer events so the "Limit reached" tooltip can
+                        // still show on hover; block the action instead.
+                        if (isAtLimit) return;
+                        onAddNode(nodeType, e);
+                      }}
                       className="hover:bg-[#222]"
                     >
                       <span>{`${translatedTitle} ${t(
@@ -303,25 +353,33 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                         "Node"
                       )}`}</span>
 
-                      {hoveredNode === nodeType && translatedDescription && (
-                        <div style={tooltipStyle}>
-                          <div
-                            style={{
-                              color: "#FFC72C",
-                              fontSize: "18px",
-                              fontWeight: "700",
-                              textTransform: "uppercase",
-                              textShadow: "0 0 4px rgba(255, 199, 44, 0.4)",
-                              marginBottom: "8px",
-                              fontFamily: "monospace",
-                            }}
-                          >
-                            {translatedNodeType}
+                      {hoveredNode === nodeType && (
+                        isAtLimit ? (
+                          <div style={tooltipStyle}>
+                            <div style={{ color: "#FFC72C", fontSize: "14px", fontWeight: "700", whiteSpace: "nowrap" }}>
+                              {t("canvasContextMenu.limitReached", "Limit reached (max {{count}})", { count: nodeDetails.allowedCount })}
+                            </div>
                           </div>
-                          <div style={{ color: "rgba(255, 255, 255, 0.85)" }}>
-                            {translatedDescription}
+                        ) : (translatedDescription && (
+                          <div style={tooltipStyle}>
+                            <div
+                              style={{
+                                color: "#FFC72C",
+                                fontSize: "18px",
+                                fontWeight: "700",
+                                textTransform: "uppercase",
+                                textShadow: "0 0 4px rgba(255, 199, 44, 0.4)",
+                                marginBottom: "8px",
+                                fontFamily: "monospace",
+                              }}
+                            >
+                              {translatedNodeType}
+                            </div>
+                            <div style={{ color: "rgba(255, 255, 255, 0.85)" }}>
+                              {translatedDescription}
+                            </div>
                           </div>
-                        </div>
+                        ))
                       )}
                     </div>
                   );
@@ -387,6 +445,9 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                 (n) => n.nodeType === m.nodeType
               );
               if (!nodeDetails) return null;
+              const isAtLimit =
+                nodeDetails.allowedCount != null &&
+                (nodeCounts[m.nodeType] || 0) >= nodeDetails.allowedCount;
               const translatedNodeType = nodeDetails.translatedNodeType;
               const translatedDescription = nodeDetails.translatedDescription;
               return (
@@ -398,11 +459,20 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                     setHoveredNode(m.nodeType);
                   }}
                   onMouseLeave={() => setHoveredNode(null)}
-                  onClick={(e) => onAddNode(m.nodeType, e)}
+                  onClick={(e) => {
+                    // Keep pointer events so the "Limit reached" tooltip can
+                    // still show on hover; block the action instead.
+                    if (isAtLimit) return;
+                    onAddNode(m.nodeType, e);
+                  }}
                   style={{
                     ...searchItemStyle,
-                    ...(idx === selectedIndex ? selectedStyle : {}),
+                    ...(idx === selectedIndex && !isAtLimit ? selectedStyle : {}),
                     position: "relative",
+                    ...(isAtLimit ? {
+                      opacity: 0.4,
+                      cursor: "not-allowed",
+                    } : {}),
                   }}
                 >
                   <span style={{ fontSize: "15px" }}>{translatedNodeType}</span>
@@ -415,25 +485,33 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                     {m.translatedCategory}
                   </small>
 
-                  {hoveredNode === m.nodeType && translatedDescription && (
-                    <div style={tooltipStyle}>
-                      <div
-                        style={{
-                          color: "#FFC72C",
-                          fontSize: "18px",
-                          fontWeight: "700",
-                          textTransform: "uppercase",
-                          textShadow: "0 0 4px rgba(255, 199, 44, 0.4)",
-                          marginBottom: "8px",
-                          fontFamily: "monospace",
-                        }}
-                      >
-                        {translatedNodeType}
+                  {hoveredNode === m.nodeType && (
+                    isAtLimit ? (
+                      <div style={tooltipStyle}>
+                        <div style={{ color: "#FFC72C", fontSize: "14px", fontWeight: "700", whiteSpace: "nowrap" }}>
+                          {t("canvasContextMenu.limitReached", "Limit reached (max {{count}})", { count: nodeDetails.allowedCount })}
+                        </div>
                       </div>
-                      <div style={{ color: "rgba(255, 255, 255, 0.85)" }}>
-                        {translatedDescription}
+                    ) : (translatedDescription && (
+                      <div style={tooltipStyle}>
+                        <div
+                          style={{
+                            color: "#FFC72C",
+                            fontSize: "18px",
+                            fontWeight: "700",
+                            textTransform: "uppercase",
+                            textShadow: "0 0 4px rgba(255, 199, 44, 0.4)",
+                            marginBottom: "8px",
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          {translatedNodeType}
+                        </div>
+                        <div style={{ color: "rgba(255, 255, 255, 0.85)" }}>
+                          {translatedDescription}
+                        </div>
                       </div>
-                    </div>
+                    ))
                   )}
                 </div>
               );

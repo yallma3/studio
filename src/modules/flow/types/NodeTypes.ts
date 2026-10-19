@@ -93,6 +93,7 @@ export interface BaseNode {
   processing?: boolean;
   result?: NodeValue;
   process?: (context: NodeExecutionContext) => Promise<NodeValue | undefined>;
+  allowedCount?: number;
   configParameters?: ConfigParameterType[];
   i18n?: Record<string, {
     category?: string;

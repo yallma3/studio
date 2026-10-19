@@ -5,7 +5,7 @@
   "identifier": "org.yallma3.studio",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "http://localhost:3002",
     "beforeDevCommand": "yarn start",
     "beforeBuildCommand": "yarn build && yarn pretauri:build"
   },

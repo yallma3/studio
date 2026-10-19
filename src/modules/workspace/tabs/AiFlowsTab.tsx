@@ -12,7 +12,7 @@
 */
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { WorkspaceData, Tool } from "../types/Types";
+import { WorkspaceData, Tool, Workflow } from "../types/Types";
 import NodeCanvas from "../../flow/NodeCanvas";
 import { CanvasState } from "../../flow/utils/storageUtils";
 import {
@@ -47,6 +47,8 @@ interface AiFlowsTabProps {
   workspaceData: WorkspaceData;
   onTabChanges?: () => void;
   baseUrl: string;
+  onWorkflowsChange?: (workflows: Workflow[]) => void;
+  onMcpToolsChange?: (mcpTools: Tool[]) => void;
 }
 
 // Workflow Edit Dialog Component
@@ -200,6 +202,8 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
   workspaceData,
   onTabChanges,
   baseUrl,
+  onWorkflowsChange,
+  onMcpToolsChange,
 }) => {
   const { t } = useTranslation();
   const [selectedWorkflow, setSelectedWorkflow] = useState<CanvasState | null>(
@@ -275,18 +279,18 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
   // Update workspace data with workflow references
   const updateWorkspaceWorkflows = async (updatedWorkflows: WorkflowFile[]) => {
     try {
-      // Update workspace data workflows array to reference the saved workflows
-      workspaceData.workflows = updatedWorkflows.map((workflow) => ({
+      const mappedWorkflows = updatedWorkflows.map((workflow) => ({
         id: workflow.id,
         name: workflow.name,
         description: workflow.description,
       }));
-      // Update Agent tool that uses a workflow
+      onWorkflowsChange?.(mappedWorkflows);
 
-      // Save the updated workspace data
-      await saveWorkspaceToDefaultLocation(workspaceData);
+      await saveWorkspaceToDefaultLocation({
+        ...workspaceData,
+        workflows: mappedWorkflows,
+      });
 
-      // Signal that tab has changes
       onTabChanges?.();
     } catch (error) {
       console.error("Error updating workspace workflows:", error);
@@ -295,19 +299,20 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
 
   const updateWorkspaceMcpTools = async (updatedMcpTools: McpToolFile[]) => {
     try {
-      // Update workspace data mcpTools array to reference the saved MCP tools
-      workspaceData.mcpTools = updatedMcpTools.map((mcp) => ({
+      const mappedMcpTools = updatedMcpTools.map((mcp) => ({
         id: mcp.id,
-        type: "mcp",
+        type: "mcp" as const,
         name: mcp.name,
         description: mcp.description,
         parameters: mcp.parameters,
       }));
+      onMcpToolsChange?.(mappedMcpTools);
 
-      // Save the updated workspace data
-      await saveWorkspaceToDefaultLocation(workspaceData);
+      await saveWorkspaceToDefaultLocation({
+        ...workspaceData,
+        mcpTools: mappedMcpTools,
+      });
 
-      // Signal that tab has changes
       onTabChanges?.();
     } catch (error) {
       console.error("Error updating workspace MCP tools:", error);

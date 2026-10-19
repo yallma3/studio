@@ -7,7 +7,7 @@ interface LLMApiModel extends LLMModel {
 
 interface LLMApiResponse {
   success: boolean;
-  data: Record<string, LLMApiModel[]>;
+  AvailableLLMs: Record<string, LLMApiModel[]>;
   count: number;
 }
 
@@ -53,13 +53,13 @@ export async function getLLMs(
     const apiRes = (await response.json()) as LLMApiResponse;
     console.log("LLMs:", apiRes);
 
-    if (!apiRes.success || !apiRes.data) {
+    if (!apiRes.success || !apiRes.AvailableLLMs) {
       throw new Error("Failed to fetch LLMs: invalid response format");
     }
 
     const providersMap: Record<string, LLMModel[]> = {};
 
-    Object.entries(apiRes.data).forEach(([providerKey, models]) => {
+    Object.entries(apiRes.AvailableLLMs).forEach(([providerKey, models]) => {
       const providerName = normalizeProviderName(providerKey);
       providersMap[providerName] = models.map((m) => ({
         id: m.id,

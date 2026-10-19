@@ -18,13 +18,13 @@ const EnvironmentVariablesTab: React.FC<EnvironmentVariablesTabProps> = ({
 }) => {
   const { t } = useTranslation();
   const [variables, setVariables] = useState<EnvironmentVariable[]>(
-    workspaceData.environmentVariables || []
+    workspaceData.environmentVariables
   );
   const [showAddEditModal, setShowAddEditModal] = useState(false);
 
   // Sync local state with workspace data changes
   React.useEffect(() => {
-    setVariables(workspaceData.environmentVariables || []);
+    setVariables(workspaceData.environmentVariables);
   }, [workspaceData.environmentVariables]);
   const [editingVariable, setEditingVariable] = useState<EnvironmentVariable | null>(null);
   const [visibleValues, setVisibleValues] = useState<Set<string>>(new Set());

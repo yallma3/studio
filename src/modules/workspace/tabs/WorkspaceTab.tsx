@@ -12,7 +12,7 @@
 */
 import React, { useState, useEffect } from "react";
 
-import { WorkspaceData, LLMOption } from "../types/Types";
+import { WorkspaceData } from "../types/Types";
 import {
   Edit,
   Hash,
@@ -20,7 +20,6 @@ import {
   Calendar,
   Clock,
   X,
-  Key,
   Check,
 } from "lucide-react";
 
@@ -32,9 +31,7 @@ import {
   CardContent,
 } from "../../../shared/components/ui/card";
 import { Button } from "../../../shared/components/ui/button";
-import Select from "../../../shared/components/ui/select";
-import { AvailableLLMs, LLMModel } from "../../../shared/LLM/config";
-import { llmsRegistry } from "../../../shared/LLM/LLMsRegistry";
+import LLMPicker from "../../../shared/components/LLMPicker";
 import { useTranslation } from "react-i18next";
 
 interface WorkspaceTabProps {
@@ -58,34 +55,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
     useSavedCredentials: workspaceData.useSavedCredentials || false,
   });
 
-  const registryProviders = llmsRegistry.listProviders();
-  const fallbackProviders = Object.keys(
-    AvailableLLMs
-  ) as LLMOption["provider"][];
-  const providerOptions = (
-    registryProviders.length > 0 ? registryProviders : fallbackProviders
-  ) as LLMOption["provider"][];
-
-  const getModelsForProvider = (provider: string): LLMModel[] => {
-    const models = llmsRegistry.getProviderModels(provider);
-    if (models && models.length > 0) {
-      return models;
-    }
-    return AvailableLLMs[provider] || [];
-  };
-
-  // State for selected provider
-  const [selectedProvider, setSelectedProvider] =
-    useState<LLMOption["provider"]>("Groq");
-
-  const [llmOptions, setLLMOptions] = useState<LLMModel[]>(
-    getModelsForProvider("Groq")
-  );
-
-  useEffect(() => {
-    setLLMOptions(getModelsForProvider(selectedProvider));
-  }, [selectedProvider]);
-
   // State for editing mode
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
@@ -95,13 +64,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
       onEditStatusChange(isEditing);
     }
   }, [isEditing, onEditStatusChange]);
-
-  // State for form values
-  useEffect(() => {
-    if (isEditing) {
-      setSelectedProvider(workspaceData.mainLLM.provider);
-    }
-  }, [isEditing, workspaceData.mainLLM.provider]);
 
   // Handle input changes
   const handleInputChange = (
@@ -274,64 +236,28 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 <Brain className="h-4 w-4 text-zinc-500" />
                 {isEditing ? (
                   <div className="flex-1">
-                    <div className="grid grid-cols-5 gap-4">
-                      <div className="col-span-2">
-                        <Select
-                          id="workspace-llm-provider"
-                          value={selectedProvider}
-                          onChange={(value) => {
-                            setSelectedProvider(
-                              value as LLMOption["provider"]
-                            );
-                          }}
-                          options={providerOptions.map((p) => ({
-                            value: p,
-                            label: p,
-                          }))}
-                          label={t("workspaceTab.provider", "Provider")}
-                        />
-                      </div>
-                      <div className="col-span-3">
-                        <Select
-                          id="workspace-llm-model"
-                          value={formValues.mainLLM.model.id}
-                          onChange={(value) => {
-                            const option = llmOptions.find(
-                              (m) => m.id === value
-                            );
-                            if (!option) return;
-
-                            setFormValues((prev) => ({
-                              ...prev,
-                              mainLLM: {
-                                provider: selectedProvider,
-                                model: option,
-                              },
-                            }));
-                          }}
-                          options={[
-                            {
-                              value: "",
-                              label: t(
-                                "workspaceTab.selectModel",
-                                "Select a model..."
-                              ),
-                              disabled: true,
-                            },
-                            ...llmOptions.map((m) => ({
-                              value: m.id,
-                              label: m.name,
-                            })),
-                          ]}
-                          disabled={!selectedProvider}
-                          label={t("workspaceTab.model", "Model")}
-                        />
-                      </div>
-                    </div>
+                    <LLMPicker
+                      value={formValues.mainLLM}
+                      onChange={(llm) =>
+                        setFormValues((prev) => ({ ...prev, mainLLM: llm }))
+                      }
+                      apiKey={formValues.apiKey}
+                      onApiKeyChange={(key) =>
+                        setFormValues((prev) => ({ ...prev, apiKey: key }))
+                      }
+                      savedKeyOptions={workspaceData.environmentVariables?.map((envVar) => ({
+                        value: envVar.value,
+                        label: envVar.key,
+                      })) || []}
+                      useSavedCredentials={formValues.useSavedCredentials}
+                      onUseSavedCredentialsChange={(use) =>
+                        setFormValues((prev) => ({ ...prev, useSavedCredentials: use }))
+                      }
+                    />
                   </div>
                 ) : (
                   <span className="text-sm text-[#FFC72C] font-medium">
-                    {workspaceData.mainLLM?.model.name ||
+                    {workspaceData.mainLLM.model?.name ||
                       t("workspaceTab.noModelSelected", "No model selected")}
                   </span>
                 )}
@@ -358,102 +284,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 </span>
               </div>
             </div>
-
-              {/* API Key Section - Only show when editing */}
-              {isEditing && formValues.mainLLM?.model && (
-                <>
-                  <div className="col-span-2">
-                    <label className="text-sm text-zinc-400 block mb-2">
-                      {t("workspaceTab.apiConfiguration", "API Configuration")}
-                    </label>
-                    
-                    {/* API Key Options */}
-                    <div className="flex gap-2 mb-4">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormValues((prev) => ({
-                            ...prev,
-                            useSavedCredentials: false,
-                          }))
-                        }
-                        className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
-                          !formValues.useSavedCredentials
-                            ? "bg-[#FFC72C] text-black font-medium"
-                            : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
-                        }`}
-                      >
-                        {t("workspaceTab.newKey", "New Key")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormValues((prev) => ({
-                            ...prev,
-                            useSavedCredentials: true,
-                          }))
-                        }
-                        className={`flex-1 py-2 px-4 rounded-md transition-all cursor-pointer ${
-                          formValues.useSavedCredentials
-                            ? "bg-[#FFC72C] text-black font-medium"
-                            : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
-                        }`}
-                      >
-                        {t("workspaceTab.environmentVariables", "Environment Variables")}
-                      </button>
-                    </div>
-
-                    <div className="h-24">
-                      {!formValues.useSavedCredentials ? (
-                        <div>
-                          <div className="relative">
-                            <input
-                              type="password"
-                              name="apiKey"
-                              value={formValues.apiKey}
-                              onChange={handleInputChange}
-                              className="w-full pl-9 pr-3 py-2 bg-zinc-800 border border-zinc-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-                              placeholder={t("workspaceTab.enterApiKey", "Enter API key")}
-                            />
-                            <Key className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                          </div>
-                          <p className="text-xs text-zinc-400 mt-1">
-                            {t("workspaceTab.apiKeyInfo", "Your API key is stored locally and never shared")}
-                          </p>
-                        </div>
-                      ) : (
-                        <div>
-                          <Select
-                            id="savedKey"
-                            value={formValues.apiKey}
-                            onChange={(value) =>
-                              setFormValues((prev) => ({
-                                ...prev,
-                                apiKey: value,
-                              }))
-                            }
-                            options={[
-                              {
-                                value: "",
-                                label: t("workspaceTab.selectEnvVar", "Select an environment variable..."),
-                                disabled: true,
-                              },
-                              ...(workspaceData.environmentVariables || []).map((envVar) => ({
-                                value: envVar.value,
-                                label: envVar.key,
-                              })),
-                            ]}
-                            label={t("workspaceTab.environmentVariable", "Environment Variable")}
-                          />
-                          <p className="text-xs text-zinc-400 mt-1">
-                            {t("workspaceTab.envVarInfo", "Select an API key from your environment variables")}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           </CardContent>
         </Card>

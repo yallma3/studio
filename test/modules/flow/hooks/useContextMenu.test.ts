@@ -16,6 +16,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useContextMenu } from '@/modules/flow/hooks/useContextMenu';
 import { NodeType } from '@/modules/flow/types/NodeTypes';
 import { CanvasTransform } from '@/modules/flow/hooks/useCanvasTransform';
+import { nodeRegistry } from '@/modules/flow/types/NodeRegistry';
 
 // Mock dependencies
 vi.mock('@/modules/flow/utils/canvasTransforms', () => ({
@@ -33,6 +34,7 @@ vi.mock('@/modules/flow/types/NodeRegistry', () => ({
       nodeType: type,
       nodeValue: '',
       sockets: [],
+      allowedCount: undefined,
     })),
   },
 }));
@@ -64,6 +66,7 @@ describe('useContextMenu Hook', () => {
   const mockNextNodeId = { current: 1 };
 
   const defaultProps = {
+    nodes: [],
     setNodes: mockSetNodes,
     setSelectedNodeIds: mockSetSelectedNodeIds,
     transform: mockTransform,
@@ -78,6 +81,7 @@ describe('useContextMenu Hook', () => {
   describe('Initial state', () => {
     it('should initialize with context menu not visible', () => {
       const { result } = renderHook(() => useContextMenu(
+        defaultProps.nodes,
         defaultProps.setNodes,
         defaultProps.setSelectedNodeIds,
         defaultProps.transform,
@@ -96,6 +100,7 @@ describe('useContextMenu Hook', () => {
   describe('handleContextMenu', () => {
     it('should show context menu on canvas right-click', () => {
       const { result } = renderHook(() => useContextMenu(
+        defaultProps.nodes,
         defaultProps.setNodes,
         defaultProps.setSelectedNodeIds,
         defaultProps.transform,
@@ -123,6 +128,7 @@ describe('useContextMenu Hook', () => {
 
     it('should store canvas position for node creation', () => {
       const { result } = renderHook(() => useContextMenu(
+        defaultProps.nodes,
         defaultProps.setNodes,
         defaultProps.setSelectedNodeIds,
         defaultProps.transform,
@@ -150,6 +156,7 @@ describe('useContextMenu Hook', () => {
   describe('handleNodeContextMenu', () => {
     it('should show context menu for node and select the node', () => {
       const { result } = renderHook(() => useContextMenu(
+        defaultProps.nodes,
         defaultProps.setNodes,
         defaultProps.setSelectedNodeIds,
         defaultProps.transform,
@@ -193,6 +200,7 @@ describe('useContextMenu Hook', () => {
   describe('handleAddNodeFromContextMenu', () => {
     it('should create and add a new node', () => {
       const { result } = renderHook(() => useContextMenu(
+        defaultProps.nodes,
         defaultProps.setNodes,
         defaultProps.setSelectedNodeIds,
         defaultProps.transform,
@@ -219,8 +227,42 @@ describe('useContextMenu Hook', () => {
       expect(mockNextNodeId.current).toBe(2); // Should increment
     });
 
+    it('should reject node creation when allowedCount is reached', () => {
+      vi.mocked(nodeRegistry.getNode).mockReturnValue({
+        id: 42,
+        category: 'Test',
+        title: 'Limited Node',
+        nodeType: 'LimitedNode',
+        nodeValue: '',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        sockets: [],
+        allowedCount: 2,
+      });
+
+      const { result } = renderHook(() => useContextMenu(
+        [
+          { id: 1, category: 'Test', title: 'Node 1', nodeType: 'LimitedNode', nodeValue: '', x: 0, y: 0, width: 100, height: 100, sockets: [], selected: false },
+          { id: 2, category: 'Test', title: 'Node 2', nodeType: 'LimitedNode', nodeValue: '', x: 0, y: 0, width: 100, height: 100, sockets: [], selected: false },
+        ],
+        defaultProps.setNodes,
+        defaultProps.setSelectedNodeIds,
+        defaultProps.transform,
+        defaultProps.nextNodeId
+      ));
+
+      act(() => {
+        result.current.handleAddNodeFromContextMenu('LimitedNode', null);
+      });
+
+      expect(mockSetNodes).not.toHaveBeenCalled();
+    });
+
     it('should handle event without stopPropagation method', () => {
       const { result } = renderHook(() => useContextMenu(
+        defaultProps.nodes,
         defaultProps.setNodes,
         defaultProps.setSelectedNodeIds,
         defaultProps.transform,
@@ -238,6 +280,7 @@ describe('useContextMenu Hook', () => {
   describe('Global click handling', () => {
     it('should close context menu on global click when visible', () => {
       const { result } = renderHook(() => useContextMenu(
+        defaultProps.nodes,
         defaultProps.setNodes,
         defaultProps.setSelectedNodeIds,
         defaultProps.transform,
@@ -267,6 +310,7 @@ describe('useContextMenu Hook', () => {
 
     it('should not close context menu on global click when not visible', () => {
       const { result } = renderHook(() => useContextMenu(
+        defaultProps.nodes,
         defaultProps.setNodes,
         defaultProps.setSelectedNodeIds,
         defaultProps.transform,
@@ -284,6 +328,7 @@ describe('useContextMenu Hook', () => {
   describe('setContextMenu', () => {
     it('should allow manual context menu state updates', () => {
       const { result } = renderHook(() => useContextMenu(
+        defaultProps.nodes,
         defaultProps.setNodes,
         defaultProps.setSelectedNodeIds,
         defaultProps.transform,

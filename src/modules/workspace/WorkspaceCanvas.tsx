@@ -27,6 +27,7 @@ import {
   Clock,
   MessageCircle,
   ExternalLink,
+  X,
 } from "lucide-react";
 import {
   saveWorkspaceToDefaultLocation,
@@ -42,6 +43,7 @@ import { WorkspaceData, Workflow } from "./types/Types";
 import { WorkspaceTab, TasksTab, AgentsTab, AiFlowsTab, EnvironmentVariablesTab } from "./tabs";
 
 import { getWorkflow } from "./utils/runtimeUtils";
+import { enrichWorkspace } from "./utils/buildRunPayload";
 import { createJson } from "../flow/utils/flowRuntime";
 import { ConsoleProvider, useConsole } from "./context/ConsoleContext";
 import ConsolePanel from "./components/ConsolePanel";
@@ -256,17 +258,16 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const prevEventsLengthRef = useRef(0);
   const [isRunning, setIsRunning] = useState(false);
+  const isRunningRef = useRef(isRunning);
+  isRunningRef.current = isRunning;
+  // Tracks the requestId of the active run_workspace request so unrelated
+  // sidecar errors don't stop the workspace.
+  const runRequestIdRef = useRef<string | null>(null);
   const [isTriggerRegistered, setIsTriggerRegistered] = useState(false);
   const [nextExecutionTime, setNextExecutionTime] = useState<number | null>(null);
   const [isWebhookActive, setIsWebhookActive] = useState(false);
-  const webhookActivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [userPromptDialog, setUserPromptDialog] = useState<{
-    isOpen: boolean;
-    promptId: string;
-    nodeId: number;
-    nodeTitle: string;
-    message: string;
-  } | null>(null);
+  const [executionError, setExecutionError] = useState<{ message: string; code?: string; timestamp: number } | null>(null);
+  const webhookActivityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showWebhookActivity = useCallback(() => {
     setIsWebhookActive(true);
@@ -336,18 +337,25 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
 
       // Sidecar connection status
   const [sidecarStatus, setSidecarStatus] = useState<string>("disconnected");
+  const [userPromptDialog, setUserPromptDialog] = useState<{
+    isOpen: boolean;
+    promptId: string;
+    nodeId: number;
+    nodeTitle: string;
+    message: string;
+  } | null>(null);
 
   // Handle user prompt submission
   const handleUserPromptSubmit = async (promptId: string, response: string) => {
     try {
       const message: SidecarCommand = {
-        id: crypto.randomUUID(),
+        requestId: crypto.randomUUID(),
         type: "user_prompt_response",
         data: JSON.stringify({ promptId, response }),
         timestamp: new Date().toISOString(),
       };
-      
-      sidecarClient.sendMessage(message);
+
+      await sidecarClient.sendMessage(message).promise;
       setUserPromptDialog(null);
     } catch (error) {
       console.error("Error submitting user prompt:", error);
@@ -360,12 +368,12 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
     if (promptId) {
       try {
         const message: SidecarCommand = {
-          id: crypto.randomUUID(),
+          requestId: crypto.randomUUID(),
           type: "user_prompt_response",
           data: JSON.stringify({ promptId, response: "__CANCELLED__" }),
           timestamp: new Date().toISOString(),
         };
-        sidecarClient.sendMessage(message);
+        await sidecarClient.sendMessage(message).promise;
       } catch (error) {
         console.error("Error sending cancel signal:", error);
       }
@@ -376,17 +384,26 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   // Single Run/Stop button handler
   const handleToggleWorkspace = React.useCallback(async () => {
     if (!workspaceData) return;
-    if (isRunning || isTriggerRegistered) {
+
+    // If there's a stored error, clear it and retry
+    if (executionError) {
+      setExecutionError(null);
+      // Fall through to the run path below
+    } else if (isRunning || isTriggerRegistered) {
       console.log(' Stopping...');
       
       // Unregister trigger if it's scheduled, webhook, or telegram (NOT manual)
       if (isTriggerRegistered && workspaceData.trigger?.type !== 'manual') {
-        sidecarClient.sendMessage({
-          id: crypto.randomUUID(),
-          type: "unregister_trigger",
-          workspaceId: workspaceData.id,
-          timestamp: new Date().toISOString(),
-        });
+        try {
+          await sidecarClient.sendMessage({
+            requestId: crypto.randomUUID(),
+            type: "unregister_trigger",
+            workspaceId: workspaceData.id,
+            timestamp: new Date().toISOString(),
+          }).promise;
+        } catch (error) {
+          console.error("Failed to unregister trigger:", error);
+        }
         
         // Different messages for different trigger types
         if (workspaceData.trigger?.type === 'scheduled') {
@@ -414,11 +431,19 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
       }
 
       if (isRunning) {
-        sidecarClient.sendMessage({
-          id: crypto.randomUUID(),
-          type: "abort_workspace",
-          timestamp: new Date().toISOString(),
-        });
+        try {
+          await sidecarClient.sendMessage({
+            requestId: crypto.randomUUID(),
+            type: "abort_workspace",
+            timestamp: new Date().toISOString(),
+          }).promise;
+        } catch (error) {
+          console.error("Failed to abort workspace:", error);
+          setExecutionError({
+            message: "Failed to stop workspace — connection may be lost",
+            timestamp: Date.now(),
+          });
+        }
         
         if (!workspaceData.trigger || workspaceData.trigger.type === 'manual') {
           addEvent({
@@ -446,17 +471,21 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
       const { appDataDir } = await import("@tauri-apps/api/path");
       const workflowsDir = await appDataDir();
       
-      sidecarClient.sendMessage({
-        id: crypto.randomUUID(),
-        type: "register_trigger",
-        data: JSON.stringify({
-          workspaceId: workspaceData.id,
-          trigger: workspaceData.trigger,
-          workspaceData: workspaceData,
-          baseWorkflowsPath: workflowsDir,
-        }),
-        timestamp: new Date().toISOString(),
-      });
+      try {
+        await sidecarClient.sendMessage({
+          requestId: crypto.randomUUID(),
+          type: "register_trigger",
+          data: JSON.stringify({
+            workspaceId: workspaceData.id,
+            trigger: workspaceData.trigger,
+            workspaceData: workspaceData,
+            baseWorkflowsPath: workflowsDir,
+          }),
+          timestamp: new Date().toISOString(),
+        }).promise;
+      } catch (error) {
+        console.error("Failed to register trigger:", error);
+      }
       
       setIsTriggerRegistered(true);
     } else {
@@ -469,17 +498,41 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
       });
     }
     
-    // Run the workspace
-    const message: SidecarCommand = {
-      id: crypto.randomUUID(),
-      type: "run_workspace",
-      workspaceId: workspaceData.id,
-      data: JSON.stringify(workspaceData),
-      timestamp: new Date().toISOString(),
-    };
+    try {
+      // Build enriched payload with full workflow graph data
+      // NOTE: workspaceData is JSON.stringify'd here (first pass). The entire
+      // message is stringified again by sendMessage (second pass). The backend
+      // parses both layers — see SidecarCommand.data JSDoc for details.
+      const runPayload = await enrichWorkspace(workspaceData);
 
-    sidecarClient.sendMessage(message);
-  }, [workspaceData, isRunning, isTriggerRegistered, addEvent]);
+      // Auto-save enriched snapshot before sending
+      await saveWorkspaceToDefaultLocation(runPayload as unknown as WorkspaceData);
+
+      const requestId = crypto.randomUUID();
+      const message: SidecarCommand = {
+        requestId,
+        type: "run_workspace",
+        workspaceId: workspaceData.id,
+        data: JSON.stringify(runPayload),
+        timestamp: new Date().toISOString(),
+      };
+
+      // Track the request so error handling only reacts to this run.
+      runRequestIdRef.current = requestId;
+
+      await sidecarClient.sendMessage(message).promise;
+    } catch (error) {
+      console.error("Failed to run workspace:", error);
+      setIsRunning(false);
+      runRequestIdRef.current = null;
+      setExecutionError({
+        message: error instanceof Object && "message" in error
+          ? String((error as { message: string }).message)
+          : "Workspace execution failed",
+        timestamp: Date.now(),
+      });
+    }
+  }, [workspaceData, isRunning, isTriggerRegistered, addEvent, setExecutionError, executionError]);
 
   useEffect(() => {
     const checkWorkspaceExists = async () => {
@@ -507,10 +560,27 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
         // Auto-stop when workspace completes or is aborted
         if (command.type === "workspace_stopped" || command.type === "workspace_aborted") {
           setIsRunning(false);
-          
-          // For manual triggers, show completion message
-          if (!workspaceData.trigger || workspaceData.trigger.type === 'manual') {
-            if (command.type === "workspace_stopped") {
+          runRequestIdRef.current = null;
+          setIsTriggerRegistered(false);
+          setNextExecutionTime(null);
+          setIsWebhookActive(false);
+
+          const errorData = command.data as { error?: string; message?: string } | undefined;
+          const errorMsg = errorData?.error || errorData?.message;
+
+          if (command.type === "workspace_aborted" && errorMsg) {
+            setExecutionError({
+              message: errorMsg,
+              timestamp: Date.now(),
+            });
+            addEvent({
+              id: crypto.randomUUID(),
+              type: "error",
+              message: `Workspace aborted: ${errorMsg}`,
+              timestamp: Date.now(),
+            });
+          } else if (command.type === "workspace_stopped") {
+            if (!workspaceData.trigger || workspaceData.trigger.type === 'manual') {
               addEvent({
                 id: crypto.randomUUID(),
                 type: "success",
@@ -518,6 +588,8 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                 timestamp: Date.now(),
               });
             }
+            // Clear any lingering error state on successful stop
+            setExecutionError(null);
           }
         }
 
@@ -710,13 +782,17 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
               const workflowString = JSON.stringify(workflow, null, 2);
 
               const message: SidecarCommand = {
-                id: command.id,
+                requestId: command.requestId,
                 type: "workflow_json",
                 workspaceId: workspaceData.id,
                 data: { data: workflowString },
                 timestamp: new Date().toISOString(),
               };
-              sidecarClient.sendMessage(message);
+              try {
+                await sidecarClient.sendMessage(message).promise;
+              } catch (error) {
+                console.error("Failed to send workflow JSON:", error);
+              }
             }
           } else {
             console.error(
@@ -729,6 +805,25 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
               message: `Failed to load workflow: ${command.data}`,
               timestamp: Date.now(),
             });
+          }
+        }
+
+        if (command.type === "error") {
+          const err = command as SidecarCommand & { code: string; message: string };
+          console.error("Server error:", err);
+          // ConsoleContext.handleSidecarCommand already records every error
+          // event in the console, so don't add a duplicate here. Only an error
+          // belonging to the active run_workspace request should stop the run;
+          // unrelated errors (e.g. console_input) must not.
+          if (isRunningRef.current && command.requestId === runRequestIdRef.current) {
+            runRequestIdRef.current = null;
+            setIsRunning(false);
+            setExecutionError({
+              message: err.message || "Execution error",
+              code: err.code,
+              timestamp: Date.now(),
+            });
+            showToast(`Error: ${err.message || "Unknown error"}`, "error");
           }
         }
 
@@ -1017,6 +1112,13 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   const isRTL = i18n.language === "ar";
 
   const getRunButtonState = () => {
+    if (executionError) {
+      return {
+        label: "Retry",
+        icon: <AlertCircle className="h-4 w-4" />,
+        className: "bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border-orange-500/20"
+      };
+    }
     if (isRunning || isTriggerRegistered) {
       return {
         label: "Stop",
@@ -1067,6 +1169,8 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                     ? "bg-green-500"
                     : sidecarStatus === "connecting"
                     ? "bg-yellow-500"
+                    : sidecarStatus === "failed"
+                    ? "bg-red-500"
                     : "bg-red-500"
                 }`}
               />
@@ -1077,8 +1181,19 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                   ? t("workspaces.connected", "Connected")
                   : sidecarStatus === "connecting"
                   ? t("workspaces.connecting", "Connecting")
+                  : sidecarStatus === "failed"
+                  ? "Connection Failed"
                   : t("workspaces.disconnected", "Disconnected")}
               </span>
+
+              {sidecarStatus === "failed" && (
+                <button
+                  onClick={() => sidecarClient.reconnect()}
+                  className="text-xs text-[#FFC72C] hover:text-[#FFB300] underline ml-1"
+                >
+                  Retry
+                </button>
+              )}
             </div>
 
             {hasUnsavedChanges && (
@@ -1118,6 +1233,22 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                 {buttonState.icon}
                 <span className="text-xs font-medium">{buttonState.label}</span>
               </button>
+
+              {executionError && (
+                <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-1.5 max-w-[320px]">
+                  <AlertCircle size={14} className="text-red-400 shrink-0" />
+                  <span className="text-xs text-red-300 truncate" title={executionError.message}>
+                    {executionError.message}
+                  </span>
+                  <button
+                    onClick={() => setExecutionError(null)}
+                    className="text-red-400 hover:text-red-300 shrink-0 ml-1"
+                    title="Dismiss"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
 
               <button
                 className="bg-[#FFC72C]/10 hover:bg-[#FFC72C]/20 text-[#FFC72C] border border-[#FFC72C]/20 p-2 rounded-md transition-all"
@@ -1255,6 +1386,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                 workspaceData={workspaceData}
                 onTabChanges={handleTabChanges}
                 handleImportWorkflow={handleImportWorkflow}
+                onAgentsChange={(agents) => handleUpdateWorkspace({ agents })}
               />
             )}
             {activeTab === "aiflows" && (
@@ -1262,6 +1394,12 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                 workspaceData={workspaceData}
                 onTabChanges={handleTabChanges}
                 baseUrl={baseUrl}
+                onWorkflowsChange={(workflows) =>
+                  handleUpdateWorkspace({ workflows })
+                }
+                onMcpToolsChange={(mcpTools) =>
+                  handleUpdateWorkspace({ mcpTools })
+                }
               />
             )}
             {activeTab === "environment" && (

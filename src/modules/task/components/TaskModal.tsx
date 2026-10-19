@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Task, TaskSocket } from "../types/types";
 import { Agent, Workflow } from "../../workspace/types/Types";
 import { useTranslation } from "react-i18next";
+import Select from "../../../shared/components/ui/select";
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -99,7 +100,9 @@ const TaskModal: React.FC<TaskModalProps> = ({
         <div className="px-6 pt-5 pb-4 border-b border-[#FFC72C]/25 bg-[#FFC72C]/15 rounded-t-lg">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold text-gray-100">
-              {task ? t("taskModal.editTask", "Edit Task") : (title || t("taskModal.addTask", "Add Task"))}
+              {task
+                ? t("taskModal.editTask", "Edit Task")
+                : title || t("taskModal.addTask", "Add Task")}
             </h2>
             <button
               onClick={onClose}
@@ -129,8 +132,11 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   value={formData.title}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent placeholder:text-gray-400"
-                  placeholder={t("taskModal.enterTaskTitle", "Enter task title")}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  placeholder={t(
+                    "taskModal.enterTaskTitle",
+                    "Enter task title"
+                  )}
                 />
               </div>
 
@@ -147,8 +153,11 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   value={formData.description}
                   onChange={handleInputChange}
                   rows={3}
-                  className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent placeholder:text-gray-400"
-                  placeholder={t("taskModal.describeTask", "Describe what this task does")}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  placeholder={t(
+                    "taskModal.describeTask",
+                    "Describe what this task does"
+                  )}
                 />
               </div>
 
@@ -165,71 +174,99 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   value={formData.expectedOutput}
                   onChange={handleInputChange}
                   rows={2}
-                  className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent placeholder:text-gray-400"
-                  placeholder={t("taskModal.describeOutput", "Describe the expected output")}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  placeholder={t(
+                    "taskModal.describeOutput",
+                    "Describe the expected output"
+                  )}
                 />
               </div>
               <div>
-                <label
-                  htmlFor="type"
-                  className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
-                >
-                  {t("taskModal.type", "Type")}
-                </label>
-                 <select
-                   id="type"
-                   name="type"
-                   value={formData.type}
-                   onChange={handleInputChange}
-                   className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent"
-                 >
-                   <option value="agentic">{t("taskModal.agenticAuto", "Agentic (Auto)")}</option>
-                   <option value="specific-agent">{t("taskModal.specificAgent", "Specific Agent")}</option>
-                   <option value="workflow">{t("taskModal.workflow", "Workflow")}</option>
-                 </select>
-                 <p className="text-xs text-gray-400 mt-1">
-                   {formData.type === "agentic"
-                     ? t("taskModal.typeNoteAgentic", "yaLLMa3 main Agent will decide how to handle the Task")
-                     : formData.type === "specific-agent"
-                     ? t("taskModal.typeNoteSpecific", "Select Agent to perform the Task")
-                     : t("taskModal.typeNoteWorkflow", "The specified Workflow will be used to perform the Task")}
-                 </p>
-               </div>
+                <Select
+                  id="type"
+                  value={formData.type}
+                  onChange={(val) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      type: val,
+                      ...(val === "agentic" ? { executorId: null } : {}),
+                    }))
+                  }
+                  options={[
+                    {
+                      value: "agentic",
+                      label: t("taskModal.agenticAuto", "Auto"),
+                    },
+                    {
+                      value: "specific-agent",
+                      label: t("taskModal.specificAgent", "Specific Agent"),
+                    },
+                    {
+                      value: "workflow",
+                      label: t("taskModal.workflow", "Workflow"),
+                    },
+                  ]}
+                  label={t("taskModal.type", "Type")}
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  {formData.type === "agentic"
+                    ? t(
+                        "taskModal.typeNoteAgentic",
+                        "yaLLMa3 main Agent will decide how to handle the Task"
+                      )
+                    : formData.type === "specific-agent"
+                    ? t(
+                        "taskModal.typeNoteSpecific",
+                        "Select Agent to perform the Task"
+                      )
+                    : t(
+                        "taskModal.typeNoteWorkflow",
+                        "The specified Workflow will be used to perform the Task"
+                      )}
+                </p>
+              </div>
               {formData.type === "specific-agent" ||
               formData.type === "workflow" ? (
                 <div>
-                  <label
-                    htmlFor="executorId"
-                    className="block text-xs font-medium text-[#FFC72C]/90 mb-1"
-                  >
-                    {formData.type === "specific-agent" ? t("workspaces.selectAgent", "Select Agent") : t("workspaces.selectWorkflow", "Select Workflow")}
-                  </label>
-                  <select
+                  <Select
                     id="executorId"
-                    name="executorId"
                     value={formData.executorId || ""}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 rounded-md bg-[#1f1f1f] text-gray-100 border border-[#333] focus:outline-none focus:ring-2 focus:ring-[#FFC72C] focus:border-transparent"
-                  >
-                    <option value="">
-                      {formData.type === "workflow"
-                        ? t("workspaces.workflowLater", "Not for now, I'll specify later")
-                        : formData.type === "specific-agent"
-                        ? t("workspaces.agentLater", "Not for now, I'll select later")
-                        : t("taskModal.none", "None")}
-                    </option>
-                    {formData.type === "specific-agent"
-                      ? agents.map((agent) => (
-                          <option key={agent.id} value={agent.id}>
-                            {agent.name}
-                          </option>
-                        ))
-                      : workflows.map((wf) => (
-                          <option key={wf.id} value={wf.id}>
-                            {wf.name}
-                          </option>
-                        ))}
-                  </select>
+                    onChange={(val) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        executorId: val || null,
+                      }))
+                    }
+                    options={[
+                      {
+                        value: "",
+                        label:
+                          formData.type === "workflow"
+                            ? t(
+                                "workspaces.workflowLater",
+                                "Not for now, I'll specify later"
+                              )
+                            : t(
+                                "workspaces.agentLater",
+                                "Not for now, I'll select later"
+                              ),
+                      },
+                      ...(formData.type === "specific-agent"
+                        ? agents.map((agent) => ({
+                            value: agent.id,
+                            label: agent.name,
+                          }))
+                        : workflows.map((wf) => ({
+                            value: wf.id,
+                            label: wf.name,
+                          }))),
+                    ]}
+                    label={
+                      formData.type === "specific-agent"
+                        ? t("workspaces.selectAgent", "Select Agent")
+                        : t("workspaces.selectWorkflow", "Select Workflow")
+                    }
+                  />
                 </div>
               ) : (
                 ""
@@ -249,7 +286,9 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 type="submit"
                 className="px-4 py-2 bg-[#FFC72C] text-black rounded-md hover:bg-[#FFB300] transition-colors border border-[#FFB300] cursor-pointer"
               >
-                {task ? t("taskModal.updateTask", "Update Task") : t("taskModal.createTask", "Create Task")}
+                {task
+                  ? t("taskModal.updateTask", "Update Task")
+                  : t("taskModal.createTask", "Create Task")}
               </button>
             </div>
           </form>

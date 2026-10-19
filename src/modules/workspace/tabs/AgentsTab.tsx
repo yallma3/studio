@@ -22,12 +22,14 @@ interface AgentsTabProps {
   workspaceData: WorkspaceData;
   onTabChanges?: () => void;
   handleImportWorkflow: (workflow: Workflow) => void;
+  onAgentsChange?: (agents: Agent[]) => void;
 }
 
 const AgentsTab: React.FC<AgentsTabProps> = ({
   workspaceData,
   onTabChanges,
   handleImportWorkflow,
+  onAgentsChange,
 }) => {
   const { t } = useTranslation();
 
@@ -69,17 +71,17 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
 
   // State for form values
   useEffect(() => {
-    if (isEditing) {
+    if (isEditing && agentToEdit) {
       setAgentForm({
-        name: agentToEdit?.name || "",
-        role: agentToEdit?.role || "",
-        objective: agentToEdit?.objective || "",
-        background: agentToEdit?.background || "",
-        capabilities: agentToEdit?.capabilities || "",
-        tools: [...(agentToEdit?.tools || [])],
-        llm: agentToEdit?.llm || workspaceData.mainLLM,
-        apiKey: agentToEdit?.apiKey || "",
-        variables: agentToEdit?.variables,
+        name: agentToEdit.name || "",
+        role: agentToEdit.role || "",
+        objective: agentToEdit.objective || "",
+        background: agentToEdit.background || "",
+        capabilities: agentToEdit.capabilities || "",
+        tools: [...(agentToEdit.tools || [])],
+        llm: { ...agentToEdit.llm },
+        apiKey: agentToEdit.apiKey || "",
+        variables: agentToEdit.variables,
       });
     }
   }, [isEditing, agentToEdit, workspaceData.mainLLM]);
@@ -97,7 +99,6 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
       // Find the agent to edit
       setIsEditing(isEdit);
       setAgentToEdit(agent);
-
       setAgentForm({
         name: agent.name,
         role: agent.role,
@@ -105,7 +106,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         background: agent.background,
         capabilities: agent.capabilities,
         tools: [...agent.tools],
-        llm: agent.llm,
+        llm: { ...agent.llm },
         apiKey: agent.apiKey,
         variables: agent.variables,
       });
@@ -130,11 +131,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
   const handleAgentDelete = (agentId: string) => {
     const updatedAgents = agents.filter((agent) => agent.id !== agentId);
     setAgents(updatedAgents);
-
-    // Update the workspace data
-    workspaceData.agents = updatedAgents;
-
-    // Signal that tab has changes
+    onAgentsChange?.(updatedAgents);
     onTabChanges?.();
   };
 
@@ -183,11 +180,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
     }
 
     setAgents(updatedAgents);
-
-    // Update the workspace data
-    workspaceData.agents = updatedAgents;
-
-    // Signal that tab has changes
+    onAgentsChange?.(updatedAgents);
     onTabChanges?.();
 
     // Close the dialog
@@ -439,6 +432,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                         val.llm.model ??
                         agentForm.llm.model ??
                         workspaceData.mainLLM.model,
+                      options: val.llm.options,
                     },
                     apiKey: val.apiKey,
                     tools: val.tools,

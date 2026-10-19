@@ -32,7 +32,7 @@ Set in `.env`:
 VITE_TAURI_MODE=false
 ```
 
-Then run `yarn start` (Vite dev server at `http://localhost:3000`). The browser connects to `http://localhost:3001` by default.
+Then run `yarn start` (Vite dev server at `http://localhost:3002`). The browser connects to `http://localhost:3001` by default.
 
 ### Using a remote yallma3 core
 
@@ -74,7 +74,38 @@ Push a tag matching `v*.*.*` to trigger the CI release workflow (`.github/workfl
 | `VITE_SPAWN_CORE` | `.env.local` (personal) | Rust — skips sidecar spawn when `false` |
 | `VITE_YALLMA3_URL` | `.env.local` (personal) | Frontend — remote core URL fallback |
 
+### yallma3-core (sidecar) Environment Variables
+
+| Var | Description |
+|---|---|
+| `YALLMA3_AGENT_HOST` | Server host (default: localhost) |
+| `YALLMA3_AGENT_PORT` | Server port (default: 3001, auto-increment if busy) |
+| `OLLAMA_URL` | Comma-separated Ollama URLs to discover models at startup (e.g., `http://localhost:11434,http://192.168.1.100:11434`) |
+
 `.env` is committed and shared. `.env.local` is gitignored for personal overrides.
+
+## Available Scripts
+
+| Script | Command | Purpose |
+|--------|---------|---------|
+| `dev` | `dotenv -e .env.local -- tauri dev` | Tauri desktop dev mode |
+| `start` | `vite` | Browser-only dev server (port 3002) |
+| `build` | `tsc -b && vite build` | Frontend production build |
+| `tauri-build` | `tauri build` | Full Tauri desktop build |
+| `lint` | `eslint ./src` | Lint frontend source |
+| `test` | `vitest` | Run unit tests |
+| `test:coverage` | `vitest run --coverage` | Run tests with coverage report |
+| `test:ui` | `vitest --ui` | Run tests with Vitest UI |
+
+## Coding Conventions
+
+- **State management**: No external state library — `useState`, React Context, and singleton registries only
+- **Styling**: Tailwind CSS utility classes (no CSS modules or styled-components)
+- **Icons**: `lucide-react` exclusively
+- **i18n**: `i18next` + `react-i18next` with English/Arabic support; translation keys in namespace files
+- **WebSocket**: Single `SidecarClient` singleton with requestId-based promise tracking
+- **File naming**: PascalCase for components, camelCase for utilities/hooks, lowercase-dashed for asset files
+- **Module boundaries**: Modules may import from `src/shared/` and specified peer modules per `system.md` dependency rules
 
 ## Project Structure
 
