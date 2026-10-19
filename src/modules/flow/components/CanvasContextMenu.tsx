@@ -336,12 +336,16 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                         ...(isAtLimit ? {
                           opacity: 0.4,
                           cursor: "not-allowed",
-                          pointerEvents: "none",
                         } : {}),
                       }}
                       onMouseEnter={() => setHoveredNode(nodeType)}
                       onMouseLeave={() => setHoveredNode(null)}
-                      onClick={(e) => onAddNode(nodeType, e)}
+                      onClick={(e) => {
+                        // Keep pointer events so the "Limit reached" tooltip can
+                        // still show on hover; block the action instead.
+                        if (isAtLimit) return;
+                        onAddNode(nodeType, e);
+                      }}
                       className="hover:bg-[#222]"
                     >
                       <span>{`${translatedTitle} ${t(
@@ -455,7 +459,12 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                     setHoveredNode(m.nodeType);
                   }}
                   onMouseLeave={() => setHoveredNode(null)}
-                  onClick={(e) => onAddNode(m.nodeType, e)}
+                  onClick={(e) => {
+                    // Keep pointer events so the "Limit reached" tooltip can
+                    // still show on hover; block the action instead.
+                    if (isAtLimit) return;
+                    onAddNode(m.nodeType, e);
+                  }}
                   style={{
                     ...searchItemStyle,
                     ...(idx === selectedIndex && !isAtLimit ? selectedStyle : {}),
@@ -463,7 +472,6 @@ const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
                     ...(isAtLimit ? {
                       opacity: 0.4,
                       cursor: "not-allowed",
-                      pointerEvents: "none",
                     } : {}),
                   }}
                 >

@@ -181,6 +181,66 @@ describe('CanvasContextMenu Component', () => {
     });
   });
 
+  describe('Node limits', () => {
+    beforeEach(() => {
+      nodeRegistry.clear();
+      nodeRegistry.registerNode({
+        id: 0,
+        category: 'Test',
+        title: 'Test Node',
+        nodeType: 'TestNode',
+        description: 'A test node',
+        allowedCount: 1,
+        x: 0, y: 0, width: 100, height: 100,
+        sockets: [],
+      });
+      nodeRegistry.registerCategories(['Test']);
+    });
+
+    afterEach(() => {
+      nodeRegistry.clear();
+    });
+
+    it('shows the "Limit reached" tooltip on hover while keeping pointer events enabled', () => {
+      render(<CanvasContextMenu {...defaultProps} nodeCounts={{ TestNode: 1 }} />);
+
+      fireEvent.change(screen.getByPlaceholderText('Search...'), {
+        target: { value: 'Test' },
+      });
+
+      const item = screen.getByRole('listitem');
+      fireEvent.mouseEnter(item);
+
+      expect(screen.getByText(/Limit reached/)).toBeInTheDocument();
+      // Pointer events must stay enabled so the tooltip can appear on hover.
+      expect(item.style.pointerEvents).not.toBe('none');
+    });
+
+    it('does not add a node when a limited entry is clicked', () => {
+      render(<CanvasContextMenu {...defaultProps} nodeCounts={{ TestNode: 1 }} />);
+
+      fireEvent.change(screen.getByPlaceholderText('Search...'), {
+        target: { value: 'Test' },
+      });
+
+      fireEvent.click(screen.getByRole('listitem'));
+
+      expect(mockOnAddNode).not.toHaveBeenCalled();
+    });
+
+    it('still adds a node when under the limit', () => {
+      render(<CanvasContextMenu {...defaultProps} nodeCounts={{ TestNode: 0 }} />);
+
+      fireEvent.change(screen.getByPlaceholderText('Search...'), {
+        target: { value: 'Test' },
+      });
+
+      fireEvent.click(screen.getByRole('listitem'));
+
+      expect(mockOnAddNode).toHaveBeenCalledWith('TestNode', expect.any(Object));
+    });
+  });
+
   describe('Focus management', () => {
     it('should focus search input when menu opens', async () => {
       render(<CanvasContextMenu {...defaultProps} />);

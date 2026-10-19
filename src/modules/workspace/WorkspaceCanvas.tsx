@@ -260,6 +260,9 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   const [isRunning, setIsRunning] = useState(false);
   const isRunningRef = useRef(isRunning);
   isRunningRef.current = isRunning;
+  // Tracks the requestId of the active run_workspace request so unrelated
+  // sidecar errors don't stop the workspace.
+  const runRequestIdRef = useRef<string | null>(null);
   const [isTriggerRegistered, setIsTriggerRegistered] = useState(false);
   const [nextExecutionTime, setNextExecutionTime] = useState<number | null>(null);
   const [isWebhookActive, setIsWebhookActive] = useState(false);
@@ -495,28 +498,33 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
       });
     }
     
-    // Build enriched payload with full workflow graph data
-    // NOTE: workspaceData is JSON.stringify'd here (first pass). The entire
-    // message is stringified again by sendMessage (second pass). The backend
-    // parses both layers — see SidecarCommand.data JSDoc for details.
-    const runPayload = await enrichWorkspace(workspaceData);
-
-    // Auto-save enriched snapshot before sending
-    await saveWorkspaceToDefaultLocation(runPayload as unknown as WorkspaceData);
-
-    const message: SidecarCommand = {
-      requestId: crypto.randomUUID(),
-      type: "run_workspace",
-      workspaceId: workspaceData.id,
-      data: JSON.stringify(runPayload),
-      timestamp: new Date().toISOString(),
-    };
-
     try {
+      // Build enriched payload with full workflow graph data
+      // NOTE: workspaceData is JSON.stringify'd here (first pass). The entire
+      // message is stringified again by sendMessage (second pass). The backend
+      // parses both layers — see SidecarCommand.data JSDoc for details.
+      const runPayload = await enrichWorkspace(workspaceData);
+
+      // Auto-save enriched snapshot before sending
+      await saveWorkspaceToDefaultLocation(runPayload as unknown as WorkspaceData);
+
+      const requestId = crypto.randomUUID();
+      const message: SidecarCommand = {
+        requestId,
+        type: "run_workspace",
+        workspaceId: workspaceData.id,
+        data: JSON.stringify(runPayload),
+        timestamp: new Date().toISOString(),
+      };
+
+      // Track the request so error handling only reacts to this run.
+      runRequestIdRef.current = requestId;
+
       await sidecarClient.sendMessage(message).promise;
     } catch (error) {
       console.error("Failed to run workspace:", error);
       setIsRunning(false);
+      runRequestIdRef.current = null;
       setExecutionError({
         message: error instanceof Object && "message" in error
           ? String((error as { message: string }).message)
@@ -552,6 +560,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
         // Auto-stop when workspace completes or is aborted
         if (command.type === "workspace_stopped" || command.type === "workspace_aborted") {
           setIsRunning(false);
+          runRequestIdRef.current = null;
           setIsTriggerRegistered(false);
           setNextExecutionTime(null);
           setIsWebhookActive(false);
@@ -802,22 +811,20 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
         if (command.type === "error") {
           const err = command as SidecarCommand & { code: string; message: string };
           console.error("Server error:", err);
-          addEvent({
-            id: crypto.randomUUID(),
-            type: "error",
-            message: `Server error: ${err.message || "Unknown error"}`,
-            timestamp: Date.now(),
-          });
-          // If we were running, set persistent error state so the UI shows Retry
-          if (isRunningRef.current) {
+          // ConsoleContext.handleSidecarCommand already records every error
+          // event in the console, so don't add a duplicate here. Only an error
+          // belonging to the active run_workspace request should stop the run;
+          // unrelated errors (e.g. console_input) must not.
+          if (isRunningRef.current && command.requestId === runRequestIdRef.current) {
+            runRequestIdRef.current = null;
             setIsRunning(false);
             setExecutionError({
               message: err.message || "Execution error",
               code: err.code,
               timestamp: Date.now(),
             });
+            showToast(`Error: ${err.message || "Unknown error"}`, "error");
           }
-          showToast(`Error: ${err.message || "Unknown error"}`, "error");
         }
 
         if (command.type === "ping") {

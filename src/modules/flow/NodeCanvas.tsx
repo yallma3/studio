@@ -279,6 +279,9 @@ const NodeCanvas: React.FC<{
   const showToastRef = useRef<(msg: string, type: "success" | "error") => void>(() => {});
   const workflowMetaRef = useRef(workflowMeta);
   const tRef = useRef(t);
+  // Tracks the requestId of the active run_workflow request so we only react to
+  // errors that belong to this canvas's run.
+  const runRequestIdRef = useRef<string | null>(null);
 
   setNodesRef.current = setNodes;
   setIterationsRef.current = setIterations;
@@ -648,19 +651,25 @@ const NodeCanvas: React.FC<{
         }
         setExecutionStatusRef.current({ isExecuting: false, progress: 0, total: 0 });
         setExecutionErrorRef.current(null);
+        runRequestIdRef.current = null;
         showToastRef.current(tRef.current("canvas.executionComplete"), "success");
       }
 
       if (command.type === "error") {
         const err = command as SidecarCommand & { code: string; message: string };
         console.error("Server error:", err);
+        // Ignore errors that don't belong to this canvas's active run (e.g.
+        // console_input or another workflow). Matching run errors are also
+        // rejected by SidecarClient, and executeFlow's catch shows the toast,
+        // so we must not surface a second one here.
+        if (command.requestId !== runRequestIdRef.current) return;
+        runRequestIdRef.current = null;
         setExecutionStatusRef.current({ isExecuting: false, progress: 0, total: 0 });
         setExecutionErrorRef.current({
           message: err.message || "Unknown error",
           code: err.code,
           timestamp: Date.now(),
         });
-        showToastRef.current(`Error: ${err.message || "Unknown error"}`, "error");
       }
 
       if (command.type === "message") {
@@ -712,16 +721,19 @@ const NodeCanvas: React.FC<{
       setShowIterationPanel(false);
       setExecutionStatus({ isExecuting: true, progress: 0, total: 1 });
       const json = createJson(workflowMeta, nodes, connections);
+      const requestId = crypto.randomUUID();
       const message: SidecarCommand = {
-        requestId: crypto.randomUUID(),
+        requestId,
         type: "run_workflow",
         data: JSON.stringify(json),
         timestamp: new Date().toISOString(),
       };
+      runRequestIdRef.current = requestId;
       try {
         await sidecarClient.sendMessage(message).promise;
       } catch (error) {
         console.error("Failed to execute workflow:", error);
+        runRequestIdRef.current = null;
         setExecutionStatus({ isExecuting: false, progress: 0, total: 0 });
         setExecutionError({
           message: error instanceof Object && "message" in error

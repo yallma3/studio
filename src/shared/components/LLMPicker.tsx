@@ -4,6 +4,7 @@ import Select from "./ui/select";
 import { LLMModel } from "../LLM/config";
 import { useLLMProvider, LLMProvider } from "../LLM/useLLMProvider";
 import { Key } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 const PROVIDER_KEY_LINKS: Partial<Record<LLMProvider, string>> = {
   Groq: "https://console.groq.com/keys",
@@ -220,7 +221,14 @@ const LLMPicker: React.FC<LLMPickerProps> = ({
                 {t("llmPicker.apiKeyInfo", "Your API key is stored locally and never shared")}
                 <button
                   type="button"
-                  onClick={() => window.open(keyLink, "_blank")}
+                  onClick={() => {
+                    // Prefer the Tauri opener so the link opens in the system
+                    // browser; fall back to window.open when running outside
+                    // a Tauri context (e.g. web preview or tests).
+                    openUrl(keyLink).catch(() => {
+                      window.open(keyLink, "_blank", "noopener,noreferrer");
+                    });
+                  }}
                   className="text-xs text-yellow-400 hover:text-yellow-300 ml-2 underline cursor-pointer"
                 >
                   {t("llmPicker.getApiKey", "Get {{provider}} API Key", { provider: selectedProvider })}

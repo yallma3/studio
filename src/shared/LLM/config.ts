@@ -90,7 +90,7 @@ const OllamaModels: LLMModel[] = [
   { name: "DeepSeek R1 14B", id: "deepseek-r1:14b" },
   { name: "CodeGemma 2B", id: "codegemma:2b" },
   { name: "Codestral 22B", id: "codestral:22b" },
-  { name: "Phi-4", id: "phi-4:14b" },
+  { name: "Phi-4", id: "phi4:14b" },
   { name: "Command R7B Arabic", id: "command-r7b-arabic:latest" },
   { name: "Command R+ 104B", id: "command-r-plus:104b" },
 ];

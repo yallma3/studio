@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import NodeCanvas from '@/modules/flow/NodeCanvas';
 import { CanvasState } from '@/modules/flow/utils/storageUtils';
 
@@ -74,6 +74,7 @@ import { useCanvasTransform } from '@/modules/flow/hooks/useCanvasTransform';
 import { useConnectionDrag } from '@/modules/flow/hooks/useConnectionDrag';
 import { useContextMenu } from '@/modules/flow/hooks/useContextMenu';
 import { createJson } from '@/modules/flow/utils/flowRuntime';
+import { sidecarClient, type SidecarCommand } from '@/modules/api/SidecarClient';
 
 // Create typed mocks
 const mockedUseCanvasState = vi.mocked(useCanvasState);
@@ -536,6 +537,60 @@ describe('NodeCanvas Component', () => {
       );
 
       expect(document.querySelector('.bg-black\\/98')).toBeInTheDocument();
+    });
+
+    it('ignores unrelated sidecar errors and surfaces the active run error', async () => {
+      const graph = createMockCanvasState();
+      const workflowMeta = { id: 'wf-123', name: 'Test Workflow' } as never;
+
+      render(
+        <NodeCanvas
+          graph={graph}
+          onReturnToHome={mockOnReturnToHome}
+          workflowMeta={workflowMeta}
+        />
+      );
+
+      // Capture the command listener NodeCanvas registers with the sidecar.
+      const handler = vi
+        .mocked(sidecarClient.onCommand)
+        .mock.calls.at(-1)?.[0] as (command: SidecarCommand) => void;
+      expect(handler).toBeTypeOf('function');
+
+      // Start a run, keeping its promise pending.
+      vi.mocked(sidecarClient.sendMessage).mockReturnValue({
+        requestId: 'ignored',
+        promise: new Promise<unknown>(() => {}),
+      });
+
+      fireEvent.click(screen.getByText('canvas.run'));
+
+      const runRequestId = (
+        vi.mocked(sidecarClient.sendMessage).mock.calls.at(-1)?.[0] as SidecarCommand
+      ).requestId;
+      expect(runRequestId).toBeTruthy();
+
+      // An error for an unrelated request must not surface any state.
+      act(() => {
+        handler({
+          type: 'error',
+          requestId: 'some-other-request',
+          code: 'EXECUTION_ERROR',
+          message: 'console blew up',
+        } as unknown as SidecarCommand);
+      });
+      expect(screen.queryByText('console blew up')).not.toBeInTheDocument();
+
+      // A matching error for the active run must surface.
+      act(() => {
+        handler({
+          type: 'error',
+          requestId: runRequestId,
+          code: 'EXECUTION_ERROR',
+          message: 'Workflow boom',
+        } as unknown as SidecarCommand);
+      });
+      expect(await screen.findByText('Workflow boom')).toBeInTheDocument();
     });
   });
 });

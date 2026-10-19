@@ -131,6 +131,7 @@ describe('LLM Configuration Testing', () => {
         expect(modelIds).toContain('llama3.1:8b');
         expect(modelIds).toContain('mistral:7b');
         expect(modelIds).toContain('deepseek-r1:8b');
+        expect(modelIds).toContain('phi4:14b');
       });
     });
   });
