@@ -116,6 +116,7 @@ describe("AgentsTab", () => {
         },
       ],
       trigger: null,
+      environmentVariables: [],
     };
   });
 

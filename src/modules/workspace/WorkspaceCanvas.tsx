@@ -502,7 +502,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
     const runPayload = await enrichWorkspace(workspaceData);
 
     // Auto-save enriched snapshot before sending
-    await saveWorkspaceToDefaultLocation(runPayload as WorkspaceData);
+    await saveWorkspaceToDefaultLocation(runPayload as unknown as WorkspaceData);
 
     const message: SidecarCommand = {
       requestId: crypto.randomUUID(),

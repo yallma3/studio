@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { SidecarClient, SidecarCommand, SidecarResponse, SidecarError } from '@/modules/api/SidecarClient';
+import { SidecarClient, SidecarCommand, SidecarResponse } from '@/modules/api/SidecarClient';
 
 // Mock WebSocket
 const mockWebSocket = {

@@ -229,10 +229,15 @@ describe('useContextMenu Hook', () => {
 
     it('should reject node creation when allowedCount is reached', () => {
       vi.mocked(nodeRegistry.getNode).mockReturnValue({
+        id: 42,
         category: 'Test',
         title: 'Limited Node',
         nodeType: 'LimitedNode',
         nodeValue: '',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
         sockets: [],
         allowedCount: 2,
       });

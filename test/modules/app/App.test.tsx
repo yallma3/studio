@@ -138,7 +138,8 @@ describe('App Component', () => {
     agents: [],
     workflows: [],
     mcpTools: [],
-    trigger: null, 
+    trigger: null,
+    environmentVariables: [],
   };
 
   beforeEach(() => {

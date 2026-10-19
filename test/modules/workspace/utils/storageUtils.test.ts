@@ -85,6 +85,7 @@ const createMockWorkspaceData = (overrides = {}): WorkspaceData => ({
   workflows: [],
   mcpTools: [],
   trigger: null,
+  environmentVariables: [],
   ...overrides,
 });
 

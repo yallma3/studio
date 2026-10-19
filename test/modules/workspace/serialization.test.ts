@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { WorkspaceData, Agent, Workflow, Tool, EnvironmentVariable } from '@/modules/workspace/types/Types';
+import { WorkspaceData } from '@/modules/workspace/types/Types';
 import { ManualTrigger } from '@/modules/task/types/types';
 import { getWorkflow } from '@/modules/workspace/utils/runtimeUtils';
 
