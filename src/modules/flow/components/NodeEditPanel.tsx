@@ -1389,11 +1389,16 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
 
   const shouldRenderParam = (param: ConfigParameterType): boolean => {
     if (isMcpClient) return false;
+    // These parameters are rendered by the dedicated LLM picker, but only for
+    // nodes that actually have an LLM configuration. Nodes that expose an
+    // "API Key"/"Model" parameter without a "Provider" (e.g. search/scraping
+    // nodes) still need those inputs to be editable here.
     if (
-      param.parameterName === "API Key" ||
-      param.parameterName === "Ollama Base URL" ||
-      param.parameterName === "Provider" ||
-      param.parameterName === "Model"
+      hasLLMConfig &&
+      (param.parameterName === "API Key" ||
+        param.parameterName === "Ollama Base URL" ||
+        param.parameterName === "Provider" ||
+        param.parameterName === "Model")
     )
       return false;
     if (node.nodeType === "IfElse")

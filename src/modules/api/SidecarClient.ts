@@ -83,7 +83,11 @@ export class SidecarClient {
   private instanceId: string = "";
   private pendingRequests: Map<
     string,
-    { reject: (err: SidecarError) => void; timer: ReturnType<typeof setTimeout> }
+    {
+      resolve: (value?: unknown) => void;
+      reject: (err: SidecarError) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
   > = new Map();
   private defaultTimeout = 180000;
   private connectionStatus:
@@ -220,12 +224,18 @@ export class SidecarClient {
 
   private handleCommand(command: SidecarCommand): void {
     console.log("Received command from sidecar:", command);
-    if (command.type === "error" && command.requestId) {
+    if (command.requestId) {
       const pending = this.pendingRequests.get(command.requestId);
       if (pending) {
         clearTimeout(pending.timer);
-        pending.reject(command as unknown as SidecarError);
         this.pendingRequests.delete(command.requestId);
+        if (command.type === "error") {
+          pending.reject(command as unknown as SidecarError);
+        } else {
+          // A non-error command that echoes the request id is the sidecar's
+          // acknowledgment that the request was accepted/completed.
+          pending.resolve(command);
+        }
       }
     }
     this.commandCallbacks.forEach((callback) => callback(command));
@@ -247,7 +257,9 @@ export class SidecarClient {
     message.requestId = requestId;
 
     let rejectPromise: (err: SidecarError) => void = () => {};
-    const promise = new Promise<unknown>((_, reject) => {
+    let resolvePromise: (value?: unknown) => void = () => {};
+    const promise = new Promise<unknown>((resolve, reject) => {
+      resolvePromise = resolve;
       rejectPromise = reject;
     });
 
@@ -262,7 +274,11 @@ export class SidecarClient {
       });
     }, timeout ?? this.defaultTimeout);
 
-    this.pendingRequests.set(requestId, { reject: rejectPromise, timer });
+    this.pendingRequests.set(requestId, {
+      resolve: resolvePromise,
+      reject: rejectPromise,
+      timer,
+    });
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
@@ -361,6 +377,9 @@ export class SidecarClient {
     this.sendMessage({
       type: "get_pending_prompts",
       timestamp: new Date().toISOString(),
+    }).promise.catch(() => {
+      // Best-effort request: ignore timeout/disconnection errors instead of
+      // letting the rejected promise surface as an unhandled rejection.
     });
   }
 }

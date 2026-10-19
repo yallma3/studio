@@ -476,6 +476,20 @@ global.WebSocket = vi.fn().mockImplementation(() => mockWS) as any;
       });
     });
 
+    it('should resolve pending promise on a matching non-error acknowledgment', async () => {
+      client.connect();
+      mockWS.readyState = 1;
+      mockWS.onopen();
+
+      const { requestId, promise } = client.sendMessage({ type: 'run_workspace' });
+
+      mockWS.onmessage({
+        data: JSON.stringify({ type: 'message', requestId, data: { message: 'ok' } }),
+      });
+
+      await expect(promise).resolves.toMatchObject({ type: 'message', requestId });
+    });
+
     it('should reject on timeout', async () => {
       vi.useFakeTimers();
       client.connect();
