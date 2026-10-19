@@ -691,7 +691,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
   const getTaskTypeLabel = (type: string) => {
     switch (type) {
       case "agentic":
-        return t("taskModal.agenticAuto", "Agentic (Auto)");
+        return t("taskModal.agenticAuto", "Auto");
       case "specific-agent":
         return t("taskModal.specificAgent", "Specific Agent");
       case "workflow":
@@ -1355,7 +1355,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                   value: "agentic",
                                   label: t(
                                     "taskModal.agenticAuto",
-                                    "Agentic (Auto)"
+                                    "Auto"
                                   ),
                                 },
                                 {
