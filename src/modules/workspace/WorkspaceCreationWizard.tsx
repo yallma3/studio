@@ -136,6 +136,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     connections: [],
     workflows: [],
     mcpTools: [],
+    environmentVariables: [],
     trigger: {
       id: `trigger-${Date.now()}`,
       type: "manual",
@@ -260,6 +261,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         agents: [],
         workflows: [],
         mcpTools: [],
+        environmentVariables: [],
         trigger: {
           id: `trigger-${Date.now()}`,
           type: "manual",

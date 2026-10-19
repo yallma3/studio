@@ -63,6 +63,9 @@ describe("AgentsTab", () => {
   let mockWorkspaceData: WorkspaceData;
   const mockOnTabChanges = vi.fn();
   const mockHandleImportWorkflow = vi.fn();
+  const mockOnAgentsChange = vi.fn((agents) => {
+    mockWorkspaceData.agents = agents;
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -122,6 +125,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -138,6 +142,7 @@ describe("AgentsTab", () => {
         workspaceData={emptyWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -152,6 +157,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -168,6 +174,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -185,6 +192,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -202,6 +210,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -243,6 +252,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -275,6 +285,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -297,6 +308,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -319,6 +331,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -341,6 +354,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -367,6 +381,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -393,6 +408,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -412,6 +428,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 
@@ -429,6 +446,7 @@ describe("AgentsTab", () => {
         workspaceData={mockWorkspaceData}
         onTabChanges={mockOnTabChanges}
         handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
       />
     );
 

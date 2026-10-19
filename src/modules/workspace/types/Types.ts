@@ -95,7 +95,7 @@ export interface WorkspaceData {
   //MCP tools:
   mcpTools: Tool[];
   // Environment Variables
-  environmentVariables?: EnvironmentVariable[]; 
+  environmentVariables: EnvironmentVariable[]; 
 }
 
 export interface ConsoleEvent {

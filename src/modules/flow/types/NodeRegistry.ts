@@ -45,6 +45,11 @@ export class NodeRegistry {
   listCategories(): string[] {
     return this.categories;
   }
+  clear() {
+    this.nodes = {};
+    this.categories = [];
+  }
+
   listNodeTypesByCategory(category: string): Record<string, string> {
     const result: Record<string, string> = {};
     Object.values(this.nodes)

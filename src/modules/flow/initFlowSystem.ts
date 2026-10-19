@@ -13,15 +13,18 @@
 
 import { nodeRegistry } from "./types/NodeRegistry.ts";
 
-export async function initFlowSystem(baseUrl: string, instanceId: string) {
+let _baseUrl = "";
+let _instanceId = "";
+
+export async function retryFetchNodes(): Promise<boolean> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     const headers: Record<string, string> = {};
-    if (instanceId) {
-      headers["x-api-key"] = instanceId;
+    if (_instanceId) {
+      headers["x-api-key"] = _instanceId;
     }
-    const response = await fetch(`${baseUrl}/workflow/nodes`, {
+    const response = await fetch(`${_baseUrl}/workflow/nodes`, {
       signal: controller.signal,
       headers,
     });
@@ -33,7 +36,6 @@ export async function initFlowSystem(baseUrl: string, instanceId: string) {
       );
     }
     const res = await response.json();
-    // Register each node from the fetched nodes array with the nodeRegistry
     if (res?.data) {
       if (Array.isArray(res.data.nodes)) {
         for (const node of res.data.nodes) {
@@ -44,9 +46,17 @@ export async function initFlowSystem(baseUrl: string, instanceId: string) {
         nodeRegistry.registerCategories(res.data.categories);
       }
     }
+    return true;
   } catch (error) {
     console.error("Error fetching workflow nodes:", error);
+    return false;
   }
+}
+
+export async function initFlowSystem(baseUrl: string, instanceId: string) {
+  _baseUrl = baseUrl;
+  _instanceId = instanceId;
+  return retryFetchNodes();
 }
 
 export async function loadModule(name: string) {

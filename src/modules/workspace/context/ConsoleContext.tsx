@@ -65,7 +65,7 @@ export const ConsoleProvider: React.FC<ConsoleProviderProps> = ({
   }, []);
 
   const sendInput = useCallback(
-    (input: string) => {
+    async (input: string) => {
       if (!input.trim()) return;
 
       let newEvent: ConsoleEvent;
@@ -105,13 +105,17 @@ export const ConsoleProvider: React.FC<ConsoleProviderProps> = ({
 
       // Send via Sidecar
       const message: SidecarCommand = {
-        id: crypto.randomUUID(),
+        requestId: crypto.randomUUID(),
         type: "console_input",
         workspaceId: workspaceId,
         data: newEvent,
         timestamp: new Date().toISOString(),
       };
-      sidecarClient.sendMessage(message);
+      try {
+        await sidecarClient.sendMessage(message).promise;
+      } catch (error) {
+        console.error("Failed to send console input:", error);
+      }
     },
     [pendingPrompts, t, addEvent, workspaceId]
   );
@@ -164,6 +168,17 @@ export const ConsoleProvider: React.FC<ConsoleProviderProps> = ({
           if (command.data && typeof command.data === "object") {
             addEvent(command.data as ConsoleEvent);
           }
+        }
+
+        if (command.type === "error") {
+          const err = command as SidecarCommand & { code: string; message: string };
+          console.error("Server error:", err);
+          addEvent({
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 11),
+            type: "error",
+            message: `Server error: ${err.message || "Unknown error"}`,
+            timestamp: Date.now(),
+          });
         }
 
         // Handle resolved console input logging

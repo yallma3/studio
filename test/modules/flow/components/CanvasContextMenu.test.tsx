@@ -11,9 +11,14 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CanvasContextMenu from '@/modules/flow/components/CanvasContextMenu';
+import { nodeRegistry } from '@/modules/flow/types/NodeRegistry';
+
+vi.mock('@/modules/flow/initFlowSystem', () => ({
+  retryFetchNodes: vi.fn().mockResolvedValue(false),
+}));
 
 describe('CanvasContextMenu Component', () => {
   const mockOnAddNode = vi.fn();
@@ -26,6 +31,7 @@ describe('CanvasContextMenu Component', () => {
       y: 100,
       targetNodeId: undefined,
     },
+    nodeCounts: {},
     onAddNode: mockOnAddNode,
     onContextMenuAction: mockOnContextMenuAction,
   };
@@ -116,6 +122,24 @@ describe('CanvasContextMenu Component', () => {
   });
 
   describe('Menu interactions', () => {
+    beforeEach(() => {
+      nodeRegistry.clear();
+      nodeRegistry.registerNode({
+        id: 0,
+        category: 'Test',
+        title: 'Test Node',
+        nodeType: 'TestNode',
+        description: 'A test node',
+        x: 0, y: 0, width: 100, height: 100,
+        sockets: [],
+      });
+      nodeRegistry.registerCategories(['Test']);
+    });
+
+    afterEach(() => {
+      nodeRegistry.clear();
+    });
+
     it('should show submenu on hover for Add menu item', async () => {
       render(<CanvasContextMenu {...defaultProps} />);
 

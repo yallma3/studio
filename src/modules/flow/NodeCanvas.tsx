@@ -55,6 +55,7 @@ import { useCanvasTransform } from "./hooks/useCanvasTransform";
 import { useConnectionDrag } from "./hooks/useConnectionDrag";
 import { useContextMenu } from "./hooks/useContextMenu";
 import { ResultDialog } from "./components/ResultDialog";
+import { nodeRegistry } from "./types/NodeRegistry";
 import { WorkflowFile } from "../workspace/utils/workflowStorageUtils";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
@@ -292,13 +293,18 @@ const NodeCanvas: React.FC<{
     handleSocketDragEnd,
   } = useConnectionDrag(nodes, connections, setConnections, transform, mousePosition);
 
+  const nodeCounts = nodes.reduce<Record<string, number>>((acc, n) => {
+    acc[n.nodeType] = (acc[n.nodeType] || 0) + 1;
+    return acc;
+  }, {});
+
   const {
     contextMenu,
     setContextMenu,
     handleContextMenu,
     handleNodeContextMenu,
     handleAddNodeFromContextMenu,
-  } = useContextMenu(setNodes, setSelectedNodeIds, transform, nextNodeId);
+  } = useContextMenu(nodes, setNodes, setSelectedNodeIds, transform, nextNodeId);
 
   const [executionStatus, setExecutionStatus] = useState<{
     isExecuting: boolean;
@@ -310,7 +316,12 @@ const NodeCanvas: React.FC<{
     total: 0,
   });
 
+  const [executionError, setExecutionError] = useState<{ message: string; code?: string; timestamp: number } | null>(null);
+
   setExecutionStatusRef.current = setExecutionStatus;
+
+  const setExecutionErrorRef = useRef(setExecutionError);
+  setExecutionErrorRef.current = setExecutionError;
 
   const [fileMenuOpen, setFileMenuOpen] = useState<boolean>(false);
   const fileMenuRef = useRef<HTMLDivElement>(null);
@@ -421,13 +432,19 @@ const NodeCanvas: React.FC<{
   const handleDuplicateNode = () => {
     if (!contextMenu.targetNodeId) return;
     const nodeToDuplicate = nodes.find((n) => n.id === contextMenu.targetNodeId);
-    if (nodeToDuplicate) {
-      const newId = nextNodeId.current++;
-      const newNode = duplicateNode(nodeToDuplicate, newId);
-      if (newNode) setNodes((prev) => [...prev, newNode]);
-      setSelectedNodeIds([newId]);
-      setNodes((prev) => prev.map((n) => ({ ...n, selected: n.id === newId })));
+    if (!nodeToDuplicate) return;
+
+    const template = nodeRegistry.getNode(nodeToDuplicate.nodeType);
+    if (template?.allowedCount != null) {
+      const currentCount = nodes.filter((n) => n.nodeType === nodeToDuplicate.nodeType).length;
+      if (currentCount >= template.allowedCount) return;
     }
+
+    const newId = nextNodeId.current++;
+    const newNode = duplicateNode(nodeToDuplicate, newId);
+    if (newNode) setNodes((prev) => [...prev, newNode]);
+    setSelectedNodeIds([newId]);
+    setNodes((prev) => prev.map((n) => ({ ...n, selected: n.id === newId })));
   };
 
   const handleDeleteNode = () => {
@@ -473,6 +490,7 @@ const NodeCanvas: React.FC<{
     return (
       <CanvasContextMenu
         contextMenu={contextMenu}
+        nodeCounts={nodeCounts}
         onAddNode={handleAddNodeFromContextMenu}
         onContextMenuAction={handleCanvasContextMenuAction}
       />
@@ -610,7 +628,7 @@ const NodeCanvas: React.FC<{
         return;
       }
 
-      if (command.type === "workflow_result" && command.id == workflowMetaRef.current?.id) {
+      if (command.type === "workflow_result" && command.requestId == workflowMetaRef.current?.id) {
         const results =
           command.data &&
           typeof command.data === "object" &&
@@ -629,7 +647,20 @@ const NodeCanvas: React.FC<{
           );
         }
         setExecutionStatusRef.current({ isExecuting: false, progress: 0, total: 0 });
+        setExecutionErrorRef.current(null);
         showToastRef.current(tRef.current("canvas.executionComplete"), "success");
+      }
+
+      if (command.type === "error") {
+        const err = command as SidecarCommand & { code: string; message: string };
+        console.error("Server error:", err);
+        setExecutionStatusRef.current({ isExecuting: false, progress: 0, total: 0 });
+        setExecutionErrorRef.current({
+          message: err.message || "Unknown error",
+          code: err.code,
+          timestamp: Date.now(),
+        });
+        showToastRef.current(`Error: ${err.message || "Unknown error"}`, "error");
       }
 
       if (command.type === "message") {
@@ -676,29 +707,48 @@ const NodeCanvas: React.FC<{
   const executeFlow = async () => {
     if (executionStatus.isExecuting) return;
     if (graph && workflowMeta) {
+      setExecutionError(null);
       setIterations([]);
       setShowIterationPanel(false);
       setExecutionStatus({ isExecuting: true, progress: 0, total: 1 });
       const json = createJson(workflowMeta, nodes, connections);
       const message: SidecarCommand = {
-        id: crypto.randomUUID(),
+        requestId: crypto.randomUUID(),
         type: "run_workflow",
         data: JSON.stringify(json),
         timestamp: new Date().toISOString(),
       };
-      sidecarClient.sendMessage(message);
+      try {
+        await sidecarClient.sendMessage(message).promise;
+      } catch (error) {
+        console.error("Failed to execute workflow:", error);
+        setExecutionStatus({ isExecuting: false, progress: 0, total: 0 });
+        setExecutionError({
+          message: error instanceof Object && "message" in error
+            ? String((error as { message: string }).message)
+            : "Workflow execution failed",
+          timestamp: Date.now(),
+        });
+        showToast(tRef.current("canvas.executionError") || "Workflow execution failed", "error");
+      }
     }
   };
 
-  const stopFlow = () => {
+  const stopFlow = async () => {
     if (!executionStatus.isExecuting || !workflowMeta) return;
     const message: SidecarCommand = {
-      id: crypto.randomUUID(),
+      requestId: crypto.randomUUID(),
       type: "stop_workflow",
       data: JSON.stringify({ workflowId: workflowMeta.id }),
       timestamp: new Date().toISOString(),
     };
-    sidecarClient.sendMessage(message);
+    try {
+      await sidecarClient.sendMessage(message).promise;
+    } catch (error) {
+      console.error("Failed to stop workflow:", error);
+      showToast("Failed to stop workflow.", "error");
+    }
+    setExecutionError(null);
     setExecutionStatus({ isExecuting: false, progress: 0, total: 0 });
     setIterations([]);
     setShowIterationPanel(false);
@@ -801,7 +851,30 @@ const NodeCanvas: React.FC<{
             </button>
           )}
 
-          {executionStatus.isExecuting ? (
+          {executionError ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-1.5 max-w-[240px]">
+                <AlertCircle size={14} className="text-red-400 shrink-0" />
+                <span className="text-xs text-red-300 truncate" title={executionError.message}>
+                  {executionError.message}
+                </span>
+                <button
+                  onClick={() => setExecutionError(null)}
+                  className="text-red-400 hover:text-red-300 shrink-0 ml-1"
+                  title="Dismiss"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <button
+                className="bg-orange-600 hover:bg-orange-500 cursor-pointer px-4 transition-colors duration-200 text-white font-medium p-2 rounded-md flex items-center justify-center z-20"
+                onClick={executeFlow}
+              >
+                <AlertCircle size={16} className="mr-1.5" />
+                Retry
+              </button>
+            </div>
+          ) : executionStatus.isExecuting ? (
             <button
               onClick={stopFlow}
               className="bg-red-600 hover:bg-red-500 cursor-pointer px-4 transition-colors duration-200 text-white font-medium p-2 rounded-md flex items-center justify-center z-20"

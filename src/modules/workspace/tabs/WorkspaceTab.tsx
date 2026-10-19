@@ -245,10 +245,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                       onApiKeyChange={(key) =>
                         setFormValues((prev) => ({ ...prev, apiKey: key }))
                       }
-                      savedKeyOptions={(workspaceData.environmentVariables || []).map((envVar) => ({
+                      savedKeyOptions={workspaceData.environmentVariables?.map((envVar) => ({
                         value: envVar.value,
                         label: envVar.key,
-                      }))}
+                      })) || []}
                       useSavedCredentials={formValues.useSavedCredentials}
                       onUseSavedCredentialsChange={(use) =>
                         setFormValues((prev) => ({ ...prev, useSavedCredentials: use }))

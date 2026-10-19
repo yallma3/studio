@@ -22,12 +22,14 @@ interface AgentsTabProps {
   workspaceData: WorkspaceData;
   onTabChanges?: () => void;
   handleImportWorkflow: (workflow: Workflow) => void;
+  onAgentsChange?: (agents: Agent[]) => void;
 }
 
 const AgentsTab: React.FC<AgentsTabProps> = ({
   workspaceData,
   onTabChanges,
   handleImportWorkflow,
+  onAgentsChange,
 }) => {
   const { t } = useTranslation();
 
@@ -129,11 +131,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
   const handleAgentDelete = (agentId: string) => {
     const updatedAgents = agents.filter((agent) => agent.id !== agentId);
     setAgents(updatedAgents);
-
-    // Update the workspace data
-    workspaceData.agents = updatedAgents;
-
-    // Signal that tab has changes
+    onAgentsChange?.(updatedAgents);
     onTabChanges?.();
   };
 
@@ -182,11 +180,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
     }
 
     setAgents(updatedAgents);
-
-    // Update the workspace data
-    workspaceData.agents = updatedAgents;
-
-    // Signal that tab has changes
+    onAgentsChange?.(updatedAgents);
     onTabChanges?.();
 
     // Close the dialog

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface SidecarCommand {
-  id?: string;
+  requestId?: string;
   type:
     | "run_workspace"
     | "stop_workspace"
@@ -31,12 +31,30 @@ export interface SidecarCommand {
     | "webhook_execution"
     | "telegram_execution"
     | "user_prompt_request"
-    | "user_prompt_response";
+    | "user_prompt_response"
+    | "error";
 
   workspaceId?: string;
+  /**
+   * Payload for the command.
+   *
+   * **Double-serialization contract**: For commands like `run_workspace`, the
+   * payload is already `JSON.stringify`'d before being assigned to `data`.
+   * The entire message is then `JSON.stringify`'d again when sent over the
+   * WebSocket. The backend parses the envelope, then parses `data` a second
+   * time to recover the original object.
+   */
   data?: unknown;
   timestamp?: string;
   promptId?: string;
+}
+
+export interface SidecarError {
+  requestId: string;
+  commandType: string;
+  code: "VALIDATION_ERROR" | "EXECUTION_ERROR" | "TIMEOUT" | "NOT_FOUND" | "INTERNAL_ERROR";
+  message: string;
+  timestamp: string;
 }
 
 export interface SidecarResponse {
@@ -63,11 +81,17 @@ export class SidecarClient {
   private reconnectInterval = 3000;
   private shouldReconnect = true;
   private instanceId: string = "";
+  private pendingRequests: Map<
+    string,
+    { reject: (err: SidecarError) => void; timer: ReturnType<typeof setTimeout> }
+  > = new Map();
+  private defaultTimeout = 180000;
   private connectionStatus:
     | "disconnected"
     | "connecting"
     | "connected"
-    | "error" = "disconnected";
+    | "error"
+    | "failed" = "disconnected";
   private statusCallbacks: ((status: string) => void)[] = [];
   private commandCallbacks: ((command: SidecarCommand) => void)[] = [];
   private consoleEventCallbacks: ((event: any) => void)[] = [];
@@ -112,6 +136,13 @@ export class SidecarClient {
         console.log("Disconnected from sidecar WebSocket");
         this.connectionStatus = "disconnected";
         this.notifyStatusChange();
+        this.rejectAllPending({
+          requestId: "",
+          commandType: "",
+          code: "INTERNAL_ERROR",
+          message: "Connection lost",
+          timestamp: new Date().toISOString(),
+        });
         if (this.shouldReconnect) {
           this.attemptReconnect();
         }
@@ -121,6 +152,7 @@ export class SidecarClient {
         console.error("WebSocket error:", error);
         this.connectionStatus = "error";
         this.notifyStatusChange();
+        this.sendAbortOnError();
       };
     } catch (error) {
       console.error("Failed to create WebSocket connection:", error);
@@ -140,9 +172,32 @@ export class SidecarClient {
     this.notifyStatusChange();
   }
 
+  private sendAbortOnError(): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(JSON.stringify({
+          type: "abort_workspace",
+          timestamp: new Date().toISOString(),
+        } as SidecarCommand));
+      } catch {
+        // Best-effort cleanup; ignore send errors during error handling
+      }
+    }
+  }
+
+  private rejectAllPending(error: SidecarError): void {
+    this.pendingRequests.forEach(({ reject, timer }) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    this.pendingRequests.clear();
+  }
+
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error("Max reconnection attempts reached");
+      this.connectionStatus = "failed";
+      this.notifyStatusChange();
       return;
     }
 
@@ -156,8 +211,23 @@ export class SidecarClient {
     }, this.reconnectInterval);
   }
 
+  reconnect(): void {
+    this.reconnectAttempts = 0;
+    this.connectionStatus = "disconnected";
+    this.notifyStatusChange();
+    this.connect();
+  }
+
   private handleCommand(command: SidecarCommand): void {
     console.log("Received command from sidecar:", command);
+    if (command.type === "error" && command.requestId) {
+      const pending = this.pendingRequests.get(command.requestId);
+      if (pending) {
+        clearTimeout(pending.timer);
+        pending.reject(command as unknown as SidecarError);
+        this.pendingRequests.delete(command.requestId);
+      }
+    }
     this.commandCallbacks.forEach((callback) => callback(command));
     if (command.type === "workflow_output" && command.data) {
       this.consoleEventCallbacks.forEach((cb) => cb(command.data));
@@ -169,12 +239,47 @@ export class SidecarClient {
     }
   }
 
-  sendMessage(message: SidecarCommand): void {
+  sendMessage(
+    message: SidecarCommand,
+    timeout?: number
+  ): { requestId: string; promise: Promise<unknown> } {
+    const requestId = message.requestId || crypto.randomUUID();
+    message.requestId = requestId;
+
+    let rejectPromise: (err: SidecarError) => void = () => {};
+    const promise = new Promise<unknown>((_, reject) => {
+      rejectPromise = reject;
+    });
+
+    const timer = setTimeout(() => {
+      this.pendingRequests.delete(requestId);
+      rejectPromise({
+        requestId,
+        commandType: message.type,
+        code: "TIMEOUT",
+        message: `Request timed out after ${timeout ?? this.defaultTimeout}ms`,
+        timestamp: new Date().toISOString(),
+      });
+    }, timeout ?? this.defaultTimeout);
+
+    this.pendingRequests.set(requestId, { reject: rejectPromise, timer });
+
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
       console.warn("Cannot send message: WebSocket not connected");
+      clearTimeout(timer);
+      this.pendingRequests.delete(requestId);
+      rejectPromise({
+        requestId,
+        commandType: message.type,
+        code: "INTERNAL_ERROR",
+        message: "WebSocket not connected",
+        timestamp: new Date().toISOString(),
+      });
     }
+
+    return { requestId, promise };
   }
 
   sendResponse(response: SidecarResponse): void {

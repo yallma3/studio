@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { SidecarClient, SidecarCommand, SidecarResponse } from '@/modules/api/SidecarClient';
+import { SidecarClient, SidecarCommand, SidecarResponse, SidecarError } from '@/modules/api/SidecarClient';
 
 // Mock WebSocket
 const mockWebSocket = {
@@ -133,6 +133,20 @@ global.WebSocket = vi.fn().mockImplementation(() => mockWS) as any;
       expect(consoleErrorSpy).toHaveBeenCalledWith('WebSocket error:', testError);
     });
 
+    it('should send abort_workspace on connection error when previously connected', () => {
+      client.connect();
+      mockWS.readyState = 1;
+      mockWS.onopen();
+
+      mockWS.onerror(new Error('Connection lost'));
+
+      expect(client.getConnectionStatus()).toBe('error');
+      expect(mockWS.send).toHaveBeenCalled();
+      const sentMessage = JSON.parse(mockWS.send.mock.calls[0][0]);
+      expect(sentMessage.type).toBe('abort_workspace');
+      expect(sentMessage.timestamp).toBeDefined();
+    });
+
     it('should handle WebSocket creation errors', () => {
       (global.WebSocket as any).mockImplementationOnce(() => {
         throw new Error('WebSocket creation failed');
@@ -187,7 +201,7 @@ global.WebSocket = vi.fn().mockImplementation(() => mockWS) as any;
       expect(global.WebSocket).toHaveBeenCalledTimes(2);
     });
 
-    it('should stop reconnection after max attempts', () => {
+    it('should stop reconnection after max attempts and set failed status', () => {
       client.connect();
 
       // Simulate 6 failed reconnections (max is 5)
@@ -198,6 +212,7 @@ global.WebSocket = vi.fn().mockImplementation(() => mockWS) as any;
 
       expect(global.WebSocket).toHaveBeenCalledTimes(6); // 1 initial + 5 reconnections
       expect(consoleErrorSpy).toHaveBeenCalledWith('Max reconnection attempts reached');
+      expect(client.getConnectionStatus()).toBe('failed');
     });
 
     it('should not reconnect when shouldReconnect is false', () => {
@@ -222,7 +237,7 @@ global.WebSocket = vi.fn().mockImplementation(() => mockWS) as any;
       mockWS.onopen();
 
       const testCommand: SidecarCommand = {
-        id: 'test-id',
+        requestId: 'test-id',
         type: 'message',
         data: { message: 'test' },
       };
@@ -272,9 +287,46 @@ global.WebSocket = vi.fn().mockImplementation(() => mockWS) as any;
         type: 'ping',
       };
 
-      client.sendMessage(testMessage);
+      const { requestId, promise } = client.sendMessage(testMessage);
 
+      expect(requestId).toBeDefined();
+      expect(testMessage.requestId).toBe(requestId);
+      expect(mockWS.send).toHaveBeenCalled();
+      const sent = JSON.parse(mockWS.send.mock.calls[0][0]);
+      expect(sent.type).toBe('ping');
+      expect(sent.requestId).toBe(requestId);
+      expect(promise).toBeInstanceOf(Promise);
+    });
+
+    it('should send messages with existing requestId', () => {
+      client.connect();
+      mockWS.readyState = 1;
+      mockWS.onopen();
+
+      const testMessage: SidecarCommand = {
+        requestId: 'custom-id',
+        type: 'ping',
+      };
+
+      const { requestId, promise } = client.sendMessage(testMessage);
+
+      expect(requestId).toBe('custom-id');
       expect(mockWS.send).toHaveBeenCalledWith(JSON.stringify(testMessage));
+      expect(promise).toBeInstanceOf(Promise);
+    });
+
+    it('should reject promise when not connected', async () => {
+      const testMessage: SidecarCommand = {
+        type: 'ping',
+      };
+
+      const { promise } = client.sendMessage(testMessage);
+
+      await expect(promise).rejects.toMatchObject({
+        code: 'INTERNAL_ERROR',
+        message: 'WebSocket not connected',
+      });
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Cannot send message: WebSocket not connected');
     });
 
     it('should send responses when connected', () => {
@@ -292,17 +344,6 @@ global.WebSocket = vi.fn().mockImplementation(() => mockWS) as any;
       client.sendResponse(testResponse);
 
       expect(mockWS.send).toHaveBeenCalledWith(JSON.stringify(testResponse));
-    });
-
-    it('should not send messages when not connected', () => {
-      const testMessage: SidecarCommand = {
-        type: 'ping',
-      };
-
-      client.sendMessage(testMessage);
-
-      expect(mockWS.send).not.toHaveBeenCalled();
-      expect(consoleWarnSpy).toHaveBeenCalledWith('Cannot send message: WebSocket not connected');
     });
 
     it('should not send responses when not connected', () => {
@@ -403,6 +444,110 @@ global.WebSocket = vi.fn().mockImplementation(() => mockWS) as any;
       mockWS.onmessage({ data: JSON.stringify(testCommand) });
 
       expect(mockCallback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should reject pending promise on incoming error response', async () => {
+      client.connect();
+      mockWS.readyState = 1;
+      mockWS.onopen();
+
+      const testMessage: SidecarCommand = {
+        type: 'run_workspace',
+      };
+
+      const { requestId, promise } = client.sendMessage(testMessage);
+
+      const errorResponse = {
+        type: 'error',
+        requestId,
+        commandType: 'run_workspace',
+        code: 'EXECUTION_ERROR',
+        message: 'Something went wrong',
+        timestamp: new Date().toISOString(),
+      };
+
+      mockWS.onmessage({ data: JSON.stringify(errorResponse) });
+
+      await expect(promise).rejects.toMatchObject({
+        code: 'EXECUTION_ERROR',
+        message: 'Something went wrong',
+      });
+    });
+
+    it('should reject on timeout', async () => {
+      vi.useFakeTimers();
+      client.connect();
+      mockWS.readyState = 1;
+      mockWS.onopen();
+
+      const testMessage: SidecarCommand = {
+        type: 'run_workspace',
+      };
+
+      const { promise } = client.sendMessage(testMessage, 500);
+
+      vi.advanceTimersByTime(500);
+
+      await expect(promise).rejects.toMatchObject({
+        code: 'TIMEOUT',
+      });
+
+      vi.useRealTimers();
+    });
+
+    it('should reject all pending requests onclose', async () => {
+      client.connect();
+      mockWS.readyState = 1;
+      mockWS.onopen();
+
+      const { promise: p1 } = client.sendMessage({ type: 'ping' });
+      const { promise: p2 } = client.sendMessage({ type: 'run_workspace' });
+
+      mockWS.onclose();
+
+      await expect(p1).rejects.toMatchObject({ message: 'Connection lost' });
+      await expect(p2).rejects.toMatchObject({ message: 'Connection lost' });
+    });
+  });
+
+  describe('Reconnection', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should set status to failed after max reconnect attempts', () => {
+      client.connect();
+
+      // Simulate max reconnection attempts (5 successful, 1 that exceeds)
+      for (let i = 0; i < 6; i++) {
+        mockWS.onclose();
+        vi.advanceTimersByTime(3000);
+      }
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Max reconnection attempts reached');
+      expect(client.getConnectionStatus()).toBe('failed');
+    });
+
+    it('should reset and reconnect via reconnect()', () => {
+      client.connect();
+      mockWS.onopen();
+
+      client.disconnect();
+      expect(client.getConnectionStatus()).toBe('disconnected');
+
+      // Simulate that reconnect attempts were exhausted
+      vi.advanceTimersByTime(3000);
+
+      client.reconnect();
+
+      expect(global.WebSocket).toHaveBeenCalledTimes(2);
+      expect(client.getConnectionStatus()).toBe('connecting');
     });
   });
 

@@ -17,6 +17,14 @@ import TaskModal from '@/modules/task/components/TaskModal';
 import { Task } from '@/modules/task/types/types';
 import { Agent, Workflow } from '@/modules/workspace/types/Types';
 
+const openSelect = (optionText: string) => {
+  fireEvent.click(screen.getByText(optionText));
+};
+
+const selectOption = (optionText: string) => {
+  fireEvent.click(screen.getByText(optionText));
+};
+
 describe('TaskModal Component', () => {
   const mockOnClose = vi.fn();
   const mockOnSave = vi.fn();
@@ -87,7 +95,7 @@ describe('TaskModal Component', () => {
       expect(screen.getByLabelText('Title *')).toBeInTheDocument();
       expect(screen.getByLabelText('Description')).toBeInTheDocument();
       expect(screen.getByLabelText('Expected Output')).toBeInTheDocument();
-      expect(screen.getByLabelText('Type')).toBeInTheDocument();
+      expect(screen.getByText('Type')).toBeInTheDocument();
     });
 
     it('should have required attribute on title field', () => {
@@ -98,9 +106,9 @@ describe('TaskModal Component', () => {
 
     it('should render type select with correct options', () => {
       render(<TaskModal {...defaultProps} />);
-      const typeSelect = screen.getByLabelText('Type');
-      expect(typeSelect).toHaveValue('agentic');
+      expect(screen.getByText('Type')).toBeInTheDocument();
       expect(screen.getByText('Agentic (Auto)')).toBeInTheDocument();
+      openSelect('Agentic (Auto)');
       expect(screen.getByText('Specific Agent')).toBeInTheDocument();
       expect(screen.getByText('Workflow')).toBeInTheDocument();
     });
@@ -112,7 +120,7 @@ describe('TaskModal Component', () => {
       expect(screen.getByLabelText('Title *')).toHaveValue('');
       expect(screen.getByLabelText('Description')).toHaveValue('');
       expect(screen.getByLabelText('Expected Output')).toHaveValue('');
-      expect(screen.getByLabelText('Type')).toHaveValue('agentic');
+      expect(screen.getByText('Agentic (Auto)')).toBeInTheDocument();
     });
 
     it('should initialize form with task data when editing', () => {
@@ -120,7 +128,7 @@ describe('TaskModal Component', () => {
       expect(screen.getByLabelText('Title *')).toHaveValue('Test Task');
       expect(screen.getByLabelText('Description')).toHaveValue('A test task description');
       expect(screen.getByLabelText('Expected Output')).toHaveValue('Expected output');
-      expect(screen.getByLabelText('Type')).toHaveValue('agentic');
+      expect(screen.getByText('Agentic (Auto)')).toBeInTheDocument();
     });
 
     it('should update form data when inputs change', () => {
@@ -142,61 +150,64 @@ describe('TaskModal Component', () => {
   describe('Type Selection and Executor Fields', () => {
     it('should not show executor field when type is agentic', () => {
       render(<TaskModal {...defaultProps} />);
-      expect(screen.queryByLabelText('Select Agent')).not.toBeInTheDocument();
-      expect(screen.queryByLabelText('Workflow')).not.toBeInTheDocument();
+      expect(screen.queryByText('Select Agent')).not.toBeInTheDocument();
+      expect(screen.queryByText('Select Workflow')).not.toBeInTheDocument();
     });
 
     it('should show agent selector when type is specific-agent', () => {
       render(<TaskModal {...defaultProps} />);
-      const typeSelect = screen.getByLabelText('Type');
-      fireEvent.change(typeSelect, { target: { value: 'specific-agent' } });
+      openSelect('Agentic (Auto)');
+      selectOption('Specific Agent');
 
-      expect(screen.getByLabelText('Select Agent')).toBeInTheDocument();
-      expect(screen.queryByLabelText('Workflow')).not.toBeInTheDocument();
+      expect(screen.getByText('Select Agent')).toBeInTheDocument();
     });
 
     it('should show workflow selector when type is workflow', () => {
       render(<TaskModal {...defaultProps} />);
-      const typeSelect = screen.getByLabelText('Type');
-      fireEvent.change(typeSelect, { target: { value: 'workflow' } });
+      openSelect('Agentic (Auto)');
+      selectOption('Workflow');
 
-      expect(screen.getByLabelText('Select Workflow')).toBeInTheDocument();
-      expect(screen.queryByLabelText('Select Agent')).not.toBeInTheDocument();
+      expect(screen.getByText('Select Workflow')).toBeInTheDocument();
     });
 
     it('should populate agent options correctly', () => {
       render(<TaskModal {...defaultProps} />);
-      const typeSelect = screen.getByLabelText('Type');
-      fireEvent.change(typeSelect, { target: { value: 'specific-agent' } });
+      openSelect('Agentic (Auto)');
+      selectOption('Specific Agent');
 
-      expect(screen.getByLabelText('Select Agent')).toBeInTheDocument();
+      expect(screen.getByText('Select Agent')).toBeInTheDocument();
+      openSelect("Not for now, I'll select later");
       expect(screen.getByText('Test Agent 1')).toBeInTheDocument();
       expect(screen.getByText('Test Agent 2')).toBeInTheDocument();
     });
 
     it('should populate workflow options correctly', () => {
       render(<TaskModal {...defaultProps} />);
-      const typeSelect = screen.getByLabelText('Type');
-      fireEvent.change(typeSelect, { target: { value: 'workflow' } });
+      openSelect('Agentic (Auto)');
+      selectOption('Workflow');
 
-      expect(screen.getByLabelText('Select Workflow')).toBeInTheDocument();
+      expect(screen.getByText('Select Workflow')).toBeInTheDocument();
+      openSelect("Not for now, I'll specify later");
       expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
       expect(screen.getByText('Test Workflow 2')).toBeInTheDocument();
     });
 
     it('should clear executorId when type changes to agentic', () => {
       render(<TaskModal {...defaultProps} />);
-      const typeSelect = screen.getByLabelText('Type');
 
       // First set to specific-agent and select an agent
-      fireEvent.change(typeSelect, { target: { value: 'specific-agent' } });
-       fireEvent.change(screen.getByLabelText('Select Agent'), { target: { value: 'agent-1' } });
+      openSelect('Agentic (Auto)');
+      selectOption('Specific Agent');
+
+      openSelect("Not for now, I'll select later");
+      selectOption('Test Agent 1');
 
       // Then change back to agentic
-      fireEvent.change(typeSelect, { target: { value: 'agentic' } });
+      openSelect('Specific Agent');
+      selectOption('Agentic (Auto)');
 
       // executorId should be cleared (not visible in form, but handled in state)
-       expect(screen.queryByLabelText('Select Agent')).not.toBeInTheDocument();
+       expect(screen.queryByText('Select Agent')).not.toBeInTheDocument();
     });
   });
 
@@ -264,13 +275,14 @@ describe('TaskModal Component', () => {
 
     it('should handle executor selection for specific-agent type', () => {
       render(<TaskModal {...defaultProps} />);
-      const typeSelect = screen.getByLabelText('Type');
       const titleInput = screen.getByLabelText('Title *');
       const submitButton = screen.getByText('Create Task');
 
-      fireEvent.change(typeSelect, { target: { value: 'specific-agent' } });
-      const agentSelect = screen.getByLabelText('Select Agent');
-      fireEvent.change(agentSelect, { target: { value: 'agent-2' } });
+      openSelect('Agentic (Auto)');
+      selectOption('Specific Agent');
+
+      openSelect("Not for now, I'll select later");
+      selectOption('Test Agent 2');
       fireEvent.change(titleInput, { target: { value: 'Agent Task' } });
       fireEvent.click(submitButton);
 
@@ -284,12 +296,14 @@ describe('TaskModal Component', () => {
 
     it('should handle executor selection for workflow type', () => {
       render(<TaskModal {...defaultProps} />);
-      const typeSelect = screen.getByLabelText('Type');
       const titleInput = screen.getByLabelText('Title *');
       const submitButton = screen.getByText('Create Task');
 
-      fireEvent.change(typeSelect, { target: { value: 'workflow' } });
-      fireEvent.change(screen.getByLabelText('Select Workflow'), { target: { value: 'wf-1' } });
+      openSelect('Agentic (Auto)');
+      selectOption('Workflow');
+
+      openSelect("Not for now, I'll specify later");
+      selectOption('Test Workflow 1');
       fireEvent.change(titleInput, { target: { value: 'Workflow Task' } });
       fireEvent.click(submitButton);
 
