@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ArrowLeft, AlertCircle, Clock } from "lucide-react";
 import { Trigger } from "../../types/types";
 import { createScheduledTrigger, getUserTimezone, CRON_PRESETS } from "../../utils/triggerHelpers";
+import Select from "../../../../shared/components/ui/select";
 import { CronExpressionParser } from 'cron-parser';
 import cronstrue from 'cronstrue';
 
@@ -21,6 +22,7 @@ const ScheduledTriggerConfig: React.FC<ScheduledTriggerConfigProps> = ({
   const [useCustom, setUseCustom] = useState(false);
   const [error, setError] = useState("");
   const [nextRuns, setNextRuns] = useState<Date[]>([]);
+  const localTimezone = getUserTimezone();
 
   // Load existing trigger if editing
   useEffect(() => {
@@ -97,23 +99,19 @@ const ScheduledTriggerConfig: React.FC<ScheduledTriggerConfigProps> = ({
       </button>
 
       {/* Preset Selection */}
-      <div>
-        <label className="block text-sm font-medium text-white mb-2">
-          Schedule Preset
-        </label>
-        <select
-          value={useCustom ? 'custom' : cronExpression}
-          onChange={(e) => handlePresetChange(e.target.value)}
-          className="w-full bg-[#0a0a0a] border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-yellow-500/50"
-        >
-          {CRON_PRESETS.map((preset) => (
-            <option key={preset.value} value={preset.value}>
-              {preset.label} - {preset.description}
-            </option>
-          ))}
-          <option value="custom">Custom cron expression</option>
-        </select>
-      </div>
+      <Select
+        size="md"
+        label="Schedule Preset"
+        value={useCustom ? 'custom' : cronExpression}
+        onChange={handlePresetChange}
+        options={[
+          ...CRON_PRESETS.map((preset) => ({
+            value: preset.value,
+            label: `${preset.label} - ${preset.description}`,
+          })),
+          { value: 'custom', label: 'Custom cron expression' },
+        ]}
+      />
 
       {/* Custom Cron Expression */}
       {useCustom && (
@@ -137,24 +135,21 @@ const ScheduledTriggerConfig: React.FC<ScheduledTriggerConfigProps> = ({
       )}
 
       {/* Timezone */}
-      <div>
-        <label className="block text-sm font-medium text-white mb-2">
-          Timezone
-        </label>
-        <select
-          value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-          className="w-full bg-[#0a0a0a] border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-yellow-500/50"
-        >
-          <option value={getUserTimezone()}>{getUserTimezone()} (Local)</option>
-          <option value="UTC">UTC</option>
-          <option value="America/New_York">America/New_York (EST/EDT)</option>
-          <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
-          <option value="Europe/London">Europe/London (GMT/BST)</option>
-          <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
-          <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
-        </select>
-      </div>
+      <Select
+        size="md"
+        label="Timezone"
+        value={timezone}
+        onChange={setTimezone}
+        options={[
+          { value: localTimezone, label: `${localTimezone} (Local)` },
+          ...(localTimezone === "UTC" ? [] : [{ value: "UTC", label: "UTC" }]),
+          { value: "America/New_York", label: "America/New_York (EST/EDT)" },
+          { value: "America/Los_Angeles", label: "America/Los_Angeles (PST/PDT)" },
+          { value: "Europe/London", label: "Europe/London (GMT/BST)" },
+          { value: "Asia/Tokyo", label: "Asia/Tokyo (JST)" },
+          { value: "Australia/Sydney", label: "Australia/Sydney (AEST/AEDT)" },
+        ]}
+      />
 
       {/* Error Message */}
       {error && (

@@ -9,6 +9,7 @@ import {
   ChevronRight 
 } from 'lucide-react';
 import { Trigger, TelegramTrigger, TelegramUpdateType } from '../../types/types';
+import Select from '../../../../shared/components/ui/select';
 
 interface TelegramTriggerConfigProps {
   onSave: (trigger: Trigger) => void;
@@ -372,22 +373,18 @@ const TelegramTriggerConfig: React.FC<TelegramTriggerConfigProps> = ({
         </div>
 
         {/* Filter by Chat Type */}
-        <div>
-          <label className="block text-xs font-medium text-zinc-400 mb-2">
-            Filter by Chat Type
-          </label>
-          <select
-            value={filterChatType}
-            onChange={(e) => setFilterChatType(e.target.value as typeof filterChatType)}
-            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500/50"
-          >
-            <option value="">All chat types</option>
-            <option value="private">Private chats only</option>
-            <option value="group">Groups only</option>
-            <option value="supergroup">Supergroups only</option>
-            <option value="channel">Channels only</option>
-          </select>
-        </div>
+        <Select
+          label="Filter by Chat Type"
+          value={filterChatType}
+          onChange={(value) => setFilterChatType(value as typeof filterChatType)}
+          options={[
+            { value: '', label: 'All chat types' },
+            { value: 'private', label: 'Private chats only' },
+            { value: 'group', label: 'Groups only' },
+            { value: 'supergroup', label: 'Supergroups only' },
+            { value: 'channel', label: 'Channels only' },
+          ]}
+        />
       </div>
 
       {/* Webhook URL (After Registration) */}
