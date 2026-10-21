@@ -218,6 +218,11 @@ const Select: React.FC<SelectProps> = ({
           role="listbox"
           aria-labelledby={label ? labelId : selectId}
           className="fixed z-[1000] bg-zinc-800/95 border border-zinc-700 rounded-md shadow-xl drop-shadow-lg max-h-60 overflow-auto backdrop-blur-sm animate-dropdown custom-scrollbar"
+          // The popup lives in document.body, outside any panel/modal DOM
+          // subtree. Stop mousedown bubbling so document-level "click outside"
+          // handlers (e.g. NodeEditPanel) don't treat an option click as an
+          // outside click and close their container.
+          onMouseDown={(e) => e.stopPropagation()}
           style={{
             top: menuRect.top,
             left: menuRect.left,

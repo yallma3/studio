@@ -189,4 +189,22 @@ describe('Select accessibility', () => {
 
     expect(screen.getByRole('combobox', { name: 'Operation Type' })).toBeInTheDocument();
   });
+
+  it('does not bubble option mousedowns to document outside-click handlers', () => {
+    const onDocumentMouseDown = vi.fn();
+    document.addEventListener('mousedown', onDocumentMouseDown);
+
+    try {
+      render(
+        <Select id="bubble-select" value="a" options={options} onChange={() => {}} />
+      );
+
+      fireEvent.click(screen.getByRole('combobox').firstElementChild as Element);
+      fireEvent.mouseDown(screen.getAllByRole('option')[1]);
+
+      expect(onDocumentMouseDown).not.toHaveBeenCalled();
+    } finally {
+      document.removeEventListener('mousedown', onDocumentMouseDown);
+    }
+  });
 });

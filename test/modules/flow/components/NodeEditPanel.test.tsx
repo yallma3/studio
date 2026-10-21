@@ -14,7 +14,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import NodeEditPanel from '@/modules/flow/components/NodeEditPanel';
-import { BaseNode, Socket } from '@/modules/flow/types/NodeTypes';
+import { BaseNode, Socket, getConfigParameters } from '@/modules/flow/types/NodeTypes';
 
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
@@ -224,6 +224,37 @@ describe('NodeEditPanel Component', () => {
 
       const socketIndicator = screen.getByText('Test Output').previousElementSibling;
       expect(socketIndicator).toHaveClass('bg-[#FFC72C]');
+    });
+  });
+
+  describe('Dropdown (shared Select) integration', () => {
+    it('keeps the panel open when an option is selected from the portalled popup', () => {
+      vi.mocked(getConfigParameters).mockReturnValue([
+        {
+          parameterName: 'Operator',
+          parameterType: 'string',
+          UIConfigurable: true,
+          sourceList: [
+            { key: 'eq', label: 'Equals' },
+            { key: 'neq', label: 'Not Equals' },
+          ],
+        },
+      ] as ReturnType<typeof getConfigParameters>);
+
+      try {
+        render(<NodeEditPanel {...defaultProps} />);
+
+        const combobox = screen.getByRole('combobox', { name: 'Operator' });
+        fireEvent.click(combobox.firstElementChild as Element);
+        fireEvent.click(screen.getByRole('option', { name: 'Not Equals' }));
+
+        // The popup is portalled outside the panel; selecting an option must
+        // not be treated as an outside click that closes the panel.
+        expect(mockOnClose).not.toHaveBeenCalled();
+        expect(screen.getByText('Node Edit Panel')).toBeInTheDocument();
+      } finally {
+        vi.mocked(getConfigParameters).mockReturnValue([]);
+      }
     });
   });
 });
