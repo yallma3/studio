@@ -27,6 +27,7 @@ import {
 } from "../types/NodeTypes";
 import { sidecarClient } from "../../api/SidecarClient";
 import NodeLLMPicker from "./NodeLLMPicker";
+import Select from "../../../shared/components/ui/select";
 
 type JMOperationType = "extract_field" | "template_substitute";
 type JMOutputFormat  = "string" | "array" | "object" | "count";
@@ -167,8 +168,6 @@ function computeJoinHeight(inputCount: number): number {
 
 const inputCls =
   "w-full bg-[#161616] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none";
-const selectCls =
-  "w-full bg-[#1e1e1e] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none cursor-pointer";
 const labelCls  = "block text-xs font-medium text-gray-400 mb-1";
 const sectionCls = "border border-[#FFC72C]/20 rounded-md p-3 bg-[#0f0f0f] space-y-3";
 const btnCls =
@@ -477,16 +476,18 @@ const McpClientPanel: React.FC<McpClientPanelProps> = ({ node, formValues, onPar
 
           {capabilityType === "tool" && (
             <>
-              <select className={selectCls} value={selectedTool}
-                onChange={(e) => applyParam("Tool Name", e.target.value)}>
-                <option value="">— choose a tool —</option>
-                {discoveredTools.map((t) => (
-                  <option key={t.name} value={t.name}>{t.name}</option>
-                ))}
-                {selectedTool && !discoveredTools.find((t) => t.name === selectedTool) && (
-                  <option value={selectedTool}>{selectedTool}</option>
-                )}
-              </select>
+              <Select
+                ariaLabel="Tool"
+                value={selectedTool}
+                onChange={(value) => applyParam("Tool Name", value)}
+                options={[
+                  { value: "", label: "— choose a tool —" },
+                  ...discoveredTools.map((t) => ({ value: t.name, label: t.name })),
+                  ...(selectedTool && !discoveredTools.find((t) => t.name === selectedTool)
+                    ? [{ value: selectedTool, label: selectedTool }]
+                    : []),
+                ]}
+              />
               {selectedToolMeta?.description && (
                 <p className="text-[11px] text-[#FFC72C]/50 mt-1 px-1 italic">
                   {selectedToolMeta.description}
@@ -497,18 +498,21 @@ const McpClientPanel: React.FC<McpClientPanelProps> = ({ node, formValues, onPar
 
           {capabilityType === "resource" && (
             <>
-              <select className={selectCls} value={selectedResource}
-                onChange={(e) => applyParam("Resource URI", e.target.value)}>
-                <option value="">— choose a resource —</option>
-                {discoveredResources.map((r) => (
-                  <option key={r.uri} value={r.uri}>
-                    {r.name} ({r.uri})
-                  </option>
-                ))}
-                {selectedResource && !discoveredResources.find((r) => r.uri === selectedResource) && (
-                  <option value={selectedResource}>{selectedResource}</option>
-                )}
-              </select>
+              <Select
+                ariaLabel="Resource"
+                value={selectedResource}
+                onChange={(value) => applyParam("Resource URI", value)}
+                options={[
+                  { value: "", label: "— choose a resource —" },
+                  ...discoveredResources.map((r) => ({
+                    value: r.uri,
+                    label: `${r.name} (${r.uri})`,
+                  })),
+                  ...(selectedResource && !discoveredResources.find((r) => r.uri === selectedResource)
+                    ? [{ value: selectedResource, label: selectedResource }]
+                    : []),
+                ]}
+              />
               {selectedResourceMeta?.description && (
                 <p className="text-[11px] text-[#FFC72C]/50 mt-1 px-1 italic">
                   {selectedResourceMeta.description}
@@ -528,16 +532,18 @@ const McpClientPanel: React.FC<McpClientPanelProps> = ({ node, formValues, onPar
 
           {capabilityType === "prompt" && (
             <>
-              <select className={selectCls} value={selectedPrompt}
-                onChange={(e) => applyParam("Prompt Name", e.target.value)}>
-                <option value="">— choose a prompt —</option>
-                {discoveredPrompts.map((p) => (
-                  <option key={p.name} value={p.name}>{p.name}</option>
-                ))}
-                {selectedPrompt && !discoveredPrompts.find((p) => p.name === selectedPrompt) && (
-                  <option value={selectedPrompt}>{selectedPrompt}</option>
-                )}
-              </select>
+              <Select
+                ariaLabel="Prompt"
+                value={selectedPrompt}
+                onChange={(value) => applyParam("Prompt Name", value)}
+                options={[
+                  { value: "", label: "— choose a prompt —" },
+                  ...discoveredPrompts.map((p) => ({ value: p.name, label: p.name })),
+                  ...(selectedPrompt && !discoveredPrompts.find((p) => p.name === selectedPrompt)
+                    ? [{ value: selectedPrompt, label: selectedPrompt }]
+                    : []),
+                ]}
+              />
               {selectedPromptMeta?.description && (
                 <p className="text-[11px] text-[#FFC72C]/50 mt-1 px-1 italic">
                   {selectedPromptMeta.description}
@@ -638,14 +644,15 @@ const OperationCard: React.FC<OperationCardProps> = ({
           </div>
           <div>
             <label className={labelCls}>Operation Type</label>
-            <select
-              className={selectCls}
+            <Select
+              ariaLabel="Operation Type"
               value={op.type}
-              onChange={(e) => onChange({ type: e.target.value as JMOperationType })}
-            >
-              <option value="extract_field">Extract Field</option>
-              <option value="template_substitute">Template Substitute</option>
-            </select>
+              onChange={(value) => onChange({ type: value as JMOperationType })}
+              options={[
+                { value: "extract_field", label: "Extract Field" },
+                { value: "template_substitute", label: "Template Substitute" },
+              ]}
+            />
           </div>
           {op.type === "extract_field" && (
             <>
@@ -664,15 +671,12 @@ const OperationCard: React.FC<OperationCardProps> = ({
               </div>
               <div>
                 <label className={labelCls}>Output Format</label>
-                <select
-                  className={selectCls}
+                <Select
+                  ariaLabel="Output Format"
                   value={op.outputFormat ?? "string"}
-                  onChange={(e) => onChange({ outputFormat: e.target.value as JMOutputFormat })}
-                >
-                  {JM_OUTPUT_FORMAT_OPTIONS.map((o) => (
-                    <option key={o.key} value={o.key}>{o.label}</option>
-                  ))}
-                </select>
+                  onChange={(value) => onChange({ outputFormat: value as JMOutputFormat })}
+                  options={JM_OUTPUT_FORMAT_OPTIONS.map((o) => ({ value: o.key, label: o.label }))}
+                />
               </div>
             </>
           )}
@@ -1215,24 +1219,14 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
     if (!param) return null;
     const renderValue = formValues[param.parameterName] ?? "";
 
-    const handleChange = (
-      e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-    ) => {
-      let newValue: unknown;
-      if (param.parameterType === "number")
-        newValue = Number((e.target as HTMLInputElement).value);
-      else if (param.parameterType === "boolean")
-        newValue = (e.target as HTMLInputElement).checked;
-      else
-        newValue = (e.target as HTMLInputElement).value;
-
+    const commitValue = (newValue: string | number | boolean) => {
       setFormValues((prev) => ({
         ...prev,
-        [param.parameterName]: newValue as string | number | boolean,
+        [param.parameterName]: newValue,
       }));
 
-      if (node) setConfigParameter(node, param.parameterName, newValue);
-      else return;
+      if (!node) return;
+      setConfigParameter(node, param.parameterName, newValue);
 
       if (param.parameterName === "Operator")
         setCurrentOperator(newValue as string);
@@ -1250,6 +1244,20 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
         setValue(newValue as unknown as NodeValue);
         onSave({ title, nodeValue: newValue as unknown as NodeValue });
       }
+    };
+
+    const handleChange = (
+      e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    ) => {
+      let newValue: unknown;
+      if (param.parameterType === "number")
+        newValue = Number((e.target as HTMLInputElement).value);
+      else if (param.parameterType === "boolean")
+        newValue = (e.target as HTMLInputElement).checked;
+      else
+        newValue = (e.target as HTMLInputElement).value;
+
+      commitValue(newValue as string | number | boolean);
     };
 
     switch (param.parameterType) {
@@ -1284,14 +1292,16 @@ const NodeEditPanel: React.FC<NodeEditPanelProps> = ({ node, onClose, onSave }) 
           const filteredOptions = getFilteredModelOptions(param);
           return (
             <div className="space-y-2">
-              <select id={param.parameterName}
-                className={`w-full bg-[#1e1e1e] text-white border border-[#FFC72C]/30 rounded-md p-2 font-mono text-sm focus:border-[#FFC72C] focus:outline-none cursor-pointer ${textAlignClass}`}
+              <Select
+                id={param.parameterName}
+                ariaLabel={getDynamicLabel(param)}
                 value={String(renderValue)}
-                onChange={handleChange}>
-                {filteredOptions.map((option) => (
-                  <option key={option.key} value={option.key}>{option.label}</option>
-                ))}
-              </select>
+                onChange={(value) => commitValue(value)}
+                options={filteredOptions.map((option) => ({
+                  value: option.key,
+                  label: option.label,
+                }))}
+              />
               {param.parameterName === "Operator" && node?.nodeType === "IfElse" && (
                 <p className="text-xs text-[#FFC72C]/60 italic px-1">
                   {getIfElseOperatorMeta(currentOperator).description}

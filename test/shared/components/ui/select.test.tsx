@@ -175,4 +175,18 @@ describe('Select accessibility', () => {
     expect(trigger.className).toContain('px-4');
     expect(trigger.className).toContain('py-3');
   });
+
+  it('exposes an accessible name from ariaLabel when no visible label is given', () => {
+    render(
+      <Select
+        id="aria-select"
+        ariaLabel="Operation Type"
+        value="a"
+        options={options}
+        onChange={() => {}}
+      />
+    );
+
+    expect(screen.getByRole('combobox', { name: 'Operation Type' })).toBeInTheDocument();
+  });
 });

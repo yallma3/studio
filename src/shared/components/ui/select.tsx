@@ -32,6 +32,8 @@ interface SelectProps {
   label?: string;
   helpText?: string;
   size?: 'sm' | 'md';
+  /** Accessible name when a visible `label` is rendered elsewhere. */
+  ariaLabel?: string;
 }
 
 // Gap between the trigger and the floating option list (px).
@@ -62,6 +64,7 @@ const Select: React.FC<SelectProps> = ({
   label,
   helpText,
   size = 'sm',
+  ariaLabel,
 }) => {
   // Wire the trigger and popup to the label with stable ids so the control is
   // programmatically labelled and exposes combobox/listbox semantics.
@@ -189,6 +192,7 @@ const Select: React.FC<SelectProps> = ({
         aria-expanded={isOpen}
         aria-controls={isOpen ? listboxId : undefined}
         aria-labelledby={label ? labelId : undefined}
+        aria-label={label ? undefined : ariaLabel}
         aria-disabled={disabled || undefined}
         className={`relative ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         onKeyDown={handleKeyDown}
