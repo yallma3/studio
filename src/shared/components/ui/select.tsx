@@ -11,7 +11,8 @@
    See the Mozilla Public License for the specific language governing rights and limitations under the License.
 */
 
-import React, { useState, useRef, useEffect, useId } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
 interface SelectOption {
@@ -30,10 +31,25 @@ interface SelectProps {
   disabled?: boolean;
   label?: string;
   helpText?: string;
+  size?: 'sm' | 'md';
 }
 
-// Define custom scrollbar styles as a CSS class
-// We'll add this to index.css or a global stylesheet
+// Gap between the trigger and the floating option list (px).
+const MENU_GAP = 4;
+// Matches `max-h-60` (15rem) on the option list.
+const MENU_MAX_HEIGHT = 240;
+
+const sizeClasses: Record<NonNullable<SelectProps['size']>, string> = {
+  sm: 'px-3 py-2',
+  md: 'px-4 py-3',
+};
+
+interface MenuRect {
+  top: number;
+  left: number;
+  width: number;
+  openUp: boolean;
+}
 
 const Select: React.FC<SelectProps> = ({
   id,
@@ -45,6 +61,7 @@ const Select: React.FC<SelectProps> = ({
   disabled = false,
   label,
   helpText,
+  size = 'sm',
 }) => {
   // Wire the trigger and popup to the label with stable ids so the control is
   // programmatically labelled and exposes combobox/listbox semantics.
@@ -55,53 +72,65 @@ const Select: React.FC<SelectProps> = ({
 
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
-  const [dropPosition, setDropPosition] = useState<'bottom' | 'top'>('bottom');
+  const [menuRect, setMenuRect] = useState<MenuRect | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
+  const listboxRef = useRef<HTMLDivElement>(null);
+
   // Find the selected option
   const selectedOption = options.find(option => option.value === value);
-  
-  // Close dropdown when clicking outside and determine dropdown position
+
+  // Position the floating list against the trigger. The list is portalled to
+  // `document.body` so a scrolling/overflow ancestor can never clip it.
+  const updateMenuPosition = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const approxHeight = Math.min(MENU_MAX_HEIGHT, options.length * 40 + 8);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < approxHeight && rect.top > spaceBelow;
+    setMenuRect({
+      top: openUp ? rect.top - MENU_GAP : rect.bottom + MENU_GAP,
+      left: rect.left,
+      width: rect.width,
+      openUp,
+    });
+  }, [options.length]);
+
+  const openMenu = () => {
+    updateMenuPosition();
+    setIsOpen(true);
+  };
+
+  // Reposition while open and close on outside interaction.
   useEffect(() => {
+    if (!isOpen) return;
+
+    updateMenuPosition();
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      const target = event.target as Node;
+      if (containerRef.current?.contains(target)) return;
+      if (listboxRef.current?.contains(target)) return;
+      setIsOpen(false);
     };
-    
-    const determineDropPosition = () => {
-      if (!containerRef.current) return;
-      
-      const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      const dropdownHeight = 300; // Approximate max height of dropdown
-      
-      if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
-        setDropPosition('top');
-      } else {
-        setDropPosition('bottom');
-      }
-    };
-    
+    const handleReposition = () => updateMenuPosition();
+
     document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('resize', determineDropPosition);
-    
-    // Determine position when opening
-    if (isOpen) {
-      determineDropPosition();
-    }
-    
+    window.addEventListener('resize', handleReposition);
+    // Capture so nested scroll containers also reposition the list.
+    window.addEventListener('scroll', handleReposition, true);
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('resize', determineDropPosition);
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
     };
-  }, [isOpen]);
-  
+  }, [isOpen, updateMenuPosition]);
+
   // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (disabled) return;
-    
+
     switch (e.key) {
       case 'Enter':
       case ' ':
@@ -112,8 +141,10 @@ const Select: React.FC<SelectProps> = ({
             onChange(option.value);
             setIsOpen(false);
           }
+        } else if (isOpen) {
+          setIsOpen(false);
         } else {
-          setIsOpen(prev => !prev);
+          openMenu();
         }
         break;
       case 'Escape':
@@ -122,7 +153,7 @@ const Select: React.FC<SelectProps> = ({
       case 'ArrowDown':
         e.preventDefault();
         if (!isOpen) {
-          setIsOpen(true);
+          openMenu();
         } else {
           let newIndex = highlightedIndex === null ? 0 : highlightedIndex + 1;
           if (newIndex >= options.length) newIndex = 0;
@@ -132,7 +163,7 @@ const Select: React.FC<SelectProps> = ({
       case 'ArrowUp':
         e.preventDefault();
         if (!isOpen) {
-          setIsOpen(true);
+          openMenu();
         } else {
           let newIndex = highlightedIndex === null ? options.length - 1 : highlightedIndex - 1;
           if (newIndex < 0) newIndex = options.length - 1;
@@ -141,7 +172,7 @@ const Select: React.FC<SelectProps> = ({
         break;
     }
   };
-  
+
   return (
     <div className="flex flex-col gap-1">
       {label && (
@@ -149,8 +180,8 @@ const Select: React.FC<SelectProps> = ({
           {label}
         </label>
       )}
-      
-      <div 
+
+      <div
         ref={containerRef}
         id={selectId}
         role="combobox"
@@ -164,55 +195,61 @@ const Select: React.FC<SelectProps> = ({
         tabIndex={disabled ? -1 : 0}
       >
         <div
-          className={`flex items-center justify-between w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-colors duration-150 ${isOpen ? 'border-zinc-600' : ''} ${className}`}
-          onClick={() => !disabled && setIsOpen(prev => !prev)}
+          className={`flex items-center justify-between w-full ${sizeClasses[size]} bg-zinc-800 border border-zinc-700 rounded-md text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-colors duration-150 ${isOpen ? 'border-zinc-600' : ''} ${className}`}
+          onClick={() => (isOpen ? setIsOpen(false) : openMenu())}
         >
           <span className={`${!selectedOption ? 'text-gray-400' : 'text-white'}`}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
-          <ChevronDown 
-            className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'transform rotate-180' : ''}`} 
+          <ChevronDown
+            className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'transform rotate-180' : ''}`}
           />
         </div>
-        
-        {isOpen && !disabled && (
-          <div 
-            id={listboxId}
-            role="listbox"
-            aria-labelledby={label ? labelId : selectId}
-            className={`absolute z-50 w-full ${dropPosition === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'} bg-zinc-800/95 border border-zinc-700 rounded-md shadow-xl drop-shadow-lg max-h-60 overflow-auto backdrop-blur-sm animate-dropdown custom-scrollbar`}
-            style={{
-              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4)'
-            }}
-          >
-            {options.map((option, index) => (
-              <div
-                key={option.value}
-                role="option"
-                aria-selected={option.value === value}
-                aria-disabled={option.disabled || undefined}
-                className={`px-3 py-2 cursor-pointer transition-colors duration-150 ${
-                  option.disabled 
-                    ? 'text-gray-500 cursor-not-allowed' 
-                    : highlightedIndex === index 
-                      ? 'bg-yellow-500/10 text-white' 
-                      : 'text-white hover:bg-zinc-700/40'
-                } ${option.value === value ? 'bg-yellow-500/5 font-medium' : ''}`}
-                onClick={() => {
-                  if (!option.disabled) {
-                    onChange(option.value);
-                    setIsOpen(false);
-                  }
-                }}
-                onMouseEnter={() => setHighlightedIndex(index)}
-              >
-                {option.label}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
-      
+
+      {isOpen && !disabled && menuRect && createPortal(
+        <div
+          ref={listboxRef}
+          id={listboxId}
+          role="listbox"
+          aria-labelledby={label ? labelId : selectId}
+          className="fixed z-[1000] bg-zinc-800/95 border border-zinc-700 rounded-md shadow-xl drop-shadow-lg max-h-60 overflow-auto backdrop-blur-sm animate-dropdown custom-scrollbar"
+          style={{
+            top: menuRect.top,
+            left: menuRect.left,
+            width: menuRect.width,
+            transform: menuRect.openUp ? 'translateY(-100%)' : undefined,
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4)',
+          }}
+        >
+          {options.map((option, index) => (
+            <div
+              key={option.value}
+              role="option"
+              aria-selected={option.value === value}
+              aria-disabled={option.disabled || undefined}
+              className={`px-3 py-2 cursor-pointer transition-colors duration-150 ${
+                option.disabled
+                  ? 'text-gray-500 cursor-not-allowed'
+                  : highlightedIndex === index
+                    ? 'bg-yellow-500/10 text-white'
+                    : 'text-white hover:bg-zinc-700/40'
+              } ${option.value === value ? 'bg-yellow-500/5 font-medium' : ''}`}
+              onClick={() => {
+                if (!option.disabled) {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }
+              }}
+              onMouseEnter={() => setHighlightedIndex(index)}
+            >
+              {option.label}
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
+
       {helpText && (
         <p className="text-xs text-gray-400 mt-1">{helpText}</p>
       )}
