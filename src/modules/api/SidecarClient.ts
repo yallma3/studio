@@ -4,6 +4,7 @@ import type { WorkspaceArtifactsPayload } from "../workspace/types/Types";
 export interface SidecarCommand {
   requestId?: string;
   type:
+    | "connected"
     | "run_workspace"
     | "stop_workspace"
     | "run_workflow"
@@ -35,6 +36,9 @@ export interface SidecarCommand {
     | "telegram_execution"
     | "user_prompt_request"
     | "user_prompt_response"
+    | "user_prompt_acknowledged"
+    | "user_prompt_resolved"
+    | "execute_command"
     | "error";
 
   workspaceId?: string;
@@ -61,7 +65,7 @@ export interface SidecarCommand {
 export interface SidecarError {
   requestId: string;
   commandType: string;
-  code: "VALIDATION_ERROR" | "EXECUTION_ERROR" | "TIMEOUT" | "NOT_FOUND" | "INTERNAL_ERROR";
+  code: "WORKSPACE_FAILED" | "VALIDATION_ERROR" | "EXECUTION_ERROR" | "TIMEOUT" | "NOT_FOUND" | "INTERNAL_ERROR";
   message: string;
   timestamp: string;
 }

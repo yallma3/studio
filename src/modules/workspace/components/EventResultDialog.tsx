@@ -40,6 +40,7 @@ const EventResultDialog: React.FC<EventResultDialogProps> = ({
       case "error":
         return "text-red-400";
       case "warning":
+      case "warn":
         return "text-yellow-400";
       case "success":
         return "text-green-400";

@@ -262,4 +262,30 @@ describe("ConsoleContext - Artifact Lifecycle", () => {
     expect(screen.getByTestId("artifacts-count").textContent).toBe("1");
     expect(screen.getByTestId("artifact-item").textContent).toContain("valid.txt (text)");
   });
+
+  it("should record WORKSPACE_FAILED errors cleanly in events without generic 'Server error:' prefix", () => {
+    let commandCallback: ((cmd: any) => void) | null = null;
+    vi.spyOn(sidecarClient, "onCommand").mockImplementation((cb) => {
+      commandCallback = cb;
+      return () => {
+        commandCallback = null;
+      };
+    });
+
+    render(
+      <ConsoleProvider workspaceId="ws-test">
+        <TestConsumer />
+      </ConsoleProvider>
+    );
+
+    act(() => {
+      commandCallback!({
+        type: "error",
+        code: "WORKSPACE_FAILED",
+        message: "All tasks failed or were blocked.",
+      });
+    });
+
+    expect(screen.getByTestId("events-count").textContent).toBe("1");
+  });
 });

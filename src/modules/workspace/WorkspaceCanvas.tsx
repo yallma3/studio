@@ -580,16 +580,12 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
               timestamp: Date.now(),
             });
           } else if (command.type === "workspace_stopped") {
-            if (!workspaceData.trigger || workspaceData.trigger.type === 'manual') {
-              addEvent({
-                id: crypto.randomUUID(),
-                type: "success",
-                message: " Workspace execution completed",
+            if (errorMsg) {
+              setExecutionError({
+                message: errorMsg,
                 timestamp: Date.now(),
               });
             }
-            // Clear any lingering error state on successful stop
-            setExecutionError(null);
           }
         }
 
@@ -815,7 +811,12 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
           // event in the console, so don't add a duplicate here. Only an error
           // belonging to the active run_workspace request should stop the run;
           // unrelated errors (e.g. console_input) must not.
-          if (isRunningRef.current && command.requestId === runRequestIdRef.current) {
+          const isRunWorkspaceError =
+            command.requestId === runRequestIdRef.current ||
+            (err as unknown as { commandType?: string }).commandType === "run_workspace" ||
+            err.code === "WORKSPACE_FAILED";
+
+          if (isRunningRef.current && isRunWorkspaceError) {
             runRequestIdRef.current = null;
             setIsRunning(false);
             setExecutionError({
