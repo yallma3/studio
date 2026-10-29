@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { WorkspaceArtifactsPayload } from "../workspace/types/Types";
+
 export interface SidecarCommand {
   requestId?: string;
   type:
@@ -22,6 +24,7 @@ export interface SidecarCommand {
     | "abort_workspace"
     | "workspace_stopped"
     | "workspace_aborted"
+    | "workspace_artifacts"
     | "register_trigger"
     | "unregister_trigger"
     | "trigger_registered"
@@ -106,6 +109,7 @@ export class SidecarClient {
   private commandCallbacks: ((command: SidecarCommand) => void)[] = [];
   private consoleEventCallbacks: ((event: any) => void)[] = [];
   private pendingPromptsCallbacks: ((prompts: PendingPrompt[]) => void)[] = [];
+  private workspaceArtifactsCallbacks: ((payload: WorkspaceArtifactsPayload) => void)[] = [];
 
   constructor(private wsUrl?: string) {}
 
@@ -253,6 +257,11 @@ export class SidecarClient {
       const prompts = command.data as PendingPrompt[];
       this.pendingPromptsCallbacks.forEach((cb) => cb(prompts));
     }
+
+    if (command.type === "workspace_artifacts" && command.data) {
+      const payload = command.data as WorkspaceArtifactsPayload;
+      this.workspaceArtifactsCallbacks.forEach((cb) => cb(payload));
+    }
   }
 
   sendMessage(
@@ -364,6 +373,23 @@ export class SidecarClient {
 
   onPendingPrompts(callback: (prompts: PendingPrompt[]) => void): void {
     this.pendingPromptsCallbacks.push(callback);
+  }
+
+  onWorkspaceArtifacts(callback: (payload: WorkspaceArtifactsPayload) => void): () => void {
+    this.workspaceArtifactsCallbacks.push(callback);
+    return () => {
+      const index = this.workspaceArtifactsCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.workspaceArtifactsCallbacks.splice(index, 1);
+      }
+    };
+  }
+
+  offWorkspaceArtifacts(callback: (payload: WorkspaceArtifactsPayload) => void): void {
+    const index = this.workspaceArtifactsCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.workspaceArtifactsCallbacks.splice(index, 1);
+    }
   }
 
   getConnectionStatus(): string {

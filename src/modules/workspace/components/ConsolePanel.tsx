@@ -22,6 +22,8 @@ import {
   FileText,
   Send,
   X,
+  Download,
+  Eye,
 } from "lucide-react";
 
 import {
@@ -33,7 +35,11 @@ import { Button } from "../../../shared/components/ui/button";
 import { ScrollArea } from "../../../shared/components/ui/scroll-area";
 import EventResultDialog from "./EventResultDialog";
 import { useConsole } from "../context/ConsoleContext";
-import { ConsoleEvent } from "../types/Types";
+import { ConsoleEvent, WorkspaceArtifact } from "../types/Types";
+import {
+  downloadArtifact,
+  fetchArtifactContent,
+} from "../utils/fileDownloadUtils";
 
 interface ConsolePanelProps {
   isMaximized?: boolean;
@@ -41,6 +47,8 @@ interface ConsolePanelProps {
   onClose?: () => void;
   canClose?: boolean;
   className?: string;
+  baseUrl?: string;
+  showToast?: (message: string, type: "success" | "error") => void;
 }
 
 const ConsolePanel: React.FC<ConsolePanelProps> = ({
@@ -49,13 +57,28 @@ const ConsolePanel: React.FC<ConsolePanelProps> = ({
   onClose,
   canClose = true,
   className = "",
+  baseUrl,
+  showToast,
 }) => {
   const { t } = useTranslation();
-  const { events, pendingPrompts, sendInput, clearEvents } = useConsole();
+  const { events, pendingPrompts, latestArtifacts, sendInput, clearEvents } =
+    useConsole();
+
+  const effectiveBaseUrl =
+    baseUrl ||
+    (typeof window !== "undefined" &&
+      (window as unknown as { __YALLMA3_BASE_URL__?: string })
+        .__YALLMA3_BASE_URL__) ||
+    import.meta.env.VITE_CORE_URL ||
+    "http://localhost:3001";
 
   // Local state
   const [consoleInput, setConsoleInput] = useState("");
   const [isConsoleRunning, setIsConsoleRunning] = useState(true);
+  const [previewLoading, setPreviewLoading] = useState<string | null>(null);
+  const [downloadingArtifact, setDownloadingArtifact] = useState<string | null>(
+    null
+  );
 
   // Event result dialog state
   const [selectedEvent, setSelectedEvent] = useState<ConsoleEvent | null>(null);
@@ -124,6 +147,37 @@ const ConsolePanel: React.FC<ConsolePanelProps> = ({
   const handleCloseResultDialog = () => {
     setIsResultDialogOpen(false);
     setSelectedEvent(null);
+  };
+
+  const handlePreviewArtifact = async (artifact: WorkspaceArtifact) => {
+    try {
+      setPreviewLoading(artifact.filename);
+      const content = await fetchArtifactContent(artifact, effectiveBaseUrl);
+      setSelectedEvent({
+        id: `artifact-${artifact.filename}`,
+        timestamp: Date.now(),
+        type: "success",
+        message: `Artifact: ${artifact.filename}`,
+        results: content,
+      });
+      setIsResultDialogOpen(true);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      showToast?.(errorMsg, "error");
+    } finally {
+      setPreviewLoading(null);
+    }
+  };
+
+  const handleDownloadArtifact = async (artifact: WorkspaceArtifact) => {
+    try {
+      setDownloadingArtifact(artifact.filename);
+      await downloadArtifact(artifact, effectiveBaseUrl, { showToast });
+    } catch {
+      // Handled via showToast in downloadArtifact
+    } finally {
+      setDownloadingArtifact(null);
+    }
   };
 
   return (
@@ -262,6 +316,65 @@ const ConsolePanel: React.FC<ConsolePanelProps> = ({
               )}
             </div>
           </ScrollArea>
+
+          {/* Execution Output Artifacts */}
+          {latestArtifacts && latestArtifacts.length > 0 && (
+            <div className="border-t border-zinc-800 bg-zinc-950/70 px-3 py-2 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-zinc-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="h-3 w-3 text-[#FFC72C]" />
+                  {t("workspaceTab.executionArtifacts", "Execution Output Artifacts")}
+                </span>
+                <span className="text-[10px] text-zinc-500 font-mono">
+                  {latestArtifacts.length} {latestArtifacts.length === 1 ? "file" : "files"}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {latestArtifacts.map((artifact) => (
+                  <div
+                    key={artifact.filename}
+                    className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-md px-2.5 py-1 text-xs font-mono transition-colors"
+                  >
+                    <span
+                      className={`text-[9px] font-bold px-1 py-0.5 rounded ${
+                        artifact.format === "json"
+                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                          : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                      }`}
+                    >
+                      {artifact.format.toUpperCase()}
+                    </span>
+                    <span
+                      className="text-zinc-300 max-w-[200px] truncate select-all"
+                      title={artifact.filename}
+                    >
+                      {artifact.filename}
+                    </span>
+                    <div className="flex items-center gap-1 border-l border-zinc-800 pl-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handlePreviewArtifact(artifact)}
+                        disabled={previewLoading === artifact.filename}
+                        className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors disabled:opacity-40 cursor-pointer"
+                        title={t("workspaceTab.previewArtifact", "Preview artifact content")}
+                      >
+                        <Eye className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadArtifact(artifact)}
+                        disabled={downloadingArtifact === artifact.filename}
+                        className="p-1 rounded text-[#FFC72C] hover:text-[#FFB300] hover:bg-zinc-800 transition-colors disabled:opacity-40 cursor-pointer"
+                        title={t("workspaceTab.downloadArtifact", "Download artifact")}
+                      >
+                        <Download className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Console Input Form */}
           <form
