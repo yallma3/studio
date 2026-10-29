@@ -114,7 +114,7 @@ export interface WorkspaceArtifactsPayload {
 export interface ConsoleEvent {
   id: string;
   timestamp: number;
-  type: "info" | "warning" | "error" | "success" | "system" | "input" | "user";
+  type: "info" | "warning" | "warn" | "error" | "success" | "system" | "input" | "user";
   message: string;
   details?: string;
   results?: string;

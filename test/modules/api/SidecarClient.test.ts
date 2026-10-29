@@ -528,6 +528,30 @@ global.WebSocket = vi.fn().mockImplementation(() => mockWS) as any;
       });
     });
 
+    it('should reject pending promise on matching WORKSPACE_FAILED error response', async () => {
+      client.connect();
+      mockWS.readyState = 1;
+      mockWS.onopen();
+
+      const { requestId, promise } = client.sendMessage({ type: 'run_workspace' });
+
+      const errorResponse = {
+        type: 'error',
+        requestId,
+        commandType: 'run_workspace',
+        code: 'WORKSPACE_FAILED',
+        message: 'All tasks failed or were blocked',
+        timestamp: new Date().toISOString(),
+      };
+
+      mockWS.onmessage({ data: JSON.stringify(errorResponse) });
+
+      await expect(promise).rejects.toMatchObject({
+        code: 'WORKSPACE_FAILED',
+        message: 'All tasks failed or were blocked',
+      });
+    });
+
     it('should resolve pending promise on a matching non-error acknowledgment', async () => {
       client.connect();
       mockWS.readyState = 1;

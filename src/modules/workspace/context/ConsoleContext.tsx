@@ -179,12 +179,18 @@ export const ConsoleProvider: React.FC<ConsoleProviderProps> = ({
         }
 
         if (command.type === "error") {
-          const err = command as SidecarCommand & { code: string; message: string };
+          const err = command as SidecarCommand & { code?: string; message?: string };
           console.error("Server error:", err);
+          const displayMsg =
+            err.code === "WORKSPACE_FAILED"
+              ? err.message || "Workspace execution failed"
+              : err.code === "INTERNAL_ERROR"
+              ? `Server error: ${err.message || "Unknown error"}`
+              : err.message || `Error: ${err.code || "Unknown error"}`;
           addEvent({
             id: Date.now().toString() + Math.random().toString(36).substring(2, 11),
             type: "error",
-            message: `Server error: ${err.message || "Unknown error"}`,
+            message: displayMsg,
             timestamp: Date.now(),
           });
         }
