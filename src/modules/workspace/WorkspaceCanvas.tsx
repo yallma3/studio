@@ -811,10 +811,11 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
           // event in the console, so don't add a duplicate here. Only an error
           // belonging to the active run_workspace request should stop the run;
           // unrelated errors (e.g. console_input) must not.
-          const isRunWorkspaceError =
-            command.requestId === runRequestIdRef.current ||
-            (err as unknown as { commandType?: string }).commandType === "run_workspace" ||
-            err.code === "WORKSPACE_FAILED";
+          const hasRequestId = command.requestId != null;
+          const isRunWorkspaceError = hasRequestId
+            ? command.requestId === runRequestIdRef.current
+            : (err as unknown as { commandType?: string }).commandType === "run_workspace" ||
+              err.code === "WORKSPACE_FAILED";
 
           if (isRunningRef.current && isRunWorkspaceError) {
             runRequestIdRef.current = null;
