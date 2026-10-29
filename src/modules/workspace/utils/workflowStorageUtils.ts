@@ -8,6 +8,11 @@ import {
   remove,
 } from "@tauri-apps/plugin-fs";
 import { CanvasState } from "../../flow/utils/storageUtils";
+import {
+  serializeCanvasForStorage,
+  deserializeCanvasFromStorage,
+  CANVAS_SCHEMA_VERSION,
+} from "../../flow/serialization";
 
 export interface WorkflowFile {
   id: string;
@@ -16,6 +21,7 @@ export interface WorkflowFile {
   createdAt: number;
   updatedAt: number;
   canvasState: CanvasState;
+  schemaVersion?: number;
 }
 
 // Generate clean, short random string
@@ -56,9 +62,13 @@ export const saveWorkflowToFile = async (
     const fileName = `${workflow.id}.json`;
     const filePath = await join(flowsDir, fileName);
 
-    const workflowData = {
+    const workflowData: WorkflowFile = {
       ...workflow,
+      canvasState: workflow.canvasState
+        ? (serializeCanvasForStorage(workflow.canvasState) as unknown as CanvasState)
+        : workflow.canvasState,
       updatedAt: Date.now(),
+      schemaVersion: workflow.schemaVersion ?? CANVAS_SCHEMA_VERSION,
     };
 
     await writeTextFile(filePath, JSON.stringify(workflowData, null, 2));
@@ -83,8 +93,11 @@ export const loadWorkflowFromFile = async (
     }
 
     const fileContent = await readTextFile(filePath);
-    const workflowData = JSON.parse(fileContent) as WorkflowFile;
-    return workflowData;
+    const parsed = JSON.parse(fileContent);
+    return {
+      ...parsed,
+      canvasState: deserializeCanvasFromStorage(parsed.canvasState || parsed),
+    } as WorkflowFile;
   } catch (error) {
     console.error(`Error loading workflow ${workflowId}:`, error);
     return null;
@@ -103,8 +116,11 @@ export const loadAllWorkflowsFromFiles = async (): Promise<WorkflowFile[]> => {
         try {
           const filePath = await join(flowsDir, entry.name);
           const fileContent = await readTextFile(filePath);
-          const workflowData = JSON.parse(fileContent) as WorkflowFile;
-          workflows.push(workflowData);
+          const parsed = JSON.parse(fileContent);
+          workflows.push({
+            ...parsed,
+            canvasState: deserializeCanvasFromStorage(parsed.canvasState || parsed),
+          } as WorkflowFile);
         } catch (error) {
           console.error(`Error loading workflow file ${entry.name}:`, error);
         }

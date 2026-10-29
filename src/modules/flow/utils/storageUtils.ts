@@ -19,6 +19,7 @@ import {
   GraphState,
   BaseNode,
 } from "../types/NodeTypes.ts";
+import { serializeCanvasForStorage, deserializeCanvasFromStorage } from "../serialization";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import {
   readTextFile,
@@ -70,19 +71,11 @@ export const saveCanvasState = async (
     nextNodeId,
   };
 
-  // Convert to JSON string
-  const stateJson = JSON.stringify(canvasState, null, 2);
+  // Convert to JSON string (minimal export)
+  const sanitized = serializeCanvasForStorage(canvasState);
+  const stateJson = JSON.stringify(sanitized, null, 2);
 
   try {
-    // Open a save dialog to let the user choose the file location and name
-    // const filePath = await save({
-    //   filters: [{
-    //     name: 'JSON',
-    //     extensions: ['json']
-    //   }],
-    //   defaultPath: `${graphId}.json`
-    // });
-
     const filePath = await join(await appDataDir(), `${graphName}.json`);
     await writeTextFile(filePath, stateJson);
 
@@ -159,11 +152,7 @@ export const loadCanvasState = async (): Promise<{
     await writeTextFile(newGraphPath, content);
 
     const parsedContent = JSON.parse(content);
-    const nodes = parsedContent.nodes;
-    const canvasState = {
-      ...parsedContent,
-      nodes,
-    };
+    const canvasState = deserializeCanvasFromStorage(parsedContent);
 
     try {
       const newGraphId = generateGraphId();
@@ -195,9 +184,10 @@ export const loadCanvasState = async (): Promise<{
     if (savedState) {
       try {
         // Parse the JSON string
-        const canvasState = JSON.parse(savedState);
+        const parsedContent = JSON.parse(savedState);
         console.log("Fallback: Canvas state loaded from localStorage");
-        return canvasState;
+        const canvasState = deserializeCanvasFromStorage(parsedContent);
+        return { canvasState, newGraphId: generateGraphId() };
       } catch (parseError) {
         console.error(
           "Failed to parse saved canvas state from localStorage:",
@@ -225,8 +215,9 @@ export const exportCanvasState = async (
     nextNodeId: nextNodeId,
   };
 
-  // Convert to JSON string
-  const stateJson = JSON.stringify(canvasState, null, 2);
+  // Convert to JSON string (minimal export)
+  const sanitized = serializeCanvasForStorage(canvasState);
+  const stateJson = JSON.stringify(sanitized, null, 2);
 
   // Open a save dialog to let the user choose where to save the file
   const filePath = await save({
@@ -264,12 +255,7 @@ export const loadCanvasStateFromPath = async (
     try {
       // Parse the JSON string
       const parsedContent = JSON.parse(content);
-      const nodes = parsedContent.nodes;
-      const canvasState = {
-        ...parsedContent,
-        nodes,
-      };
-      return canvasState;
+      return deserializeCanvasFromStorage(parsedContent);
     } catch (parseError) {
       console.error("Failed to parse JSON from file:", parseError);
       return null;

@@ -98,6 +98,19 @@ export interface WorkspaceData {
   environmentVariables: EnvironmentVariable[]; 
 }
 
+export interface WorkspaceArtifact {
+  filename: string;
+  format: "text" | "json";
+  downloadUrl: string;
+  viewUrl: string;
+}
+
+export interface WorkspaceArtifactsPayload {
+  workspace: string;
+  workspaceId: string;
+  artifacts: WorkspaceArtifact[];
+}
+
 export interface ConsoleEvent {
   id: string;
   timestamp: number;
@@ -108,6 +121,7 @@ export interface ConsoleEvent {
   promptId?: string;
   nodeId?: number;
   nodeName?: string;
+  artifacts?: WorkspaceArtifact[];
 }
 
 export type ExecutionStepType = "agentic" | "workflow";

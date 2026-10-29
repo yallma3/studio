@@ -91,6 +91,8 @@ function createMockWorkspaceData(): WorkspaceData {
 describe('WorkspaceData serialization', () => {
   it('serializes all expected top-level keys', () => {
     const ws = createMockWorkspaceData();
+    ws.tasks[0].type = 'workflow';
+    ws.tasks[0].executorId = 'wf-001';
     const serialized = JSON.stringify(ws);
     const parsed = JSON.parse(serialized);
 
@@ -119,6 +121,8 @@ describe('WorkspaceData serialization', () => {
 
   it('round-trips through JSON parse correctly', () => {
     const ws = createMockWorkspaceData();
+    ws.tasks[0].type = 'workflow';
+    ws.tasks[0].executorId = 'wf-001';
     const serialized = JSON.stringify(ws);
     const parsed = JSON.parse(serialized) as WorkspaceData;
 
@@ -136,12 +140,16 @@ describe('WorkspaceData serialization', () => {
 
   it('serialized output is valid JSON', () => {
     const ws = createMockWorkspaceData();
+    ws.tasks[0].type = 'workflow';
+    ws.tasks[0].executorId = 'wf-001';
     const serialized = JSON.stringify(ws);
     expect(() => JSON.parse(serialized)).not.toThrow();
   });
 
   it('workflows include full graph data when enriched for runtime', () => {
     const ws = createMockWorkspaceData();
+    ws.tasks[0].type = 'workflow';
+    ws.tasks[0].executorId = 'wf-001';
     const enrichedWorkflows = ws.workflows.map((wf) => ({
       ...wf,
       nodes: [
@@ -167,6 +175,8 @@ describe('WorkspaceData serialization', () => {
 
   it('mcpTools are present in serialized output', () => {
     const ws = createMockWorkspaceData();
+    ws.tasks[0].type = 'workflow';
+    ws.tasks[0].executorId = 'wf-001';
     const serialized = JSON.stringify(ws);
     const parsed = JSON.parse(serialized);
 
@@ -178,6 +188,8 @@ describe('WorkspaceData serialization', () => {
 
   it('environmentVariables is always an array', () => {
     const ws = createMockWorkspaceData();
+    ws.tasks[0].type = 'workflow';
+    ws.tasks[0].executorId = 'wf-001';
     ws.environmentVariables = [];
     const serialized = JSON.stringify(ws);
     const parsed = JSON.parse(serialized);
@@ -195,6 +207,8 @@ describe('enrichWorkspace', () => {
   it('inlines workflow nodes and connections from disk', async () => {
     const { enrichWorkspace } = await import('@/modules/workspace/utils/buildRunPayload');
     const ws = createMockWorkspaceData();
+    ws.tasks[0].type = 'workflow';
+    ws.tasks[0].executorId = 'wf-001';
 
     vi.mocked(getWorkflow).mockResolvedValue({
       id: 'wf-001',
@@ -227,6 +241,8 @@ describe('enrichWorkspace', () => {
   it('returns workflows as-is when workflow file is missing', async () => {
     const { enrichWorkspace } = await import('@/modules/workspace/utils/buildRunPayload');
     const ws = createMockWorkspaceData();
+    ws.tasks[0].type = 'workflow';
+    ws.tasks[0].executorId = 'wf-001';
 
     vi.mocked(getWorkflow).mockResolvedValue(null);
 
@@ -241,6 +257,8 @@ describe('enrichWorkspace', () => {
   it('copies workspace when no workflows exist', async () => {
     const { enrichWorkspace } = await import('@/modules/workspace/utils/buildRunPayload');
     const ws = createMockWorkspaceData();
+    ws.tasks[0].type = 'workflow';
+    ws.tasks[0].executorId = 'wf-001';
     ws.workflows = [];
 
     const enriched = await enrichWorkspace(ws);

@@ -23,6 +23,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Tool } from "../../modules/workspace/types/Types";
+import Select from "./ui/select";
 interface AddToolOrWorkflowDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -438,27 +439,20 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="mcp-type"
-                  className="block text-sm font-medium text-zinc-300 mb-2"
-                >
-                  {t("workspaces.connectionType", "Connection Type")} *
-                </label>
-                <select
-                  id="mcp-type"
-                  value={mcpType}
-                  onChange={(e) => {
-                    setMcpType(e.target.value as "STDIO" | "HTTP");
-                    setMcpHealthError(""); // Clear error when configuration changes
-                  }}
-                  className="w-full px-3 py-2 bg-[#0a0a0a] border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={isSubmitting}
-                >
-                  <option value="STDIO">STDIO</option>
-                  <option value="HTTP">HTTP</option>
-                </select>
-              </div>
+              <Select
+                id="mcp-type"
+                label={`${t("workspaces.connectionType", "Connection Type")} *`}
+                value={mcpType}
+                onChange={(next) => {
+                  setMcpType(next as "STDIO" | "HTTP");
+                  setMcpHealthError(""); // Clear error when configuration changes
+                }}
+                options={[
+                  { value: "STDIO", label: "STDIO" },
+                  { value: "HTTP", label: "HTTP" },
+                ]}
+                disabled={isSubmitting}
+              />
 
               {/* Health Check Error Message */}
               {mcpHealthError && (

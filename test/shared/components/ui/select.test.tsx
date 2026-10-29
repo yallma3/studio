@@ -97,4 +97,138 @@ describe('Select accessibility', () => {
 
     expect(onChange).toHaveBeenCalledWith('b');
   });
+
+  it('renders the option list in a portal so overflow ancestors cannot clip it', () => {
+    render(
+      <Select
+        id="portal-select"
+        value="a"
+        options={options}
+        onChange={() => {}}
+      />
+    );
+
+    const control = screen.getByRole('combobox');
+    fireEvent.click(control.firstElementChild as Element);
+
+    const listbox = screen.getByRole('listbox');
+    expect(control.contains(listbox)).toBe(false);
+    expect(document.body.contains(listbox)).toBe(true);
+  });
+
+  it('supports keyboard open, navigate and select', () => {
+    const onChange = vi.fn();
+    render(
+      <Select
+        id="kb-select"
+        label="KB"
+        value="a"
+        options={options}
+        onChange={onChange}
+      />
+    );
+
+    const control = screen.getByRole('combobox');
+    fireEvent.keyDown(control, { key: 'ArrowDown' });
+    expect(control).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.keyDown(control, { key: 'ArrowDown' });
+    fireEvent.keyDown(control, { key: 'Enter' });
+
+    expect(onChange).toHaveBeenCalledWith('a');
+    expect(control).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('closes on Escape', () => {
+    render(
+      <Select id="esc-select" value="a" options={options} onChange={() => {}} />
+    );
+
+    const control = screen.getByRole('combobox');
+    fireEvent.keyDown(control, { key: 'ArrowDown' });
+    expect(control).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.keyDown(control, { key: 'Escape' });
+    expect(control).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('stops Escape propagation when open, but allows propagation when closed', () => {
+    const parentEscapeHandler = vi.fn();
+    render(
+      <div onKeyDown={(e) => e.key === 'Escape' && parentEscapeHandler()}>
+        <Select id="esc-prop-select" value="a" options={options} onChange={() => {}} />
+      </div>
+    );
+
+    const control = screen.getByRole('combobox');
+
+    // 1. When closed, Escape propagates to parent
+    fireEvent.keyDown(control, { key: 'Escape' });
+    expect(parentEscapeHandler).toHaveBeenCalledTimes(1);
+
+    // 2. Open the select
+    fireEvent.keyDown(control, { key: 'ArrowDown' });
+    expect(control).toHaveAttribute('aria-expanded', 'true');
+
+    // 3. When open, Escape stops propagation and closes the listbox
+    fireEvent.keyDown(control, { key: 'Escape' });
+    expect(control).toHaveAttribute('aria-expanded', 'false');
+    expect(parentEscapeHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies the requested size to the trigger', () => {
+    const { rerender } = render(
+      <Select id="size-select" value="a" options={options} onChange={() => {}} />
+    );
+
+    let trigger = screen.getByRole('combobox').firstElementChild as HTMLElement;
+    expect(trigger.className).toContain('px-3');
+    expect(trigger.className).toContain('py-2');
+
+    rerender(
+      <Select
+        id="size-select"
+        size="md"
+        value="a"
+        options={options}
+        onChange={() => {}}
+      />
+    );
+
+    trigger = screen.getByRole('combobox').firstElementChild as HTMLElement;
+    expect(trigger.className).toContain('px-4');
+    expect(trigger.className).toContain('py-3');
+  });
+
+  it('exposes an accessible name from ariaLabel when no visible label is given', () => {
+    render(
+      <Select
+        id="aria-select"
+        ariaLabel="Operation Type"
+        value="a"
+        options={options}
+        onChange={() => {}}
+      />
+    );
+
+    expect(screen.getByRole('combobox', { name: 'Operation Type' })).toBeInTheDocument();
+  });
+
+  it('does not bubble option mousedowns to document outside-click handlers', () => {
+    const onDocumentMouseDown = vi.fn();
+    document.addEventListener('mousedown', onDocumentMouseDown);
+
+    try {
+      render(
+        <Select id="bubble-select" value="a" options={options} onChange={() => {}} />
+      );
+
+      fireEvent.click(screen.getByRole('combobox').firstElementChild as Element);
+      fireEvent.mouseDown(screen.getAllByRole('option')[1]);
+
+      expect(onDocumentMouseDown).not.toHaveBeenCalled();
+    } finally {
+      document.removeEventListener('mousedown', onDocumentMouseDown);
+    }
+  });
 });

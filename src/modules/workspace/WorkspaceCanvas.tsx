@@ -499,14 +499,14 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
     }
     
     try {
+      // Auto-save current workspace state before sending
+      await saveWorkspaceToDefaultLocation(workspaceData);
+
       // Build enriched payload with full workflow graph data
       // NOTE: workspaceData is JSON.stringify'd here (first pass). The entire
       // message is stringified again by sendMessage (second pass). The backend
       // parses both layers — see SidecarCommand.data JSDoc for details.
       const runPayload = await enrichWorkspace(workspaceData);
-
-      // Auto-save enriched snapshot before sending
-      await saveWorkspaceToDefaultLocation(runPayload as unknown as WorkspaceData);
 
       const requestId = crypto.randomUUID();
       const message: SidecarCommand = {
@@ -1434,6 +1434,8 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
               onClose={() => setIsConsoleOpen(false)}
               canClose={activeTab !== "workspace"}
               className="h-full border-0"
+              baseUrl={baseUrl}
+              showToast={showToast}
             />
           </div>
         </div>

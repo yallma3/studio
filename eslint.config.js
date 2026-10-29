@@ -30,6 +30,18 @@ export default tseslint.config(
           varsIgnorePattern: "^_",
         },
       ],
+      // Native <select> popups are painted by the OS (light), which is
+      // unreadable against the app's dark surface. All dropdowns must use the
+      // shared Select, which draws its own dark option list.
+      // See .agents/plans/plan_261021_dropdown-style-consistency.md.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXOpeningElement[name.name='select']",
+          message:
+            "Use the shared Select (src/shared/components/ui/select.tsx) instead of a native <select>.",
+        },
+      ],
     },
   }
 );

@@ -445,6 +445,58 @@ global.WebSocket = vi.fn().mockImplementation(() => mockWS) as any;
 
       expect(mockCallback).not.toHaveBeenCalled();
     });
+
+    it('should register and call workspace artifacts callbacks', () => {
+      const mockCallback = vi.fn();
+      client.onWorkspaceArtifacts(mockCallback);
+
+      client.connect();
+      mockWS.readyState = 1;
+      mockWS.onopen();
+
+      const testPayload = {
+        workspace: 'Test Workspace',
+        workspaceId: 'ws-1',
+        artifacts: [
+          {
+            filename: 'test.txt',
+            format: 'text' as const,
+            downloadUrl: '/output/download/test.txt?token=123',
+            viewUrl: '/output/view/test.txt?token=123',
+          },
+        ],
+      };
+      const testCommand: SidecarCommand = {
+        type: 'workspace_artifacts',
+        data: testPayload,
+      };
+      mockWS.onmessage({ data: JSON.stringify(testCommand) });
+
+      expect(mockCallback).toHaveBeenCalledWith(testPayload);
+    });
+
+    it('should remove workspace artifacts callbacks via unsubscribe function and offWorkspaceArtifacts', () => {
+      const mockCallback1 = vi.fn();
+      const mockCallback2 = vi.fn();
+      const unsubscribe1 = client.onWorkspaceArtifacts(mockCallback1);
+      client.onWorkspaceArtifacts(mockCallback2);
+
+      unsubscribe1();
+      client.offWorkspaceArtifacts(mockCallback2);
+
+      client.connect();
+      mockWS.readyState = 1;
+      mockWS.onopen();
+
+      const testCommand: SidecarCommand = {
+        type: 'workspace_artifacts',
+        data: { workspace: 'W', workspaceId: '1', artifacts: [] },
+      };
+      mockWS.onmessage({ data: JSON.stringify(testCommand) });
+
+      expect(mockCallback1).not.toHaveBeenCalled();
+      expect(mockCallback2).not.toHaveBeenCalled();
+    });
   });
 
   describe('Error Handling', () => {

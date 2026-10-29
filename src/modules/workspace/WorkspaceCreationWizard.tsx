@@ -1622,44 +1622,33 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         {workspaceData.trigger?.type === "scheduled" && selectedWebhookType === null && (
                           <div className="space-y-4 p-4 bg-zinc-900/50 rounded-lg border border-zinc-700">
                             {/* Preset Dropdown */}
-                            <div>
-                              <label className="block text-sm font-medium text-gray-300 mb-2">
-                                {t("workspaces.schedulePreset", "Schedule Preset")}
-                              </label>
-                              <select
-                                value={workspaceData.trigger.config.cronExpression || '0 9 * * *'}
-                                onChange={(e) => handleTriggerConfigChange("cronExpression", e.target.value)}
-                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                              >
-                                {CRON_PRESETS.map((preset) => (
-                                  <option key={preset.value} value={preset.value}>
-                                    {preset.label} - {preset.description}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
+                            <Select
+                              label={t("workspaces.schedulePreset", "Schedule Preset")}
+                              value={workspaceData.trigger.config.cronExpression || '0 9 * * *'}
+                              onChange={(value) => handleTriggerConfigChange("cronExpression", value)}
+                              options={CRON_PRESETS.map((preset) => ({
+                                value: preset.value,
+                                label: `${preset.label} - ${preset.description}`,
+                              }))}
+                            />
 
                             {/* Timezone */}
-                            <div>
-                              <label className="block text-sm font-medium text-gray-300 mb-2">
-                                {t("workspaces.timezone", "Timezone")}
-                              </label>
-                              <select
-                                value={workspaceData.trigger.config.timezone || getUserTimezone()}
-                                onChange={(e) =>
-                                  handleTriggerConfigChange("timezone", e.target.value)
-                                }
-                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                              >
-                                <option value={getUserTimezone()}>{getUserTimezone()} (Local)</option>
-                                <option value="UTC">UTC</option>
-                                <option value="America/New_York">America/New_York (EST/EDT)</option>
-                                <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
-                                <option value="Europe/London">Europe/London (GMT/BST)</option>
-                                <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
-                                <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
-                              </select>
-                            </div>
+                            <Select
+                              label={t("workspaces.timezone", "Timezone")}
+                              value={workspaceData.trigger.config.timezone || getUserTimezone()}
+                              onChange={(value) =>
+                                handleTriggerConfigChange("timezone", value)
+                              }
+                              options={[
+                                { value: getUserTimezone(), label: `${getUserTimezone()} (Local)` },
+                                ...(getUserTimezone() === "UTC" ? [] : [{ value: "UTC", label: "UTC" }]),
+                                { value: "America/New_York", label: "America/New_York (EST/EDT)" },
+                                { value: "America/Los_Angeles", label: "America/Los_Angeles (PST/PDT)" },
+                                { value: "Europe/London", label: "Europe/London (GMT/BST)" },
+                                { value: "Asia/Tokyo", label: "Asia/Tokyo (JST)" },
+                                { value: "Australia/Sydney", label: "Australia/Sydney (AEST/AEDT)" },
+                              ]}
+                            />
 
                             {/* Description */}
                             <div>

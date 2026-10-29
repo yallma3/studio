@@ -13,7 +13,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { ConsoleEvent } from "../types/Types";
+import { ConsoleEvent, WorkspaceArtifact, WorkspaceArtifactsPayload } from "../types/Types";
 import { sidecarClient, SidecarCommand } from "../../api/SidecarClient";
 
 export interface PendingPromptData {
@@ -28,9 +28,11 @@ export interface PendingPromptData {
 interface ConsoleContextType {
   events: ConsoleEvent[];
   pendingPrompts: PendingPromptData[];
+  latestArtifacts: WorkspaceArtifact[];
   addEvent: (event: ConsoleEvent) => void;
   sendInput: (input: string) => void;
   clearEvents: () => void;
+  clearArtifacts: () => void;
 }
 
 const ConsoleContext = createContext<ConsoleContextType | undefined>(undefined);
@@ -48,6 +50,7 @@ export const ConsoleProvider: React.FC<ConsoleProviderProps> = ({
   const [events, setEvents] = useState<ConsoleEvent[]>([]);
   const [pendingPrompts, setPendingPrompts] = useState<PendingPromptData[]>([]);
   const [consumedPromptIds, setConsumedPromptIds] = useState<string[]>([]);
+  const [latestArtifacts, setLatestArtifacts] = useState<WorkspaceArtifact[]>([]);
 
   const WAITING_FOR_INPUT = t(
     "workspaceTab.waitingForInput",
@@ -62,6 +65,11 @@ export const ConsoleProvider: React.FC<ConsoleProviderProps> = ({
     setEvents([]);
     setPendingPrompts([]);
     setConsumedPromptIds([]);
+    setLatestArtifacts([]);
+  }, []);
+
+  const clearArtifacts = useCallback(() => {
+    setLatestArtifacts([]);
   }, []);
 
   const sendInput = useCallback(
@@ -203,23 +211,46 @@ export const ConsoleProvider: React.FC<ConsoleProviderProps> = ({
       addEvent(event);
     };
 
+    const handleWorkspaceArtifacts = (payload: WorkspaceArtifactsPayload) => {
+      if (
+        payload &&
+        payload.workspaceId === workspaceId &&
+        Array.isArray(payload.artifacts)
+      ) {
+        const validArtifacts = payload.artifacts.filter(
+          (a): a is WorkspaceArtifact =>
+            Boolean(
+              a &&
+                typeof a.filename === "string" &&
+                typeof a.format === "string" &&
+                typeof a.downloadUrl === "string"
+            )
+        );
+        setLatestArtifacts(validArtifacts);
+      }
+    };
+
     sidecarClient.onCommand(handleSidecarCommand);
     sidecarClient.onConsoleEvent(handleConsoleEvent);
+    const unsubscribeArtifacts = sidecarClient.onWorkspaceArtifacts(handleWorkspaceArtifacts);
 
     return () => {
       sidecarClient.offCommand(handleSidecarCommand);
       sidecarClient.offConsoleEvent(handleConsoleEvent);
+      unsubscribeArtifacts();
     };
-  }, [addEvent]);
+  }, [addEvent, workspaceId]);
 
   return (
     <ConsoleContext.Provider
       value={{
         events,
         pendingPrompts,
+        latestArtifacts,
         addEvent,
         sendInput,
         clearEvents,
+        clearArtifacts,
       }}
     >
       {children}

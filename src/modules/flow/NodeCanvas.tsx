@@ -48,6 +48,7 @@ import {
   getSocketPosition,
 } from "./utils/socketUtils";
 import { saveCanvasState, CanvasState } from "./utils/storageUtils";
+import { serializeCanvasForStorage, CANVAS_SCHEMA_VERSION } from "./serialization";
 import { generateConnectionPath } from "./utils/connectionUtils";
 import { duplicateNode } from "./utils/nodeOperations";
 import { useCanvasState } from "./hooks/useCanvasState";
@@ -542,9 +543,15 @@ const NodeCanvas: React.FC<{
         connections,
         nextNodeId: nextNodeId.current,
       };
+      const serializedCanvas = serializeCanvasForStorage(canvasState);
       let exportData: WorkflowFile;
       if (workflowMeta) {
-        exportData = { ...workflowMeta, canvasState, updatedAt: Date.now() };
+        exportData = {
+          ...workflowMeta,
+          canvasState: serializedCanvas as unknown as CanvasState,
+          schemaVersion: CANVAS_SCHEMA_VERSION,
+          updatedAt: Date.now(),
+        };
       } else {
         exportData = {
           id: canvasState.graphId,
@@ -552,7 +559,8 @@ const NodeCanvas: React.FC<{
           description: "Workflow exported from canvas",
           createdAt: Date.now(),
           updatedAt: Date.now(),
-          canvasState,
+          canvasState: serializedCanvas as unknown as CanvasState,
+          schemaVersion: CANVAS_SCHEMA_VERSION,
         };
       }
       const filePath = await save({
@@ -681,7 +689,6 @@ const NodeCanvas: React.FC<{
 
     sidecarClient.onCommand(handleSidecarCommand);
     return () => sidecarClient.offCommand(handleSidecarCommand);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hideToast = () => {

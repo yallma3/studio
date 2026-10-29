@@ -27,7 +27,7 @@ const EventResultDialog: React.FC<EventResultDialogProps> = ({
   onClose,
   event,
 }) => {
-  if (!isOpen || !event || !event.results) return null;
+  if (!isOpen || !event || event.results == null) return null;
 
   const formatTimestamp = (timestamp: number) => {
     return new Date(timestamp).toLocaleString();
