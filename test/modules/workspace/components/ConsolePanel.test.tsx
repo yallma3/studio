@@ -147,4 +147,33 @@ describe("ConsolePanel - Artifacts Integration", () => {
       expect(screen.getByText('{"status": "completed"}')).toBeDefined();
     });
   });
+
+  it("should open dialog when previewing an empty artifact (content is empty string)", async () => {
+    vi.spyOn(ConsoleContextModule, "useConsole").mockReturnValue({
+      events: [],
+      pendingPrompts: [],
+      latestArtifacts: [mockArtifacts[0]],
+      addEvent: vi.fn(),
+      sendInput: vi.fn(),
+      clearEvents: vi.fn(),
+      clearArtifacts: vi.fn(),
+    });
+
+    vi.spyOn(fileDownloadUtils, "fetchArtifactContent").mockResolvedValue("");
+
+    render(
+      <ConsolePanel
+        baseUrl="http://localhost:3001"
+        showToast={mockShowToast}
+      />
+    );
+
+    const previewBtn = screen.getByTitle("Preview artifact content");
+    fireEvent.click(previewBtn);
+
+    await waitFor(() => {
+      // The EventResultDialog title and close button should be visible
+      expect(screen.getByText("Result")).toBeDefined();
+    });
+  });
 });

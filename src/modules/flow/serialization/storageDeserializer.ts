@@ -93,8 +93,15 @@ export function rehydrateNode(
   if (template) {
     // 1. Reconstruct sockets
     let sockets: Socket[] = [];
-    if (Array.isArray(rawNode.dynamicSockets) && rawNode.dynamicSockets.length > 0) {
-      sockets = rawNode.dynamicSockets.map((s: StoredSocket, idx: number) => ({
+    const storedSockets: StoredSocket[] | null =
+      Array.isArray(rawNode.dynamicSockets) && rawNode.dynamicSockets.length > 0
+        ? (rawNode.dynamicSockets as StoredSocket[])
+        : Array.isArray(rawNode.sockets) && rawNode.sockets.length > 0
+        ? (rawNode.sockets as StoredSocket[])
+        : null;
+
+    if (storedSockets) {
+      sockets = storedSockets.map((s: StoredSocket, idx: number) => ({
         id: typeof s.id === "number" ? s.id : id * 100 + (idx + 1),
         title: s.title || `socket_${idx + 1}`,
         type: s.type === "output" ? "output" : "input",

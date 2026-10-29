@@ -152,6 +152,30 @@ describe('Select accessibility', () => {
     expect(control).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('stops Escape propagation when open, but allows propagation when closed', () => {
+    const parentEscapeHandler = vi.fn();
+    render(
+      <div onKeyDown={(e) => e.key === 'Escape' && parentEscapeHandler()}>
+        <Select id="esc-prop-select" value="a" options={options} onChange={() => {}} />
+      </div>
+    );
+
+    const control = screen.getByRole('combobox');
+
+    // 1. When closed, Escape propagates to parent
+    fireEvent.keyDown(control, { key: 'Escape' });
+    expect(parentEscapeHandler).toHaveBeenCalledTimes(1);
+
+    // 2. Open the select
+    fireEvent.keyDown(control, { key: 'ArrowDown' });
+    expect(control).toHaveAttribute('aria-expanded', 'true');
+
+    // 3. When open, Escape stops propagation and closes the listbox
+    fireEvent.keyDown(control, { key: 'Escape' });
+    expect(control).toHaveAttribute('aria-expanded', 'false');
+    expect(parentEscapeHandler).toHaveBeenCalledTimes(1);
+  });
+
   it('applies the requested size to the trigger', () => {
     const { rerender } = render(
       <Select id="size-select" value="a" options={options} onChange={() => {}} />

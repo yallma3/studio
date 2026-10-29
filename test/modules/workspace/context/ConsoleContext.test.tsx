@@ -19,7 +19,7 @@ import {
   useConsole,
 } from "@/modules/workspace/context/ConsoleContext";
 import { sidecarClient } from "@/modules/api/SidecarClient";
-import { WorkspaceArtifactsPayload } from "@/modules/workspace/types/Types";
+import { WorkspaceArtifact, WorkspaceArtifactsPayload } from "@/modules/workspace/types/Types";
 
 // Mock i18n
 vi.mock("react-i18next", () => ({
@@ -132,7 +132,7 @@ describe("ConsoleContext - Artifact Lifecycle", () => {
     act(() => {
       artifactsCallback!({
         workspace: "W",
-        workspaceId: "1",
+        workspaceId: "ws-test",
         artifacts: [
           {
             filename: "file.txt",
@@ -171,7 +171,7 @@ describe("ConsoleContext - Artifact Lifecycle", () => {
     act(() => {
       artifactsCallback!({
         workspace: "W",
-        workspaceId: "1",
+        workspaceId: "ws-test",
         artifacts: [
           {
             filename: "file.txt",
@@ -190,5 +190,76 @@ describe("ConsoleContext - Artifact Lifecycle", () => {
     });
 
     expect(screen.getByTestId("artifacts-count").textContent).toBe("0");
+  });
+
+  it("should ignore artifacts belonging to a different workspace", () => {
+    let artifactsCallback: ((payload: WorkspaceArtifactsPayload) => void) | null = null;
+    vi.spyOn(sidecarClient, "onWorkspaceArtifacts").mockImplementation((cb) => {
+      artifactsCallback = cb;
+      return () => {
+        artifactsCallback = null;
+      };
+    });
+
+    render(
+      <ConsoleProvider workspaceId="ws-test">
+        <TestConsumer />
+      </ConsoleProvider>
+    );
+
+    act(() => {
+      artifactsCallback!({
+        workspace: "OtherWorkspace",
+        workspaceId: "ws-other",
+        artifacts: [
+          {
+            filename: "other.txt",
+            format: "text",
+            downloadUrl: "/url",
+            viewUrl: "/url",
+          },
+        ],
+      });
+    });
+
+    expect(screen.getByTestId("artifacts-count").textContent).toBe("0");
+  });
+
+  it("should filter out malformed or null artifact entries", () => {
+    let artifactsCallback: ((payload: WorkspaceArtifactsPayload) => void) | null = null;
+    vi.spyOn(sidecarClient, "onWorkspaceArtifacts").mockImplementation((cb) => {
+      artifactsCallback = cb;
+      return () => {
+        artifactsCallback = null;
+      };
+    });
+
+    render(
+      <ConsoleProvider workspaceId="ws-test">
+        <TestConsumer />
+      </ConsoleProvider>
+    );
+
+    act(() => {
+      artifactsCallback!({
+        workspace: "TestWorkspace",
+        workspaceId: "ws-test",
+        artifacts: [
+          null as unknown as WorkspaceArtifact,
+          {
+            filename: "valid.txt",
+            format: "text",
+            downloadUrl: "/url",
+            viewUrl: "/url",
+          },
+          {
+            filename: "no-format.txt",
+          } as unknown as WorkspaceArtifact,
+        ],
+      });
+    });
+
+    expect(screen.getByTestId("artifacts-count").textContent).toBe("1");
+    expect(screen.getByTestId("artifact-item").textContent).toContain("valid.txt (text)");
   });
 });

@@ -141,14 +141,33 @@ describe("fileDownloadUtils", () => {
       );
       expect(mockWriteTextFile).not.toHaveBeenCalled();
     });
+
+    it("should handle unexpected error during desktop save dialog", async () => {
+      mockSave.mockRejectedValue(new Error("Dialog IPC failed"));
+
+      await expect(
+        downloadArtifact(sampleTxtArtifact, "http://localhost:3001", {
+          showToast: mockShowToast,
+        })
+      ).rejects.toThrow("Dialog IPC failed");
+
+      expect(mockShowToast).toHaveBeenCalledWith("Dialog IPC failed", "error");
+    });
   });
 
   describe("downloadArtifact in Web Browser Mode", () => {
     beforeEach(() => {
       delete (window as any).__TAURI_INTERNALS__;
+      window.URL.createObjectURL = vi.fn().mockReturnValue("blob:http://localhost:3002/mock-blob-id");
+      window.URL.revokeObjectURL = vi.fn();
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        blob: () => Promise.resolve(new Blob(["content"])),
+      } as any);
     });
 
-    it("should create an anchor element, set download attributes, click, and clean up", async () => {
+    it("should fetch blob, create object url, trigger anchor click, and clean up", async () => {
       const appendChildSpy = vi.spyOn(document.body, "appendChild");
       const removeChildSpy = vi.spyOn(document.body, "removeChild");
 
@@ -168,12 +187,53 @@ describe("fileDownloadUtils", () => {
         showToast: mockShowToast,
       });
 
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/output/download/output_123.txt?token=test-token"
+      );
+      expect(window.URL.createObjectURL).toHaveBeenCalled();
       expect(appendChildSpy).toHaveBeenCalled();
       expect(removeChildSpy).toHaveBeenCalled();
+      expect(window.URL.revokeObjectURL).toHaveBeenCalledWith("blob:http://localhost:3002/mock-blob-id");
       expect(clicked).toBe(true);
       expect(mockShowToast).toHaveBeenCalledWith(
         expect.stringContaining("Downloading output_123.txt"),
         "success"
+      );
+    });
+
+    it("should handle expired token in browser mode with error toast", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+      } as any);
+
+      await expect(
+        downloadArtifact(sampleTxtArtifact, "http://localhost:3001", {
+          showToast: mockShowToast,
+        })
+      ).rejects.toThrow(/expired or invalid/i);
+
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.stringContaining("expired"),
+        "error"
+      );
+    });
+
+    it("should handle HTTP 500 error in browser mode", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+      } as any);
+
+      await expect(
+        downloadArtifact(sampleTxtArtifact, "http://localhost:3001", {
+          showToast: mockShowToast,
+        })
+      ).rejects.toThrow(/HTTP 500/i);
+
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.stringContaining("HTTP 500"),
+        "error"
       );
     });
   });

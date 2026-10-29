@@ -548,7 +548,7 @@ const NodeCanvas: React.FC<{
       if (workflowMeta) {
         exportData = {
           ...workflowMeta,
-          canvasState: serializedCanvas as any,
+          canvasState: serializedCanvas as unknown as CanvasState,
           schemaVersion: CANVAS_SCHEMA_VERSION,
           updatedAt: Date.now(),
         };
@@ -559,7 +559,7 @@ const NodeCanvas: React.FC<{
           description: "Workflow exported from canvas",
           createdAt: Date.now(),
           updatedAt: Date.now(),
-          canvasState: serializedCanvas as any,
+          canvasState: serializedCanvas as unknown as CanvasState,
           schemaVersion: CANVAS_SCHEMA_VERSION,
         };
       }
@@ -689,7 +689,6 @@ const NodeCanvas: React.FC<{
 
     sidecarClient.onCommand(handleSidecarCommand);
     return () => sidecarClient.offCommand(handleSidecarCommand);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hideToast = () => {

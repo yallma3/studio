@@ -46,22 +46,22 @@ export async function downloadArtifact(
   const fullUrl = resolveUrl(baseUrl, artifact.downloadUrl);
 
   if (isTauriEnvironment()) {
-    const { save } = await import("@tauri-apps/plugin-dialog");
-    const { writeTextFile } = await import("@tauri-apps/plugin-fs");
-
-    const targetPath = await save({
-      defaultPath: artifact.filename,
-      filters:
-        artifact.format === "json"
-          ? [{ name: "JSON", extensions: ["json"] }]
-          : [{ name: "Text", extensions: ["txt"] }],
-    });
-
-    if (!targetPath) {
-      return;
-    }
-
     try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+
+      const targetPath = await save({
+        defaultPath: artifact.filename,
+        filters:
+          artifact.format === "json"
+            ? [{ name: "JSON", extensions: ["json"] }]
+            : [{ name: "Text", extensions: ["txt"] }],
+      });
+
+      if (!targetPath) {
+        return;
+      }
+
       const res = await fetch(fullUrl);
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
@@ -85,13 +85,36 @@ export async function downloadArtifact(
       throw error;
     }
   } else {
-    const link = document.createElement("a");
-    link.href = fullUrl;
-    link.download = artifact.filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    options?.showToast?.(`Downloading ${artifact.filename}...`, "success");
+    try {
+      const res = await fetch(fullUrl);
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          const msg = "Download link expired or invalid token. Please re-run the workspace.";
+          options?.showToast?.(msg, "error");
+          throw new Error(msg);
+        }
+        const errorMsg = `Download failed: HTTP ${res.status}`;
+        options?.showToast?.(errorMsg, "error");
+        throw new Error(errorMsg);
+      }
+
+      const blob = await res.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = artifact.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(objectUrl);
+      options?.showToast?.(`Downloading ${artifact.filename}...`, "success");
+    } catch (error) {
+      if (!(error instanceof Error) || (!error.message.includes("Download link expired") && !error.message.includes("Download failed"))) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        options?.showToast?.(errorMsg, "error");
+      }
+      throw error;
+    }
   }
 }
 

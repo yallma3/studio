@@ -157,7 +157,7 @@ export type Connection = {
   label?: string; // Optional label like "context", "trigger", etc.
 };
 
-export const CANVAS_SCHEMA_VERSION = 1;
+export { CANVAS_SCHEMA_VERSION } from "../serialization/types";
 
 export function createNode(
   id: number,

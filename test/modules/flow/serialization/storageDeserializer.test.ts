@@ -189,4 +189,32 @@ describe("storageDeserializer (Goal 1: Rehydration & Compatibility)", () => {
     expect(llmNode.nodeValue).toBeUndefined();
     expect(llmNode.getConfigParameter!("model")?.paramValue).toBe("mistral:latest");
   });
+
+  it("should preserve legacy node.sockets with custom IDs when dynamicSockets is absent", () => {
+    const legacyJoinNodeWorkflow = {
+      graphId: "wf-legacy-join",
+      nodes: [
+        {
+          id: 5,
+          nodeType: "Prompt",
+          title: "Custom Sockets Node",
+          x: 200,
+          y: 200,
+          sockets: [
+            { id: 501, title: "Input A", type: "input", nodeId: 5 },
+            { id: 5111, title: "Custom Output", type: "output", nodeId: 5 },
+          ],
+        },
+      ],
+      connections: [],
+    };
+
+    const canvas = deserializeWorkflowFromStorage(legacyJoinNodeWorkflow, sampleRegistryNodes);
+    expect(canvas.nodes.length).toBe(1);
+    const node = canvas.nodes[0];
+    expect(node.sockets?.length).toBe(2);
+    expect(node.sockets?.[0].id).toBe(501);
+    expect(node.sockets?.[1].id).toBe(5111);
+    expect(node.sockets?.[1].title).toBe("Custom Output");
+  });
 });

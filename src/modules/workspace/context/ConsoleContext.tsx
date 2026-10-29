@@ -212,8 +212,21 @@ export const ConsoleProvider: React.FC<ConsoleProviderProps> = ({
     };
 
     const handleWorkspaceArtifacts = (payload: WorkspaceArtifactsPayload) => {
-      if (payload && Array.isArray(payload.artifacts)) {
-        setLatestArtifacts(payload.artifacts);
+      if (
+        payload &&
+        payload.workspaceId === workspaceId &&
+        Array.isArray(payload.artifacts)
+      ) {
+        const validArtifacts = payload.artifacts.filter(
+          (a): a is WorkspaceArtifact =>
+            Boolean(
+              a &&
+                typeof a.filename === "string" &&
+                typeof a.format === "string" &&
+                typeof a.downloadUrl === "string"
+            )
+        );
+        setLatestArtifacts(validArtifacts);
       }
     };
 
@@ -226,7 +239,7 @@ export const ConsoleProvider: React.FC<ConsoleProviderProps> = ({
       sidecarClient.offConsoleEvent(handleConsoleEvent);
       unsubscribeArtifacts();
     };
-  }, [addEvent]);
+  }, [addEvent, workspaceId]);
 
   return (
     <ConsoleContext.Provider

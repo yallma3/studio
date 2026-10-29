@@ -263,7 +263,13 @@ describe('Flow Storage Utils Testing', () => {
       const result = await loadCanvasState();
 
       // Assert
-      expect(result).toEqual(JSON.parse(savedState));
+      expect(result).toEqual({
+        canvasState: expect.objectContaining({
+          graphId: 'gf-123abc',
+          graphName: 'Test Graph',
+        }),
+        newGraphId: expect.any(String),
+      });
       expect(consoleLogSpy).toHaveBeenCalledWith('Fallback: Canvas state loaded from localStorage');
 
       // Cleanup

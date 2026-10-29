@@ -187,7 +187,7 @@ export const loadCanvasState = async (): Promise<{
         const parsedContent = JSON.parse(savedState);
         console.log("Fallback: Canvas state loaded from localStorage");
         const canvasState = deserializeCanvasFromStorage(parsedContent);
-        return canvasState as any;
+        return { canvasState, newGraphId: generateGraphId() };
       } catch (parseError) {
         console.error(
           "Failed to parse saved canvas state from localStorage:",

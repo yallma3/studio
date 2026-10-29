@@ -246,7 +246,9 @@ describe('NodeEditPanel Component', () => {
 
         const combobox = screen.getByRole('combobox', { name: 'Operator' });
         fireEvent.click(combobox.firstElementChild as Element);
-        fireEvent.click(screen.getByRole('option', { name: 'Not Equals' }));
+        const option = screen.getByRole('option', { name: 'Not Equals' });
+        fireEvent.mouseDown(option);
+        fireEvent.click(option);
 
         // The popup is portalled outside the panel; selecting an option must
         // not be treated as an outside click that closes the panel.

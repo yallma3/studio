@@ -62,9 +62,11 @@ export const saveWorkflowToFile = async (
     const fileName = `${workflow.id}.json`;
     const filePath = await join(flowsDir, fileName);
 
-    const workflowData = {
+    const workflowData: WorkflowFile = {
       ...workflow,
-      canvasState: workflow.canvasState ? (serializeCanvasForStorage(workflow.canvasState) as any) : workflow.canvasState,
+      canvasState: workflow.canvasState
+        ? (serializeCanvasForStorage(workflow.canvasState) as unknown as CanvasState)
+        : workflow.canvasState,
       updatedAt: Date.now(),
       schemaVersion: workflow.schemaVersion ?? CANVAS_SCHEMA_VERSION,
     };
