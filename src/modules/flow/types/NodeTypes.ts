@@ -81,6 +81,7 @@ export interface BaseNode {
   id: number;
   category: string;
   title: string;
+  customTitle?: string;
   nodeType: string;
   description?: string;
   nodeValue?: NodeValue;
@@ -156,25 +157,29 @@ export type Connection = {
   label?: string; // Optional label like "context", "trigger", etc.
 };
 
+export const CANVAS_SCHEMA_VERSION = 1;
+
 export function createNode(
   id: number,
   position: Position,
   node: BaseNode,
   duplicate: boolean = false
 ): BaseNode {
-  const sockets: Socket[] = node.sockets.map((socket, idx) => ({
+  const sockets: Socket[] = (node.sockets ?? []).map((socket, idx) => ({
     ...socket,
     id: id * 100 + (idx + 1),
     nodeId: id,
   }));
-  let configParam = null;
-  if (!duplicate) {
-    configParam = node.configParameters?.map((param) => ({
-      ...param,
-      paramValue: param.defaultValue,
-    }));
-  } else {
-    configParam = node.configParameters?.map((param) => ({ ...param }));
+  let configParam: ConfigParameterType[] | undefined = undefined;
+  if (node.configParameters) {
+    if (!duplicate) {
+      configParam = node.configParameters.map((param) => ({
+        ...param,
+        paramValue: param.defaultValue,
+      }));
+    } else {
+      configParam = node.configParameters.map((param) => ({ ...param }));
+    }
   }
 
   return {
