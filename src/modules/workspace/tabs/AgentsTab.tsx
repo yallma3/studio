@@ -258,14 +258,14 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                       <button
                         className="flex items-center justify-center w-8 h-8 text-[#FFC72C] hover:text-[#FFD65C] hover:bg-[#FFC72C]/10 rounded-lg transition-all duration-200"
                         onClick={() => handleShowAgentDialog(true, agent)}
-                        title={t("agentsTab.editAgent", "Edit agent")}
+                        title={t("agentsTab.editAgent", "Edit Agent")}
                       >
                         <Edit size={14} />
                       </button>
                       <button
                         className="flex items-center justify-center w-8 h-8 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-all duration-200"
                         onClick={() => handleAgentDelete(agent.id)}
-                        title={t("agentsTab.deleteAgent", "Delete agent")}
+                        title={t("agentsTab.deleteAgent", "Delete Agent")}
                       >
                         <Trash2 size={14} />
                       </button>

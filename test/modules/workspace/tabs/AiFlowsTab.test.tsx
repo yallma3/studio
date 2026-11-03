@@ -45,7 +45,19 @@ describe("AiFlowsTab", () => {
       canvasState: {
         graphId: "gf-1",
         graphName: "First Workflow",
-        nodes: [{ id: 1, type: "test", title: "Test", inputs: [], outputs: [], position: { x: 0, y: 0 }, data: {} }],
+        nodes: [
+          {
+            id: 1,
+            nodeType: "test",
+            category: "test",
+            title: "Test",
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100,
+            sockets: [],
+          },
+        ],
         connections: [],
         nextNodeId: 2,
       },
@@ -107,6 +119,9 @@ describe("AiFlowsTab", () => {
       { id: "mcp-2", type: "mcp", name: "Beta MCP", description: "Beta description" },
       { id: "mcp-1", type: "mcp", name: "Alpha MCP", description: "Alpha description" },
     ],
+    createdAt: 1000,
+    updatedAt: 1000,
+    environmentVariables: [],
   };
 
   beforeEach(() => {
@@ -123,7 +138,10 @@ describe("AiFlowsTab", () => {
       if (!existing) return null;
       return { ...existing, ...updates, updatedAt: Date.now() };
     });
-    vi.spyOn(storageUtils, "saveWorkspaceToDefaultLocation").mockResolvedValue(undefined);
+    vi.spyOn(storageUtils, "saveWorkspaceToDefaultLocation").mockResolvedValue({
+      path: "/mock/path",
+      workspaceState: null,
+    });
   });
 
   it("maintains stable card ordering matching workspaceData rather than updatedAt", async () => {

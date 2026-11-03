@@ -247,8 +247,8 @@
     "addNewTask": "Add New Task"
   },
   "agentsTab": {
-    "editAgent": "Edit agent",
-    "deleteAgent": "Delete agent",
+    "editAgent": "Edit Agent",
+    "deleteAgent": "Delete Agent",
     "workspaceDefault": "Workspace Default",
     "background": "Background",
     "capabilities": "Capabilities"
