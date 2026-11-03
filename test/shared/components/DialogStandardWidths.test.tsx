@@ -19,6 +19,8 @@ import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import { DeleteConfirmationDialog } from '@/shared/components/DeleteConfirmationDialog';
 import UserPromptDialog from '@/modules/flow/components/UserPromptDialog';
 import ToolSelectionPopup from '@/shared/components/ToolSelectionPopup';
+import { McpEditDialog } from '@/modules/workspace/components/McpEditDialog';
+import AddToolOrWorkflowDialog from '@/shared/components/AddToolOrWorkflowDialog';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -100,6 +102,48 @@ describe('Standardized Dialog Width Architecture & Scrollbars', () => {
       const dialogPanel = container.querySelector('.dialog-md');
       expect(dialogPanel).toBeInTheDocument();
       expect(dialogPanel?.className).toContain('max-w-lg');
+    });
+
+    it('McpEditDialog uses dialog-lg and max-w-2xl matching Edit Agent (Tier 3)', () => {
+      const { container } = render(
+        <McpEditDialog
+          isOpen={true}
+          onClose={vi.fn()}
+          onSave={vi.fn()}
+          mcpTool={{
+            id: 'mcp-1',
+            name: 'Test MCP',
+            description: 'Test Description',
+            type: 'STDIO',
+            parameters: { command: 'npx', args: [] },
+            createdAt: 1000,
+            updatedAt: 2000,
+          }}
+          baseUrl="http://localhost:8000"
+        />
+      );
+
+      const dialogPanel = container.querySelector('.dialog-lg');
+      expect(dialogPanel).toBeInTheDocument();
+      expect(dialogPanel?.className).toContain('max-w-2xl');
+      expect(dialogPanel?.className).toContain('overflow-hidden');
+    });
+
+    it('AddToolOrWorkflowDialog uses dialog-lg and max-w-2xl matching Edit Agent (Tier 3)', () => {
+      const { container } = render(
+        <AddToolOrWorkflowDialog
+          isOpen={true}
+          onClose={vi.fn()}
+          onSaveWorkflow={vi.fn()}
+          onSaveMcpTool={vi.fn()}
+          baseUrl="http://localhost:8000"
+        />
+      );
+
+      const dialogPanel = container.querySelector('.dialog-lg');
+      expect(dialogPanel).toBeInTheDocument();
+      expect(dialogPanel?.className).toContain('max-w-2xl');
+      expect(dialogPanel?.className).toContain('overflow-hidden');
     });
   });
 
