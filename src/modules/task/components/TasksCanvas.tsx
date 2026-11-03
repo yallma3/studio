@@ -66,6 +66,8 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLDivElement>(null);
   const fitToViewRef = useRef<() => void>(() => {});
+  const centerViewRef = useRef<() => void>(() => {});
+  const centeredWithTasksRef = useRef(false);
   const [viewport, setViewport] = useState<ViewportState>({
     x: 50, // Start with a small offset to show tasks
     y: 50,
@@ -364,6 +366,46 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     []
   );
 
+  const centerView = useCallback(
+    (targetZoom = DEFAULT_ZOOM) => {
+      const positions = tasks.map((task) => task.position);
+      if (triggerPosition && trigger) {
+        positions.push(triggerPosition);
+      }
+
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect || rect.width === 0 || rect.height === 0) return;
+
+      if (positions.length === 0) {
+        // Empty canvas: default to targetZoom centered
+        setViewport({
+          x: Math.round((rect.width / 2) * 100) / 100,
+          y: Math.round((rect.height / 2) * 100) / 100,
+          zoom: targetZoom,
+        });
+        return;
+      }
+
+      const minX = Math.min(...positions.map((p) => p.x));
+      const maxX = Math.max(...positions.map((p) => p.x)) + NODE_WIDTH;
+      const minY = Math.min(...positions.map((p) => p.y));
+      const maxY = Math.max(...positions.map((p) => p.y)) + NODE_HEIGHT;
+
+      // Center of the nodes bounding box
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      const viewportCenterX = rect.width / 2;
+      const viewportCenterY = rect.height / 2;
+
+      setViewport({
+        x: Math.round((viewportCenterX - centerX * targetZoom) * 100) / 100,
+        y: Math.round((viewportCenterY - centerY * targetZoom) * 100) / 100,
+        zoom: targetZoom,
+      });
+    },
+    [tasks, triggerPosition, trigger]
+  );
+
   const fitToView = useCallback(() => {
     const positions = tasks.map((task) => task.position);
     if (triggerPosition && trigger) {
@@ -376,8 +418,8 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     if (positions.length === 0) {
       // Empty canvas: default to 70% zoom centered
       setViewport({
-        x: rect.width / 2,
-        y: rect.height / 2,
+        x: Math.round((rect.width / 2) * 100) / 100,
+        y: Math.round((rect.height / 2) * 100) / 100,
         zoom: DEFAULT_ZOOM,
       });
       return;
@@ -398,8 +440,8 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     const zoomX = availableWidth / contentWidth;
     const zoomY = availableHeight / contentHeight;
 
-    // Default zoom is 70% (0.7); scale down below 70% only if nodes exceed canvas bounds
-    const fitZoom = Math.max(0.1, Math.min(zoomX, zoomY, DEFAULT_ZOOM));
+    // Manual Fit To View scales content to fit; max 1.0 (100%), min 0.1 (10%)
+    const fitZoom = Math.max(0.1, Math.min(zoomX, zoomY, 1));
 
     // Center of the nodes bounding box
     const centerX = (minX + maxX) / 2;
@@ -414,12 +456,58 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     });
   }, [tasks, triggerPosition, trigger]);
 
-  // Keep ref updated with latest fitToView
+  // Keep refs updated
   fitToViewRef.current = fitToView;
+  centerViewRef.current = () => centerView(DEFAULT_ZOOM);
 
-  // Fit to view on mount and when tasks/trigger change
+  // Center nodes at default 70% zoom on initial load/mount
   useEffect(() => {
-    fitToViewRef.current();
+    const tryCenter = () => {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect || rect.width === 0 || rect.height === 0) return false;
+      centerViewRef.current();
+      return true;
+    };
+
+    if (!centeredWithTasksRef.current) {
+      if (tryCenter()) {
+        if (tasks.length > 0 || trigger) {
+          centeredWithTasksRef.current = true;
+        }
+      } else {
+        const frameId = requestAnimationFrame(() => {
+          if (tryCenter()) {
+            if (tasks.length > 0 || trigger) {
+              centeredWithTasksRef.current = true;
+            }
+          }
+        });
+        return () => cancelAnimationFrame(frameId);
+      }
+    }
+  }, [tasks.length, trigger]);
+
+  // Handle ResizeObserver for initial layout calculation if canvas dimensions are deferred
+  useEffect(() => {
+    const canvasElement = canvasRef.current;
+    if (!canvasElement) return;
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+            if (!centeredWithTasksRef.current) {
+              centerViewRef.current();
+              if (tasks.length > 0 || trigger) {
+                centeredWithTasksRef.current = true;
+              }
+            }
+          }
+        }
+      });
+      observer.observe(canvasElement);
+      return () => observer.disconnect();
+    }
   }, [tasks.length, trigger]);
 
   const handleCanvasContextMenu = useCallback(
