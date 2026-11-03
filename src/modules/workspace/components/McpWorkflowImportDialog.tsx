@@ -199,7 +199,7 @@ export const McpWorkflowImportDialog: React.FC<
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-gradient-to-br from-[#1c1c1c] to-[#161616] rounded-2xl shadow-2xl border border-zinc-700/50 p-6 max-w-2xl w-full mx-4 h-[600px] flex flex-col">
+      <div className="bg-gradient-to-br from-[#1c1c1c] to-[#161616] rounded-2xl shadow-2xl border border-zinc-700/50 p-6 dialog-lg max-w-2xl w-full mx-4 h-[600px] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">

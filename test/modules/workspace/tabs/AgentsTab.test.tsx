@@ -131,6 +131,11 @@ describe("AgentsTab", () => {
     );
 
     expect(screen.getByText("Sub Agents")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Define and manage AI agents, their roles, capabilities, and assigned tools"
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText("Add Agent")).toBeInTheDocument();
     expect(screen.getByText("Test Agent")).toBeInTheDocument();
   });
@@ -180,7 +185,7 @@ describe("AgentsTab", () => {
     );
 
     // Find and click edit button (it's in the agent card)
-    const editButton = screen.getByTitle("Edit agent");
+    const editButton = screen.getByTitle("Edit Agent");
     fireEvent.click(editButton);
 
     expect(screen.getByText("Edit Agent")).toBeInTheDocument();
@@ -197,7 +202,7 @@ describe("AgentsTab", () => {
       />
     );
 
-    const deleteButton = screen.getByTitle("Delete agent");
+    const deleteButton = screen.getByTitle("Delete Agent");
     fireEvent.click(deleteButton);
 
     expect(mockOnTabChanges).toHaveBeenCalledTimes(1);
@@ -258,7 +263,7 @@ describe("AgentsTab", () => {
     );
 
     // Open edit dialog
-    const editButton = screen.getByTitle("Edit agent");
+    const editButton = screen.getByTitle("Edit Agent");
     fireEvent.click(editButton);
 
     // Change form values

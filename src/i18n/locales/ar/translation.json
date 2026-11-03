@@ -199,6 +199,14 @@
     "addNew": "إضافة جديد",
     "importFlow": "استيراد",
     "editWorkflow": "تعديل مخطط العمل",
+    "editDescription": "تعديل الوصف",
+    "editWorkflowDescription": "تعديل وصف سير العمل",
+    "designWorkflow": "تصميم سير العمل",
+    "editMcpTool": "تعديل أداة MCP",
+    "subAgentsDescription": "تحديد وإدارة وكلاء الذكاء الاصطناعي، أدوارهم، قدراتهم، والأدوات المسندة إليهم",
+    "toolsAndWorkflowsDescription": "إنشاء وإدارة مخططات العمل المرئية وأدوات MCP المتاحة للوكلاء في مساحة العمل هذه",
+    "environmentVariablesDescription": "تكوين المتغيرات البيئية وبيانات الاعتماد الآمنة المستخدمة أثناء تنفيذ مساحة العمل",
+    "untitledWorkflow": "مخطط عمل بدون عنوان",
     "lastUpdated": "آخر تحديث",
     "selectAgent": "اختر الوكيل",
     "selectWorkflow": "اختر مخطط العمل",
@@ -240,7 +248,10 @@
     "viewResult": "عرض النتيجة",
     "enterInput": "الرجاء إدخال مدخلاتك:",
     "waitingForInput": "في انتظار إدخال المستخدم",
-    "send": "إرسال"
+    "send": "إرسال",
+    "openConsole": "فتح وحدة التحكم",
+    "closeConsole": "إغلاق وحدة التحكم",
+    "openConsoleIncoming": "رسائل جديدة واردة ({{count}}) - انقر للعرض"
   },
   "tasksTab": {
     "editTask": "تعديل المهمة",

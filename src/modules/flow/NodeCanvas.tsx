@@ -236,8 +236,26 @@ const NodeCanvas: React.FC<{
   graph: CanvasState | null;
   onReturnToHome: (updatedCanvasState?: CanvasState) => void;
   workflowMeta?: WorkflowFile | null;
-}> = ({ graph, onReturnToHome, workflowMeta }) => {
+  workspaceName?: string;
+}> = ({ graph, onReturnToHome, workflowMeta, workspaceName }) => {
   const { t } = useTranslation();
+
+  const formatLimitedText = (text: string | undefined | null, maxLen: number): string => {
+    if (!text) return "";
+    const trimmed = text.trim();
+    return trimmed.length > maxLen ? trimmed.slice(0, maxLen).trim() : trimmed;
+  };
+
+  const workflowName =
+    workflowMeta?.name ||
+    graph?.graphName ||
+    graph?.graphId ||
+    t("workspaces.untitledWorkflow", "Untitled Workflow");
+  const workflowDescription = workflowMeta?.description || "";
+
+  const workspacePrefix = formatLimitedText(workspaceName, 20);
+  const workflowPrefix = formatLimitedText(workflowName, 20);
+  const descriptionPrefix = formatLimitedText(workflowDescription, 50);
 
   const {
     nodes,
@@ -703,8 +721,11 @@ const NodeCanvas: React.FC<{
   const handleSaveCanvasState = async (graphName?: string) => {
     if (!graph) return;
     try {
-      const nameToUse = graphName || graph?.graphName;
+      const nameToUse = graphName || workflowMeta?.name || graph?.graphName;
       if (!nameToUse) { setGraphNameDialogOpen(true); return; }
+      if (graph) {
+        graph.graphName = nameToUse;
+      }
       await saveCanvasState(graph?.graphId, nodes, connections, nextNodeId.current, nameToUse);
       setFileMenuOpen(false);
       showToast(t("canvas.saveSuccess", { name: nameToUse }), "success");
@@ -835,118 +856,173 @@ const NodeCanvas: React.FC<{
           }}
         />
 
-        <div className="absolute top-5 left-5 flex gap-2 z-20 items-center justify-center">
-          <button
-            onClick={() => {
-              if (graph) {
-                const updatedCanvasState: CanvasState = {
-                  ...graph,
-                  nodes,
-                  connections,
-                  nextNodeId: nextNodeId.current,
-                };
-                onReturnToHome(updatedCanvasState);
-              } else {
-                onReturnToHome();
-              }
-            }}
-            className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20"
-            aria-label={t("canvas.returnToHome")}
-            title={t("canvas.returnToHome")}
-          >
-            <ArrowLeft size={18} className="ltr-icon" />
-          </button>
-          <p className="text-gray-400 text-xs">{graph?.graphName || graph?.graphId}</p>
-        </div>
-
-        <div className="absolute top-5 right-5 flex gap-2 z-20 items-center">
-          {iterations.length > 0 && !showIterationPanel && (
-            <button
-              onClick={() => setShowIterationPanel(true)}
-              className="flex items-center gap-1.5 bg-[#FFC72C]/10 border border-[#FFC72C]/30 text-[#FFC72C] text-xs font-mono px-3 py-2 rounded-md hover:bg-[#FFC72C]/20 transition-colors"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#FFC72C]" />
-              {iterations.length} iterations
-            </button>
-          )}
-
-          {executionError ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-1.5 max-w-[240px]">
-                <AlertCircle size={14} className="text-red-400 shrink-0" />
-                <span className="text-xs text-red-300 truncate" title={executionError.message}>
-                  {executionError.message}
-                </span>
-                <button
-                  onClick={() => setExecutionError(null)}
-                  className="text-red-400 hover:text-red-300 shrink-0 ml-1"
-                  title="Dismiss"
-                >
-                  <X size={14} />
-                </button>
-              </div>
+        <div className="absolute top-0 left-0 right-0 z-20 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm">
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-4 min-w-0">
               <button
-                className="bg-orange-600 hover:bg-orange-500 cursor-pointer px-4 transition-colors duration-200 text-white font-medium p-2 rounded-md flex items-center justify-center z-20"
-                onClick={executeFlow}
+                onClick={() => {
+                  if (graph) {
+                    const updatedCanvasState: CanvasState = {
+                      ...graph,
+                      graphName: workflowMeta?.name || graph.graphName,
+                      nodes,
+                      connections,
+                      nextNodeId: nextNodeId.current,
+                    };
+                    onReturnToHome(updatedCanvasState);
+                  } else {
+                    onReturnToHome();
+                  }
+                }}
+                className="text-zinc-400 hover:text-white p-2 rounded flex items-center cursor-pointer transition-colors"
+                aria-label={t("canvas.returnToHome")}
+                title={t("canvas.returnToHome")}
               >
-                <AlertCircle size={16} className="mr-1.5" />
-                Retry
+                <ArrowLeft className="h-4 w-4 mr-2 ltr-icon" />
+                <span>{t("common.back", "Back")}</span>
               </button>
+
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="text-xl font-semibold text-white flex items-center gap-2 min-w-0">
+                  {workspacePrefix && (
+                    <>
+                      <span
+                        className="text-zinc-400 font-normal truncate max-w-[200px]"
+                        title={workspaceName}
+                      >
+                        {workspacePrefix}
+                      </span>
+                      <span className="text-zinc-600 font-normal">/</span>
+                    </>
+                  )}
+                  <span
+                    className="truncate max-w-[200px]"
+                    title={workflowName}
+                  >
+                    {workflowPrefix}
+                  </span>
+                  {descriptionPrefix && (
+                    <>
+                      <span className="text-zinc-600 font-normal hidden sm:inline">-</span>
+                      <span
+                        className="text-sm text-zinc-400 font-normal truncate max-w-[350px] hidden sm:inline"
+                        title={workflowDescription}
+                      >
+                        {descriptionPrefix}
+                      </span>
+                    </>
+                  )}
+                </h1>
+              </div>
             </div>
-          ) : executionStatus.isExecuting ? (
-            <button
-              onClick={stopFlow}
-              className="bg-red-600 hover:bg-red-500 cursor-pointer px-4 transition-colors duration-200 text-white font-medium p-2 rounded-md flex items-center justify-center z-20"
-            >
-              <Square size={16} className="mr-1.5 fill-white" />
-              Stop
-            </button>
-          ) : (
-            <button
-              className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer px-4 transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center z-20"
-              onClick={executeFlow}
-            >
-              <Play size={18} className="ltr-icon mr-1" />
-              {t("canvas.run")}
-            </button>
-          )}
 
-          <div className="relative" ref={fileMenuRef}>
-            <button
-              onClick={toggleFileMenu}
-              className="bg-[#666] hover:bg-[#444] cursor-pointer transition-colors duration-200 text-white font-bold p-4 rounded-md flex items-center justify-center z-20"
-            >
-              <Menu size={18} className="font-bold" />
-            </button>
+            <div className="flex items-center gap-3 shrink-0">
+              {iterations.length > 0 && !showIterationPanel && (
+                <button
+                  onClick={() => setShowIterationPanel(true)}
+                  className="flex items-center gap-1.5 bg-[#FFC72C]/10 border border-[#FFC72C]/30 text-[#FFC72C] text-xs font-mono px-3 py-2 rounded-md hover:bg-[#FFC72C]/20 transition-colors cursor-pointer"
+                >
+                  <span className="w-2 h-2 rounded-full bg-[#FFC72C]" />
+                  {iterations.length} iterations
+                </button>
+              )}
 
-            {fileMenuOpen && (
-              <div className="absolute right-0 mt-1 w-56 rounded-md shadow-lg bg-[#111] ring-1 ring-black/50 focus:outline-none z-30 border border-[#FFB30055] origin-top-right animate-dropdown">
-                <div className="py-1" role="menu">
+              {executionError ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-1.5 max-w-[240px]">
+                    <AlertCircle size={14} className="text-red-400 shrink-0" />
+                    <span className="text-xs text-red-300 truncate" title={executionError.message}>
+                      {executionError.message}
+                    </span>
+                    <button
+                      onClick={() => setExecutionError(null)}
+                      className="text-red-400 hover:text-red-300 shrink-0 ml-1 cursor-pointer"
+                      title="Dismiss"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                   <button
-                    onClick={() => handleSaveCanvasState()}
-                    className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors"
+                    className="border px-3 py-2 rounded-md transition-all flex items-center gap-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border-orange-500/20 cursor-pointer"
+                    onClick={executeFlow}
+                    title="Retry"
                   >
-                    <Save size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" />
-                    {t("canvas.save")}
-                  </button>
-                  <button
-                    onClick={exportAsJson}
-                    className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors"
-                  >
-                    <FileDown size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" />
-                    {t("canvas.exportToJson")}
-                  </button>
-                  <button
-                    onClick={exportAsJSPackage}
-                    className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors"
-                  >
-                    <Code size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" />
-                    {t("canvas.export")}
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-xs font-medium">Retry</span>
                   </button>
                 </div>
-                <div className="border-t border-gray-800" />
+              ) : executionStatus.isExecuting ? (
+                <button
+                  onClick={stopFlow}
+                  className="border px-3 py-2 rounded-md transition-all flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20 cursor-pointer"
+                  title="Stop"
+                >
+                  <Square className="h-4 w-4 fill-current" />
+                  <span className="text-xs font-medium">Stop</span>
+                </button>
+              ) : (
+                <button
+                  className="border px-3 py-2 rounded-md transition-all flex items-center gap-2 bg-green-500/10 hover:bg-green-500/20 text-green-500 border-green-500/20 cursor-pointer"
+                  onClick={executeFlow}
+                  title={t("canvas.run", "Run")}
+                >
+                  <Play className="h-4 w-4 ltr-icon" />
+                  <span className="text-xs font-medium">{t("canvas.run", "Run")}</span>
+                </button>
+              )}
+
+              <button
+                className="bg-[#FFC72C]/10 hover:bg-[#FFC72C]/20 text-[#FFC72C] border border-[#FFC72C]/20 p-2 rounded-md transition-all cursor-pointer"
+                onClick={() => handleSaveCanvasState()}
+                title={t("canvas.save", "Save")}
+                aria-label={t("canvas.save", "Save")}
+              >
+                <Save className="h-4 w-4 ltr-icon" />
+              </button>
+
+              <div className="relative" ref={fileMenuRef}>
+                <button
+                  onClick={toggleFileMenu}
+                  className={`border p-2 rounded-md transition-all flex items-center justify-center cursor-pointer ${
+                    fileMenuOpen
+                      ? "bg-zinc-700 text-white border-zinc-600"
+                      : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700 hover:text-white"
+                  }`}
+                  aria-label="Menu"
+                  title="Menu"
+                >
+                  <Menu className="h-4 w-4" />
+                </button>
+
+                {fileMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-md shadow-xl bg-zinc-900 border border-zinc-700/80 ring-1 ring-black/50 focus:outline-none z-30 origin-top-right animate-dropdown overflow-hidden">
+                    <div className="py-1" role="menu">
+                      <button
+                        onClick={() => handleSaveCanvasState()}
+                        className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-2"
+                      >
+                        <Save className="h-4 w-4 ltr-icon text-[#FFC72C]" />
+                        <span>{t("canvas.save", "Save")}</span>
+                      </button>
+                      <button
+                        onClick={exportAsJson}
+                        className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-2"
+                      >
+                        <FileDown className="h-4 w-4 ltr-icon text-[#FFC72C]" />
+                        <span>{t("canvas.exportToJson", "Export as JSON")}</span>
+                      </button>
+                      <button
+                        onClick={exportAsJSPackage}
+                        className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-2"
+                      >
+                        <Code className="h-4 w-4 ltr-icon text-[#FFC72C]" />
+                        <span>{t("canvas.export", "Export as JS Package")}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 

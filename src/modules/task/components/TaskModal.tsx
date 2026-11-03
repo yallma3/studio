@@ -96,7 +96,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-[#2A2A2A] bg-[#171717]">
+      <div className="rounded-lg shadow-xl w-full dialog-lg max-w-2xl max-h-[90vh] overflow-y-auto border border-[#2A2A2A] bg-[#171717]">
         <div className="px-6 pt-5 pb-4 border-b border-[#FFC72C]/25 bg-[#FFC72C]/15 rounded-t-lg">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold text-gray-100">

@@ -258,11 +258,7 @@ const ToolSelectionPopup: React.FC<ToolSelectionPopupProps> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
         ref={popupRef}
-        className={`bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full shadow-xl animate-in fade-in duration-200 transition-[max-width] ${
-          toolPickerStep === "workflow" || toolPickerStep === "mcp"
-            ? "max-w-xl"
-            : "max-w-md"
-        }`}
+        className="bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full dialog-md max-w-lg shadow-xl animate-in fade-in duration-200"
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-white">

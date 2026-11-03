@@ -199,6 +199,14 @@
     "addNew": "Add New",
     "importFlow": "Import",
     "editWorkflow": "Edit Workflow",
+    "editDescription": "Edit Description",
+    "editWorkflowDescription": "Edit Workflow Description",
+    "designWorkflow": "Design Workflow",
+    "editMcpTool": "Edit MCP Tool",
+    "subAgentsDescription": "Define and manage AI agents, their roles, capabilities, and assigned tools",
+    "toolsAndWorkflowsDescription": "Create and manage visual workflows and MCP tools available to agents in this workspace",
+    "environmentVariablesDescription": "Configure environment variables and secure credentials accessible during workspace execution",
+    "untitledWorkflow": "Untitled Workflow",
     "lastUpdated": "Last updated"
   },
   "workspaceTab": {
@@ -236,15 +244,18 @@
     "viewResult": "View result",
     "enterInput": "Please enter your input:",
     "waitingForInput": "Waiting for user input",
-    "send": "Send"
+    "send": "Send",
+    "openConsole": "Open Console",
+    "closeConsole": "Close Console",
+    "openConsoleIncoming": "New messages incoming ({{count}}) - click to view"
   },
   "tasksTab": {
     "editTask": "Edit Task",
     "addNewTask": "Add New Task"
   },
   "agentsTab": {
-    "editAgent": "Edit agent",
-    "deleteAgent": "Delete agent",
+    "editAgent": "Edit Agent",
+    "deleteAgent": "Delete Agent",
     "workspaceDefault": "Workspace Default",
     "background": "Background",
     "capabilities": "Capabilities"

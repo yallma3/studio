@@ -168,20 +168,26 @@ const EnvironmentVariablesTab: React.FC<EnvironmentVariablesTabProps> = ({
   const isEditing = !!editingVariable;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="bg-[#121212] rounded-md">
-        <div className="flex justify-between items-center p-6 border-b border-[#FFC72C]/50">
-          <div className="flex items-center">
-            <h2 className="text-xl font-bold text-white">
-              {t('envVars.title', 'Environment Variables')}
+        <div className="flex justify-between items-center px-6 py-3.5 border-b border-[#FFC72C]/50">
+          <div>
+            <h2 className="text-lg font-bold text-white leading-tight">
+              {t("envVars.title", "Environment Variables")}
             </h2>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              {t(
+                "workspaces.environmentVariablesDescription",
+                "Configure environment variables and secure credentials accessible during workspace execution"
+              )}
+            </p>
           </div>
           <button
             className="bg-[#FFC72C] hover:bg-[#E6B428] text-black px-3 py-1 rounded text-sm flex items-center gap-1 cursor-pointer"
             onClick={handleAddVariable}
           >
             <Plus size={16} />
-            {t('envVars.addVariable', 'Add Variable')}
+            {t("envVars.addVariable", "Add Variable")}
           </button>
         </div>
 
@@ -295,7 +301,7 @@ const EnvironmentVariablesTab: React.FC<EnvironmentVariablesTabProps> = ({
       {/* Add/Edit Variable Modal */}
       {showAddEditModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 w-full max-w-lg">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 w-full dialog-md max-w-lg">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white">
                 {isEditing

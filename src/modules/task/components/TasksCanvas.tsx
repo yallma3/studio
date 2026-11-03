@@ -42,6 +42,12 @@ interface ViewportState {
   zoom: number;
 }
 
+const DEFAULT_ZOOM = 0.7; // 70% default zoom
+const MIN_ZOOM = 0.1; // 10% minimum zoom
+const MAX_ZOOM = 3; // 300% maximum zoom
+const NODE_WIDTH = 416; // TaskNode and TriggerNode are w-104 (26rem = 416px)
+const NODE_HEIGHT = 280; // TaskNode and TriggerNode are h-70 (~280px)
+
 const TasksCanvas: React.FC<TasksCanvasProps> = ({
   tasks = [],
   connections = [],
@@ -62,10 +68,12 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLDivElement>(null);
   const fitToViewRef = useRef<() => void>(() => {});
+  const centerViewRef = useRef<() => void>(() => {});
+  const centeredWithTasksRef = useRef(false);
   const [viewport, setViewport] = useState<ViewportState>({
     x: 50, // Start with a small offset to show tasks
     y: 50,
-    zoom: 1,
+    zoom: DEFAULT_ZOOM,
   });
 
   const [isDragging, setIsDragging] = useState(false);
@@ -302,7 +310,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
       e.preventDefault();
 
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newZoom = Math.max(0.1, Math.min(3, viewport.zoom * delta));
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, viewport.zoom * delta));
 
       if (newZoom === viewport.zoom) return; // No change needed
 
@@ -360,53 +368,150 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     []
   );
 
+  const centerView = useCallback(
+    (targetZoom = DEFAULT_ZOOM) => {
+      const positions = tasks.map((task) => task.position);
+      if (triggerPosition && trigger) {
+        positions.push(triggerPosition);
+      }
+
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect || rect.width === 0 || rect.height === 0) return;
+
+      if (positions.length === 0) {
+        // Empty canvas: default to targetZoom centered
+        setViewport({
+          x: Math.round((rect.width / 2) * 100) / 100,
+          y: Math.round((rect.height / 2) * 100) / 100,
+          zoom: targetZoom,
+        });
+        return;
+      }
+
+      const minX = Math.min(...positions.map((p) => p.x));
+      const maxX = Math.max(...positions.map((p) => p.x)) + NODE_WIDTH;
+      const minY = Math.min(...positions.map((p) => p.y));
+      const maxY = Math.max(...positions.map((p) => p.y)) + NODE_HEIGHT;
+
+      // Center of the nodes bounding box
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      const viewportCenterX = rect.width / 2;
+      const viewportCenterY = rect.height / 2;
+
+      setViewport({
+        x: Math.round((viewportCenterX - centerX * targetZoom) * 100) / 100,
+        y: Math.round((viewportCenterY - centerY * targetZoom) * 100) / 100,
+        zoom: targetZoom,
+      });
+    },
+    [tasks, triggerPosition, trigger]
+  );
+
   const fitToView = useCallback(() => {
     const positions = tasks.map((task) => task.position);
     if (triggerPosition && trigger) {
       positions.push(triggerPosition);
     }
 
-    if (positions.length === 0) return;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0 || rect.height === 0) return;
 
-    const minX = Math.min(...positions.map((p) => p.x)) - 100;
-    const maxX = Math.max(...positions.map((p) => p.x)) + 550;
-    const minY = Math.min(...positions.map((p) => p.y)) - 100;
-    const maxY = Math.max(...positions.map((p) => p.y)) + 450;
+    if (positions.length === 0) {
+      // Empty canvas: default to 70% zoom centered
+      setViewport({
+        x: Math.round((rect.width / 2) * 100) / 100,
+        y: Math.round((rect.height / 2) * 100) / 100,
+        zoom: DEFAULT_ZOOM,
+      });
+      return;
+    }
+
+    const minX = Math.min(...positions.map((p) => p.x));
+    const maxX = Math.max(...positions.map((p) => p.x)) + NODE_WIDTH;
+    const minY = Math.min(...positions.map((p) => p.y));
+    const maxY = Math.max(...positions.map((p) => p.y)) + NODE_HEIGHT;
 
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
 
-        // Get canvas dimensions
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    // Calculate zoom if content is larger than viewport (with 80px margin padding)
+    const padding = 80;
+    const availableWidth = Math.max(100, rect.width - padding * 2);
+    const availableHeight = Math.max(100, rect.height - padding * 2);
+    const zoomX = availableWidth / contentWidth;
+    const zoomY = availableHeight / contentHeight;
 
-        // Calculate zoom to fit content with some padding
-    const zoomX = (rect.width * 0.9) / contentWidth;
-    const zoomY = (rect.height * 0.9) / contentHeight;
-    const fitZoom = Math.min(zoomX, zoomY, 1);// Don't zoom in beyond 100%
+    // Manual Fit To View scales content to fit; max 1.0 (100%), min 0.1 (10%)
+    const fitZoom = Math.max(MIN_ZOOM, Math.min(zoomX, zoomY, 1));
+    const appliedZoom = Math.round(fitZoom * 100) / 100;
 
-        // Center the content
+    // Center of the nodes bounding box
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
     const viewportCenterX = rect.width / 2;
     const viewportCenterY = rect.height / 2;
 
     setViewport({
-      x: viewportCenterX - centerX * fitZoom,
-      y: viewportCenterY - centerY * fitZoom,
-      zoom: fitZoom,
+      x: Math.round((viewportCenterX - centerX * appliedZoom) * 100) / 100,
+      y: Math.round((viewportCenterY - centerY * appliedZoom) * 100) / 100,
+      zoom: appliedZoom,
     });
   }, [tasks, triggerPosition, trigger]);
 
-  // Keep ref updated with latest fitToView
+  // Keep refs updated
   fitToViewRef.current = fitToView;
+  centerViewRef.current = () => centerView(DEFAULT_ZOOM);
 
-// Fit to view on mount and when tasks change
-useEffect(() => {
-  if (tasks.length > 0 || trigger) {
-    fitToViewRef.current();
-  }
-}, [tasks.length, trigger]);
+  // Center nodes at default 70% zoom on initial load/mount
+  useEffect(() => {
+    const tryCenter = () => {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect || rect.width === 0 || rect.height === 0) return false;
+      centerViewRef.current();
+      return true;
+    };
+
+    if (!centeredWithTasksRef.current) {
+      if (tryCenter()) {
+        if (tasks.length > 0 || trigger) {
+          centeredWithTasksRef.current = true;
+        }
+      } else {
+        const frameId = requestAnimationFrame(() => {
+          if (tryCenter()) {
+            if (tasks.length > 0 || trigger) {
+              centeredWithTasksRef.current = true;
+            }
+          }
+        });
+        return () => cancelAnimationFrame(frameId);
+      }
+    }
+  }, [tasks.length, trigger]);
+
+  // Handle ResizeObserver for initial layout calculation if canvas dimensions are deferred
+  useEffect(() => {
+    const canvasElement = canvasRef.current;
+    if (!canvasElement) return;
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+            if (!centeredWithTasksRef.current) {
+              centerViewRef.current();
+              if (tasks.length > 0 || trigger) {
+                centeredWithTasksRef.current = true;
+              }
+            }
+          }
+        }
+      });
+      observer.observe(canvasElement);
+      return () => observer.disconnect();
+    }
+  }, [tasks.length, trigger]);
 
   const handleCanvasContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -665,7 +770,7 @@ useEffect(() => {
           onClick={() =>
             setViewport((prev) => ({
               ...prev,
-              zoom: Math.max(0.1, prev.zoom * 0.8),
+              zoom: Math.max(MIN_ZOOM, prev.zoom * 0.8),
             }))
           }
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-yellow-600/30 bg-zinc-900/90 text-yellow-500 backdrop-blur-sm transition-all hover:border-yellow-500/50 hover:bg-zinc-800"
@@ -678,7 +783,7 @@ useEffect(() => {
           onClick={() =>
             setViewport((prev) => ({
               ...prev,
-              zoom: Math.min(3, prev.zoom * 1.2),
+              zoom: Math.min(MAX_ZOOM, prev.zoom * 1.2),
             }))
           }
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-yellow-600/30 bg-zinc-900/90 text-yellow-500 backdrop-blur-sm transition-all hover:border-yellow-500/50 hover:bg-zinc-800"

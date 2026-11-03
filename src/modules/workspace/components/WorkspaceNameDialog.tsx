@@ -42,7 +42,7 @@ const WorkspaceNameDialog: React.FC<WorkspaceNameDialogProps> = ({
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-      <div className="bg-[#1E1E1E] rounded-lg shadow-lg w-full max-w-md overflow-hidden">
+      <div className="bg-[#1E1E1E] rounded-lg shadow-lg w-full dialog-sm max-w-md overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
           <h3 className="text-lg font-medium text-white">
             {t('workspaces.saveWorkspace', 'Save Workspace')}

@@ -224,6 +224,65 @@ describe('NodeCanvas Component', () => {
       expect(screen.getByText('canvas.run')).toBeInTheDocument();
     });
 
+    it('should render header with formatted and truncated workspace prefix, workflow name, and description', () => {
+      const graph = createMockCanvasState();
+      const mockMeta = {
+        id: 'wf-1',
+        name: 'Workflow Name That Exceeds Twenty Chars',
+        description:
+          'This is a very long workflow description designed to exceed fifty characters in total length for testing truncation',
+        createdAt: 1000,
+        updatedAt: 2000,
+        canvasState: graph,
+      };
+
+      render(
+        <NodeCanvas
+          graph={graph}
+          onReturnToHome={mockOnReturnToHome}
+          workflowMeta={mockMeta}
+          workspaceName="Engineering Department AI Platform"
+        />
+      );
+
+      // Workspace prefix: "Engineering Departme" (20 chars)
+      expect(screen.getByText('Engineering Departme')).toBeInTheDocument();
+      // Workflow name: "Workflow Name That E" (20 chars)
+      expect(screen.getByText('Workflow Name That E')).toBeInTheDocument();
+      // Workflow description: "This is a very long workflow description designed" (50 chars trimmed)
+      expect(
+        screen.getByText('This is a very long workflow description designed')
+      ).toBeInTheDocument();
+      // Separator /
+      expect(screen.getByText('/')).toBeInTheDocument();
+      // Back button
+      expect(screen.getByLabelText('canvas.returnToHome')).toBeInTheDocument();
+    });
+
+    it('should render header without workspace prefix when workspaceName is omitted', () => {
+      const graph = createMockCanvasState();
+      const mockMeta = {
+        id: 'wf-2',
+        name: 'Simple Flow',
+        description: 'Short desc',
+        createdAt: 1000,
+        updatedAt: 2000,
+        canvasState: graph,
+      };
+
+      render(
+        <NodeCanvas
+          graph={graph}
+          onReturnToHome={mockOnReturnToHome}
+          workflowMeta={mockMeta}
+        />
+      );
+
+      expect(screen.queryByText('/')).not.toBeInTheDocument();
+      expect(screen.getByText('Simple Flow')).toBeInTheDocument();
+      expect(screen.getByText('Short desc')).toBeInTheDocument();
+    });
+
     it('should render zoom controls', () => {
       const graph = createMockCanvasState();
 

@@ -1,13 +1,18 @@
  
 
 /* Modern scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #FFC72C rgba(39, 39, 42, 0.4);
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #313244;
+  background: rgba(39, 39, 42, 0.4);
   border-radius: 4px;
 }
 

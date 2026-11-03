@@ -241,6 +241,93 @@ describe('TasksCanvas Component', () => {
   });
 
   describe('Zooming', () => {
+    it('should initialize with default zoom at 70% and center nodes', async () => {
+      render(<TasksCanvas {...defaultProps} />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Zoom: 70%')).toBeInTheDocument();
+      });
+
+      const transformContainer = document.querySelector('[data-transform-container]');
+      expect(transformContainer).toBeInTheDocument();
+      const transformStyle = (transformContainer as HTMLElement).style.transform;
+      expect(transformStyle).toContain('scale(0.7)');
+      expect(transformStyle).toMatch(/translate\(114\.4px,\s*97px\)/);
+    });
+
+    it('should default to 70% zoom even when no tasks exist', async () => {
+      render(<TasksCanvas {...defaultProps} tasks={[]} connections={[]} />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Zoom: 70%')).toBeInTheDocument();
+      });
+
+      const transformContainer = document.querySelector('[data-transform-container]');
+      const transformStyle = (transformContainer as HTMLElement).style.transform;
+      expect(transformStyle).toContain('scale(0.7)');
+      expect(transformStyle).toContain('translate(400px, 300px)');
+    });
+
+    it('should initialize with default zoom at 70% even when existing tasks are spread widely across canvas', async () => {
+      const spreadTasks: Task[] = [
+        {
+          id: 'task-1',
+          title: 'Task 1',
+          description: 'First task',
+          expectedOutput: 'Output 1',
+          type: 'agentic',
+          executorId: null,
+          position: { x: 100, y: 100 },
+          sockets: [{ id: 101, type: 'output', title: 'Output 1' }],
+          selected: false,
+        },
+        {
+          id: 'task-2',
+          title: 'Task 2',
+          description: 'Second task',
+          expectedOutput: 'Output 2',
+          type: 'agentic',
+          executorId: null,
+          position: { x: 800, y: 150 },
+          sockets: [{ id: 201, type: 'input', title: 'Input 2' }],
+          selected: false,
+        },
+        {
+          id: 'task-3',
+          title: 'Task 3',
+          description: 'Third task',
+          expectedOutput: 'Output 3',
+          type: 'agentic',
+          executorId: null,
+          position: { x: 1500, y: 200 },
+          sockets: [{ id: 301, type: 'input', title: 'Input 3' }],
+          selected: false,
+        },
+      ];
+
+      render(<TasksCanvas {...defaultProps} tasks={spreadTasks} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Zoom: 70%')).toBeInTheDocument();
+      });
+
+      const transformContainer = document.querySelector('[data-transform-container]');
+      expect(transformContainer).toBeInTheDocument();
+      const transformStyle = (transformContainer as HTMLElement).style.transform;
+      expect(transformStyle).toContain('scale(0.7)');
+
+      // Verify that explicitly clicking Fit to screen downscales to fit all spread nodes
+      const fitButton = screen.getByLabelText('Fit to screen');
+      fireEvent.click(fitButton);
+
+      await waitFor(() => {
+        // Content width is (1500 + 416) - 100 = 1816px. Available width = 800 - 160 = 640px.
+        // zoomX = 640 / 1816 = 0.352 (35%).
+        const zoomText = screen.getByText(/Zoom:/);
+        expect(zoomText.textContent).toMatch(/Zoom: 35%/);
+      });
+    });
+
     it('should zoom in when zoom in button is clicked', async () => {
       render(<TasksCanvas {...defaultProps} />);
       

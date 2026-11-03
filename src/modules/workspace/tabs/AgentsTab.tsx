@@ -188,13 +188,19 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="bg-[#121212] rounded-md">
-        <div className="flex justify-between items-center p-6 border-b border-[#FFC72C]/50">
-          <div className="flex items-center">
-            <h2 className="text-xl font-bold text-white">
+        <div className="flex justify-between items-center px-6 py-3.5 border-b border-[#FFC72C]/50">
+          <div>
+            <h2 className="text-lg font-bold text-white leading-tight">
               {t("workspaces.subAgents", "Sub Agents")}
             </h2>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              {t(
+                "workspaces.subAgentsDescription",
+                "Define and manage AI agents, their roles, capabilities, and assigned tools"
+              )}
+            </p>
           </div>
           <button
             className="bg-[#FFC72C] hover:bg-[#E6B428] text-black px-3 py-1 rounded text-sm flex items-center gap-1"
@@ -258,14 +264,14 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                       <button
                         className="flex items-center justify-center w-8 h-8 text-[#FFC72C] hover:text-[#FFD65C] hover:bg-[#FFC72C]/10 rounded-lg transition-all duration-200"
                         onClick={() => handleShowAgentDialog(true, agent)}
-                        title={t("agentsTab.editAgent", "Edit agent")}
+                        title={t("agentsTab.editAgent", "Edit Agent")}
                       >
                         <Edit size={14} />
                       </button>
                       <button
                         className="flex items-center justify-center w-8 h-8 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-all duration-200"
                         onClick={() => handleAgentDelete(agent.id)}
-                        title={t("agentsTab.deleteAgent", "Delete agent")}
+                        title={t("agentsTab.deleteAgent", "Delete Agent")}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -391,7 +397,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
             className="fixed inset-0 bg-black/50"
             onClick={() => setShowAgentDialog(false)}
           ></div>
-          <div className="bg-[#1d1d1d] rounded-lg shadow-xl  w-full max-w-2xl relative z-10 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#1d1d1d] rounded-lg shadow-xl w-full dialog-lg max-w-2xl relative z-10 max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-[#1d1d1d] p-6 mb-2 border-b border-zinc-800">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-white">

@@ -221,7 +221,7 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4">
-      <div className="bg-gradient-to-br from-[#1a1a1a] to-[#151515] rounded-xl shadow-2xl border border-zinc-800/50 max-w-lg w-full max-h-[90vh] flex flex-col">
+      <div className="bg-gradient-to-br from-[#1a1a1a] to-[#151515] rounded-xl shadow-2xl border border-zinc-800/50 dialog-lg max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 pb-4 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -247,7 +247,7 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto px-6 pb-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-4">
           {/* Step 1: Selection */}
           {currentStep === "selection" && (
             <div className="space-y-4">
@@ -495,7 +495,7 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
                       {t("workspaces.arguments", "Arguments")}
                     </label>
                     {mcpArgs.map((arg, index) => (
-                      <div key={index} className="flex gap-2 mb-2">
+                      <div key={index} className="flex items-center gap-2 mb-2">
                         <input
                           type="text"
                           value={arg}
@@ -505,13 +505,13 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
                             "workspaces.enterArgument",
                             "Enter argument..."
                           )}
-                          className="flex-1 px-3 py-2 bg-[#0a0a0a] border border-zinc-700 rounded-md text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="flex-1 min-w-0 px-3 py-2 bg-[#0a0a0a] border border-zinc-700 rounded-md text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           disabled={isSubmitting}
                         />
                         <button
                           type="button"
                           onClick={() => removeMcpArg(index)}
-                          className="px-2 py-2 text-red-400 hover:text-red-300 transition-colors"
+                          className="px-2 py-2 text-red-400 hover:text-red-300 transition-colors shrink-0"
                           disabled={isSubmitting}
                         >
                           <X size={16} />
@@ -561,7 +561,7 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
                       {t("workspaces.headers", "Headers")}
                     </label>
                     {Object.entries(mcpHeaders).map(([key, value], index) => (
-                      <div key={index} className="flex gap-2 mb-2">
+                      <div key={index} className="flex items-center gap-2 mb-2">
                         <input
                           type="text"
                           value={key}
@@ -573,7 +573,7 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
                             "workspaces.headerKey",
                             "Header key..."
                           )}
-                          className="flex-1 px-3 py-2 bg-[#0a0a0a] border border-zinc-700 rounded-md text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="flex-1 min-w-0 px-3 py-2 bg-[#0a0a0a] border border-zinc-700 rounded-md text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           disabled={isSubmitting}
                         />
                         <input
@@ -587,13 +587,13 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
                             "workspaces.headerValue",
                             "Header value..."
                           )}
-                          className="flex-1 px-3 py-2 bg-[#0a0a0a] border border-zinc-700 rounded-md text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="flex-1 min-w-0 px-3 py-2 bg-[#0a0a0a] border border-zinc-700 rounded-md text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           disabled={isSubmitting}
                         />
                         <button
                           type="button"
                           onClick={() => removeMcpHeader(key)}
-                          className="px-2 py-2 text-red-400 hover:text-red-300 transition-colors"
+                          className="px-2 py-2 text-red-400 hover:text-red-300 transition-colors shrink-0"
                           disabled={isSubmitting}
                         >
                           <X size={16} />

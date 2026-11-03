@@ -177,3 +177,43 @@ describe("ConsolePanel - Artifacts Integration", () => {
     });
   });
 });
+
+describe("ConsolePanel - Close Button Behavior", () => {
+  beforeEach(() => {
+    vi.spyOn(ConsoleContextModule, "useConsole").mockReturnValue({
+      events: [],
+      pendingPrompts: [],
+      latestArtifacts: [],
+      addEvent: vi.fn(),
+      sendInput: vi.fn(),
+      clearEvents: vi.fn(),
+      clearArtifacts: vi.fn(),
+    });
+  });
+
+  it("should render close button enabled and invoke onClose when canClose is true", () => {
+    const handleClose = vi.fn();
+    render(<ConsolePanel onClose={handleClose} canClose={true} />);
+
+    const closeButtons = screen.getAllByRole("button");
+    const closeBtn = closeButtons.find((btn) => btn.querySelector("svg.lucide-x"));
+    expect(closeBtn).toBeDefined();
+    expect(closeBtn).not.toBeDisabled();
+
+    fireEvent.click(closeBtn!);
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("should disable close button when canClose is false", () => {
+    const handleClose = vi.fn();
+    render(<ConsolePanel onClose={handleClose} canClose={false} />);
+
+    const closeButtons = screen.getAllByRole("button");
+    const closeBtn = closeButtons.find((btn) => btn.querySelector("svg.lucide-x"));
+    expect(closeBtn).toBeDefined();
+    expect(closeBtn).toBeDisabled();
+
+    fireEvent.click(closeBtn!);
+    expect(handleClose).not.toHaveBeenCalled();
+  });
+});

@@ -250,13 +250,52 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
-  const { addEvent, events } = useConsole();
+  const { addEvent, events, pendingPrompts } = useConsole();
+
+  // Maintain workspace data in state
+  const [workspaceData, setWorkspaceData] =
+    useState<WorkspaceData>(initialWorkspaceData);
+
+  // Session-based console state memory for the workspace tab
+  const workspaceConsoleStateRef = useRef<boolean | null>(null);
+
+  const getWorkspaceConsoleState = useCallback((workspaceId: string): boolean => {
+    try {
+      const val = sessionStorage.getItem(`workspace_console_open_${workspaceId}`);
+      if (val !== null) {
+        return val === "true";
+      }
+    } catch {
+      // sessionStorage not available
+    }
+    if (workspaceConsoleStateRef.current !== null) {
+      return workspaceConsoleStateRef.current;
+    }
+    return true; // default to open if no previous state in the session
+  }, []);
+
+  const setWorkspaceConsoleState = useCallback((workspaceId: string, isOpen: boolean) => {
+    workspaceConsoleStateRef.current = isOpen;
+    try {
+      sessionStorage.setItem(`workspace_console_open_${workspaceId}`, String(isOpen));
+    } catch {
+      // sessionStorage not available
+    }
+  }, []);
 
   // Console visibility state
-  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(() =>
+    getWorkspaceConsoleState(initialWorkspaceData.id)
+  );
   const [isConsoleMaximized, setIsConsoleMaximized] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const prevEventsLengthRef = useRef(0);
+  const hasIncomingMessages =
+    !isConsoleOpen &&
+    (unreadCount > 0 || (pendingPrompts && pendingPrompts.length > 0));
+  const [isIndicatorPulsing, setIsIndicatorPulsing] = useState(false);
+  const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevActiveTabRef = useRef<WorkspaceTabSelector>(activeTab);
   const [isRunning, setIsRunning] = useState(false);
   const isRunningRef = useRef(isRunning);
   isRunningRef.current = isRunning;
@@ -284,29 +323,73 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   useEffect(() => {
     if (isConsoleOpen) {
       setUnreadCount(0);
+      setIsIndicatorPulsing(false);
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+        pulseTimeoutRef.current = null;
+      }
     } else {
       const diff = events.length - prevEventsLengthRef.current;
       if (diff > 0) {
         setUnreadCount((prev) => prev + diff);
+        // Trigger pulse/ping effect for only 3 times (3 seconds total) upon new arrival
+        setIsIndicatorPulsing(true);
+        if (pulseTimeoutRef.current) {
+          clearTimeout(pulseTimeoutRef.current);
+        }
+        pulseTimeoutRef.current = setTimeout(() => {
+          setIsIndicatorPulsing(false);
+          pulseTimeoutRef.current = null;
+        }, 3000);
       } else if (events.length === 0) {
         setUnreadCount(0);
+        setIsIndicatorPulsing(false);
+        if (pulseTimeoutRef.current) {
+          clearTimeout(pulseTimeoutRef.current);
+          pulseTimeoutRef.current = null;
+        }
       }
     }
     prevEventsLengthRef.current = events.length;
   }, [events.length, isConsoleOpen]);
 
-     // Handle active tab changes for console visibility
+  // Handle incoming prompts while console is minimized
   useEffect(() => {
+    if (!isConsoleOpen && pendingPrompts && pendingPrompts.length > 0) {
+      setIsIndicatorPulsing(true);
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+      }
+      pulseTimeoutRef.current = setTimeout(() => {
+        setIsIndicatorPulsing(false);
+        pulseTimeoutRef.current = null;
+      }, 3000);
+    }
+  }, [pendingPrompts, isConsoleOpen]);
+
+  // Clean up pulse timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Handle active tab changes for console visibility
+  useEffect(() => {
+    if (prevActiveTabRef.current === activeTab) {
+      return;
+    }
+    prevActiveTabRef.current = activeTab;
+
     if (activeTab === "workspace") {
-      setIsConsoleOpen(true);
+      setIsConsoleOpen(getWorkspaceConsoleState(workspaceData.id));
     } else {
       setIsConsoleOpen(false);
     }
-  }, [activeTab]);
+  }, [activeTab, workspaceData.id, getWorkspaceConsoleState]);
 
-    // Maintain workspace data in state
-  const [workspaceData, setWorkspaceData] =
-    useState<WorkspaceData>(initialWorkspaceData);
 
        // Track if there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
@@ -1103,11 +1186,28 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
     setWorkspaceData({ ...workspaceData, workflows: newWorkflows });
   };
 
+  const handleToggleConsole = () => {
+    setIsConsoleOpen((prev) => {
+      const next = !prev;
+      if (activeTab === "workspace") {
+        setWorkspaceConsoleState(workspaceData.id, next);
+      }
+      return next;
+    });
+  };
+
+  const handleCloseConsole = () => {
+    setIsConsoleOpen(false);
+    if (activeTab === "workspace") {
+      setWorkspaceConsoleState(workspaceData.id, false);
+    }
+  };
+
   const handleEditStatusChange = (isEditing: boolean) => {
     if (isEditing) {
       setIsConsoleOpen(false);
     } else {
-      setIsConsoleOpen(true);
+      setIsConsoleOpen(getWorkspaceConsoleState(workspaceData.id));
     }
   };
 
@@ -1264,15 +1364,49 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                 className={`relative border p-2 rounded-md transition-all ${
                   isConsoleOpen
                     ? "bg-zinc-700 text-white border-zinc-600"
+                    : hasIncomingMessages
+                    ? `bg-[#FFC72C]/15 hover:bg-[#FFC72C]/25 text-[#FFC72C] border-[#FFC72C]/60 shadow-[0_0_12px_rgba(255,199,44,0.35)] ${
+                        isIndicatorPulsing ? "animate-pulse-three" : ""
+                      }`
                     : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700 hover:text-white"
                 }`}
-                onClick={() => setIsConsoleOpen(!isConsoleOpen)}
-                title={t("workspaceTab.openConsole", "Open Console")}
+                onClick={handleToggleConsole}
+                title={
+                  isConsoleOpen
+                    ? t("workspaceTab.closeConsole", "Close Console")
+                    : hasIncomingMessages
+                    ? t(
+                        "workspaceTab.openConsoleIncoming",
+                        "New messages incoming ({{count}}) - click to view",
+                        { count: unreadCount > 0 ? unreadCount : 1 }
+                      )
+                    : t("workspaceTab.openConsole", "Open Console")
+                }
+                aria-label={
+                  isConsoleOpen
+                    ? t("workspaceTab.closeConsole", "Close Console")
+                    : hasIncomingMessages
+                    ? t(
+                        "workspaceTab.openConsoleIncoming",
+                        "New messages incoming ({{count}}) - click to view",
+                        { count: unreadCount > 0 ? unreadCount : 1 }
+                      )
+                    : t("workspaceTab.openConsole", "Open Console")
+                }
               >
-                <Terminal className="h-4 w-4" />
-                {!isConsoleOpen && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-600 text-[8px] font-bold text-white shadow-sm border border-[#0a0a0a]">
-                    {unreadCount > 9 ? "9+" : unreadCount}
+                <Terminal className={`h-4 w-4 ${hasIncomingMessages ? "text-[#FFC72C]" : ""}`} />
+                {hasIncomingMessages && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 px-1 items-center justify-center">
+                    {isIndicatorPulsing && (
+                      <span
+                        key={unreadCount}
+                        className="animate-ping-three absolute inline-flex h-full w-full rounded-full bg-[#FFC72C] opacity-75"
+                        onAnimationEnd={() => setIsIndicatorPulsing(false)}
+                      />
+                    )}
+                    <span className="relative inline-flex items-center justify-center rounded-full h-4 min-w-4 px-1 bg-[#FFC72C] text-[9px] font-bold text-zinc-950 shadow-sm border border-zinc-950">
+                      {unreadCount > 9 ? "9+" : unreadCount > 0 ? unreadCount : "!"}
+                    </span>
                   </span>
                 )}
               </button>
@@ -1433,8 +1567,8 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
               onToggleMaximize={() =>
                 setIsConsoleMaximized(!isConsoleMaximized)
               }
-              onClose={() => setIsConsoleOpen(false)}
-              canClose={activeTab !== "workspace"}
+              onClose={handleCloseConsole}
+              canClose={true}
               className="h-full border-0"
               baseUrl={baseUrl}
               showToast={showToast}
