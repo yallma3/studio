@@ -52,7 +52,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div className="bg-gradient-to-br from-[#1a1a1a] to-[#151515] rounded-xl shadow-2xl border border-zinc-800/50 p-6 max-w-md w-full mx-4">
+      <div className="bg-gradient-to-br from-[#1a1a1a] to-[#151515] rounded-xl shadow-2xl border border-zinc-800/50 p-6 dialog-sm max-w-md w-full mx-4">
         <div className="flex items-center gap-3 mb-4">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
             confirmVariant === 'danger' 

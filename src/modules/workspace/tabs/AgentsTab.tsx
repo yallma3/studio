@@ -397,7 +397,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
             className="fixed inset-0 bg-black/50"
             onClick={() => setShowAgentDialog(false)}
           ></div>
-          <div className="bg-[#1d1d1d] rounded-lg shadow-xl  w-full max-w-2xl relative z-10 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#1d1d1d] rounded-lg shadow-xl w-full dialog-lg max-w-2xl relative z-10 max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-[#1d1d1d] p-6 mb-2 border-b border-zinc-800">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-white">

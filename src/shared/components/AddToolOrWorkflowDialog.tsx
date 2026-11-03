@@ -221,7 +221,7 @@ const AddToolOrWorkflowDialog: React.FC<AddToolOrWorkflowDialogProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4">
-      <div className="bg-gradient-to-br from-[#1a1a1a] to-[#151515] rounded-xl shadow-2xl border border-zinc-800/50 max-w-lg w-full max-h-[90vh] flex flex-col">
+      <div className="bg-gradient-to-br from-[#1a1a1a] to-[#151515] rounded-xl shadow-2xl border border-zinc-800/50 dialog-md max-w-lg w-full max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 pb-4 flex-shrink-0">
           <div className="flex items-center gap-3">

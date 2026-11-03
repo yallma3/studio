@@ -7,24 +7,24 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(39, 39, 42, 0.3);
+  background: rgba(39, 39, 42, 0.4);
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(253, 224, 71, 0.3);
+  background: #FFC72C;
   border-radius: 3px;
-  transition: background 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(253, 224, 71, 0.5);
+  background: #EBB200;
 }
 
 /* Firefox scrollbar */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(253, 224, 71, 0.3) rgba(39, 39, 42, 0.3);
+  scrollbar-color: #FFC72C rgba(39, 39, 42, 0.4);
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -38,52 +38,73 @@
   scrollbar-width: none;  /* Firefox */
 }
 
-/* Minimal Thin Scrollbar (Zinc-800) */
+/* Minimal Thin Scrollbar */
 .thin-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #27272a transparent;
+  scrollbar-color: #FFC72C rgba(39, 39, 42, 0.4);
 }
 
 .thin-scrollbar::-webkit-scrollbar {
-  width: 4px !important;
-  height: 4px !important;
+  width: 6px !important;
+  height: 6px !important;
 }
 
 .thin-scrollbar::-webkit-scrollbar-track {
-  background: transparent !important;
+  background: rgba(39, 39, 42, 0.4) !important;
+  border-radius: 3px !important;
 }
 
 .thin-scrollbar::-webkit-scrollbar-thumb {
-  background: #27272a !important; /* zinc-800 */
-  border-radius: 2px !important;
+  background: #FFC72C !important;
+  border-radius: 3px !important;
+  transition: background-color 0.2s ease !important;
 }
 
 .thin-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46 !important; /* zinc-700 */
+  background: #EBB200 !important;
 }
 
-/* Console Scrollbar - Specific override */
+/* Console Scrollbar - Matches studio brand scrollbar */
 .console-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #27272a transparent;
+  scrollbar-color: #FFC72C rgba(39, 39, 42, 0.4);
 }
 
 .console-scrollbar::-webkit-scrollbar {
-  width: 4px !important;
-  height: 4px !important;
+  width: 8px !important;
+  height: 8px !important;
 }
 
 .console-scrollbar::-webkit-scrollbar-track {
-  background: transparent !important;
+  background: rgba(39, 39, 42, 0.4) !important;
+  border-radius: 4px !important;
 }
 
 .console-scrollbar::-webkit-scrollbar-thumb {
-  background: #27272a !important;
-  border-radius: 2px !important;
+  background: #FFC72C !important;
+  border-radius: 4px !important;
+  transition: background-color 0.2s ease !important;
 }
 
 .console-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46 !important;
+  background: #EBB200 !important;
+}
+
+/* Dialog Standard Width Classes */
+.dialog-sm {
+  max-width: 28rem !important; /* 448px (max-w-md) */
+}
+
+.dialog-md {
+  max-width: 32rem !important; /* 512px (max-w-lg) */
+}
+
+.dialog-lg {
+  max-width: 42rem !important; /* 672px (max-w-2xl) */
+}
+
+.dialog-xl {
+  max-width: 56rem !important; /* 896px (max-w-4xl) */
 }
 /* Hide Edge / IE built‑in password reveal + clear icons */
 ::-ms-reveal,

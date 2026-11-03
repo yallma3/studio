@@ -61,7 +61,7 @@ const GraphNameDialog: React.FC<GraphNameDialogProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-[#111] border border-[#FFB30055] rounded-md max-w-md w-full p-6 shadow-xl animate-slide-up"
+        className="bg-[#111] border border-[#FFB30055] rounded-md dialog-sm max-w-md w-full p-6 shadow-xl animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-xl font-semibold text-white mb-4">

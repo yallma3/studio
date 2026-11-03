@@ -239,7 +239,7 @@ const AgentForm: React.FC<AgentFormProps> = ({
 
         {enableVariables && showVariablePopup && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full max-w-md shadow-xl animate-in fade-in duration-200">
+            <div className="bg-zinc-900 rounded-lg p-5 border border-zinc-700 w-full dialog-sm max-w-md shadow-xl animate-in fade-in duration-200">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-white">
                   {t("agentForm.addVariable", "Add Variable")}

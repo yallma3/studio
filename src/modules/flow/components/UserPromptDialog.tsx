@@ -104,9 +104,8 @@ const UserPromptDialog: React.FC<UserPromptDialogProps> = ({
 
       {/* Dialog */}
       <div
-        className="relative flex flex-col w-full"
+        className="relative flex flex-col w-full dialog-md max-w-lg"
         style={{
-          maxWidth: "580px",
           maxHeight: "calc(100vh - 2rem)",
           background: "#161616",
           border: "1px solid rgba(255,199,44,0.22)",

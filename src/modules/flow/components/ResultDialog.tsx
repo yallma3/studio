@@ -67,7 +67,7 @@ export const ResultDialog: React.FC<ResultDialogProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-[#111] border border-[#FFC72C]/50 rounded-md max-w-2xl max-h-[80vh] w-full mx-4 flex flex-col overflow-hidden animate-slide-up shadow-lg"
+        className="bg-[#111] border border-[#FFC72C]/50 rounded-md dialog-lg max-w-2xl max-h-[80vh] w-full mx-4 flex flex-col overflow-hidden animate-slide-up shadow-lg"
         role="dialog"
         aria-modal="true"
         aria-labelledby="result-dialog-title"

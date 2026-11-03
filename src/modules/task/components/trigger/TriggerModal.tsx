@@ -155,7 +155,7 @@ const TriggerModal: React.FC<TriggerModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#1E1E1E] rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-zinc-700">
+      <div className="bg-[#1E1E1E] rounded-lg shadow-2xl w-full dialog-lg max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-zinc-700">
         {/* Header */}
         <div className="px-6 py-4 border-b border-zinc-700 flex items-center justify-between">
           <div>

@@ -55,7 +55,7 @@ export const DeleteConfirmationDialog: React.FC<
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-gradient-to-br from-[#1c1c1c] to-[#161616] rounded-2xl shadow-2xl border border-zinc-700/50 p-8 max-w-lg w-full mx-4 transform transition-all">
+      <div className="bg-gradient-to-br from-[#1c1c1c] to-[#161616] rounded-2xl shadow-2xl border border-zinc-700/50 p-6 dialog-sm max-w-md w-full mx-4 transform transition-all">
         {/* Header */}
         <div className="flex items-start gap-4 mb-6">
           <div
