@@ -252,11 +252,45 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
   const { addEvent, events } = useConsole();
 
+  // Maintain workspace data in state
+  const [workspaceData, setWorkspaceData] =
+    useState<WorkspaceData>(initialWorkspaceData);
+
+  // Session-based console state memory for the workspace tab
+  const workspaceConsoleStateRef = useRef<boolean | null>(null);
+
+  const getWorkspaceConsoleState = useCallback((workspaceId: string): boolean => {
+    try {
+      const val = sessionStorage.getItem(`workspace_console_open_${workspaceId}`);
+      if (val !== null) {
+        return val === "true";
+      }
+    } catch {
+      // sessionStorage not available
+    }
+    if (workspaceConsoleStateRef.current !== null) {
+      return workspaceConsoleStateRef.current;
+    }
+    return true; // default to open if no previous state in the session
+  }, []);
+
+  const setWorkspaceConsoleState = useCallback((workspaceId: string, isOpen: boolean) => {
+    workspaceConsoleStateRef.current = isOpen;
+    try {
+      sessionStorage.setItem(`workspace_console_open_${workspaceId}`, String(isOpen));
+    } catch {
+      // sessionStorage not available
+    }
+  }, []);
+
   // Console visibility state
-  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(() =>
+    getWorkspaceConsoleState(initialWorkspaceData.id)
+  );
   const [isConsoleMaximized, setIsConsoleMaximized] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const prevEventsLengthRef = useRef(0);
+  const prevActiveTabRef = useRef<WorkspaceTabSelector>(activeTab);
   const [isRunning, setIsRunning] = useState(false);
   const isRunningRef = useRef(isRunning);
   isRunningRef.current = isRunning;
@@ -295,18 +329,20 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
     prevEventsLengthRef.current = events.length;
   }, [events.length, isConsoleOpen]);
 
-     // Handle active tab changes for console visibility
+  // Handle active tab changes for console visibility
   useEffect(() => {
+    if (prevActiveTabRef.current === activeTab) {
+      return;
+    }
+    prevActiveTabRef.current = activeTab;
+
     if (activeTab === "workspace") {
-      setIsConsoleOpen(true);
+      setIsConsoleOpen(getWorkspaceConsoleState(workspaceData.id));
     } else {
       setIsConsoleOpen(false);
     }
-  }, [activeTab]);
+  }, [activeTab, workspaceData.id, getWorkspaceConsoleState]);
 
-    // Maintain workspace data in state
-  const [workspaceData, setWorkspaceData] =
-    useState<WorkspaceData>(initialWorkspaceData);
 
        // Track if there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
@@ -1103,11 +1139,28 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
     setWorkspaceData({ ...workspaceData, workflows: newWorkflows });
   };
 
+  const handleToggleConsole = () => {
+    setIsConsoleOpen((prev) => {
+      const next = !prev;
+      if (activeTab === "workspace") {
+        setWorkspaceConsoleState(workspaceData.id, next);
+      }
+      return next;
+    });
+  };
+
+  const handleCloseConsole = () => {
+    setIsConsoleOpen(false);
+    if (activeTab === "workspace") {
+      setWorkspaceConsoleState(workspaceData.id, false);
+    }
+  };
+
   const handleEditStatusChange = (isEditing: boolean) => {
     if (isEditing) {
       setIsConsoleOpen(false);
     } else {
-      setIsConsoleOpen(true);
+      setIsConsoleOpen(getWorkspaceConsoleState(workspaceData.id));
     }
   };
 
@@ -1266,8 +1319,17 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                     ? "bg-zinc-700 text-white border-zinc-600"
                     : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700 hover:text-white"
                 }`}
-                onClick={() => setIsConsoleOpen(!isConsoleOpen)}
-                title={t("workspaceTab.openConsole", "Open Console")}
+                onClick={handleToggleConsole}
+                title={
+                  isConsoleOpen
+                    ? t("workspaceTab.closeConsole", "Close Console")
+                    : t("workspaceTab.openConsole", "Open Console")
+                }
+                aria-label={
+                  isConsoleOpen
+                    ? t("workspaceTab.closeConsole", "Close Console")
+                    : t("workspaceTab.openConsole", "Open Console")
+                }
               >
                 <Terminal className="h-4 w-4" />
                 {!isConsoleOpen && unreadCount > 0 && (
@@ -1433,8 +1495,8 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
               onToggleMaximize={() =>
                 setIsConsoleMaximized(!isConsoleMaximized)
               }
-              onClose={() => setIsConsoleOpen(false)}
-              canClose={activeTab !== "workspace"}
+              onClose={handleCloseConsole}
+              canClose={true}
               className="h-full border-0"
               baseUrl={baseUrl}
               showToast={showToast}

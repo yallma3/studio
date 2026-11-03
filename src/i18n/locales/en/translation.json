@@ -244,7 +244,9 @@
     "viewResult": "View result",
     "enterInput": "Please enter your input:",
     "waitingForInput": "Waiting for user input",
-    "send": "Send"
+    "send": "Send",
+    "openConsole": "Open Console",
+    "closeConsole": "Close Console"
   },
   "tasksTab": {
     "editTask": "Edit Task",
