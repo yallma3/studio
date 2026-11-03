@@ -939,65 +939,82 @@ const NodeCanvas: React.FC<{
                     </button>
                   </div>
                   <button
-                    className="bg-orange-600 hover:bg-orange-500 cursor-pointer px-4 transition-colors duration-200 text-white font-medium p-2 rounded-md flex items-center justify-center"
+                    className="border px-3 py-2 rounded-md transition-all flex items-center gap-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border-orange-500/20 cursor-pointer"
                     onClick={executeFlow}
+                    title="Retry"
                   >
-                    <AlertCircle size={16} className="mr-1.5" />
-                    Retry
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-xs font-medium">Retry</span>
                   </button>
                 </div>
               ) : executionStatus.isExecuting ? (
                 <button
                   onClick={stopFlow}
-                  className="bg-red-600 hover:bg-red-500 cursor-pointer px-4 transition-colors duration-200 text-white font-medium p-2 rounded-md flex items-center justify-center"
+                  className="border px-3 py-2 rounded-md transition-all flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20 cursor-pointer"
+                  title="Stop"
                 >
-                  <Square size={16} className="mr-1.5 fill-white" />
-                  Stop
+                  <Square className="h-4 w-4 fill-current" />
+                  <span className="text-xs font-medium">Stop</span>
                 </button>
               ) : (
                 <button
-                  className="bg-[#FFC72C] hover:bg-[#FFB300] cursor-pointer px-4 transition-colors duration-200 text-black font-medium p-2 rounded-md flex items-center justify-center"
+                  className="border px-3 py-2 rounded-md transition-all flex items-center gap-2 bg-green-500/10 hover:bg-green-500/20 text-green-500 border-green-500/20 cursor-pointer"
                   onClick={executeFlow}
+                  title={t("canvas.run", "Run")}
                 >
-                  <Play size={18} className="ltr-icon mr-1" />
-                  {t("canvas.run")}
+                  <Play className="h-4 w-4 ltr-icon" />
+                  <span className="text-xs font-medium">{t("canvas.run", "Run")}</span>
                 </button>
               )}
+
+              <button
+                className="bg-[#FFC72C]/10 hover:bg-[#FFC72C]/20 text-[#FFC72C] border border-[#FFC72C]/20 p-2 rounded-md transition-all cursor-pointer"
+                onClick={() => handleSaveCanvasState()}
+                title={t("canvas.save", "Save")}
+                aria-label={t("canvas.save", "Save")}
+              >
+                <Save className="h-4 w-4 ltr-icon" />
+              </button>
 
               <div className="relative" ref={fileMenuRef}>
                 <button
                   onClick={toggleFileMenu}
-                  className="bg-[#27272A] hover:bg-[#3F3F46] cursor-pointer transition-colors duration-200 text-white font-medium p-2 rounded-md flex items-center justify-center border border-zinc-700"
+                  className={`border p-2 rounded-md transition-all flex items-center justify-center cursor-pointer ${
+                    fileMenuOpen
+                      ? "bg-zinc-700 text-white border-zinc-600"
+                      : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700 hover:text-white"
+                  }`}
+                  aria-label="Menu"
+                  title="Menu"
                 >
-                  <Menu size={18} className="font-bold" />
+                  <Menu className="h-4 w-4" />
                 </button>
 
                 {fileMenuOpen && (
-                  <div className="absolute right-0 mt-1 w-56 rounded-md shadow-lg bg-[#111] ring-1 ring-black/50 focus:outline-none z-30 border border-[#FFB30055] origin-top-right animate-dropdown">
+                  <div className="absolute right-0 mt-2 w-56 rounded-md shadow-xl bg-zinc-900 border border-zinc-700/80 ring-1 ring-black/50 focus:outline-none z-30 origin-top-right animate-dropdown overflow-hidden">
                     <div className="py-1" role="menu">
                       <button
                         onClick={() => handleSaveCanvasState()}
-                        className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors cursor-pointer"
+                        className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-2"
                       >
-                        <Save size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" />
-                        {t("canvas.save")}
+                        <Save className="h-4 w-4 ltr-icon text-[#FFC72C]" />
+                        <span>{t("canvas.save", "Save")}</span>
                       </button>
                       <button
                         onClick={exportAsJson}
-                        className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors cursor-pointer"
+                        className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-2"
                       >
-                        <FileDown size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" />
-                        {t("canvas.exportToJson")}
+                        <FileDown className="h-4 w-4 ltr-icon text-[#FFC72C]" />
+                        <span>{t("canvas.exportToJson", "Export as JSON")}</span>
                       </button>
                       <button
                         onClick={exportAsJSPackage}
-                        className="w-full text-left block px-4 py-2 text-sm text-white hover:bg-[#FFB30033] transition-colors cursor-pointer"
+                        className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-2"
                       >
-                        <Code size={16} className="ltr-icon inline-block mr-2 text-[#FFC72C]" />
-                        {t("canvas.export")}
+                        <Code className="h-4 w-4 ltr-icon text-[#FFC72C]" />
+                        <span>{t("canvas.export", "Export as JS Package")}</span>
                       </button>
                     </div>
-                    <div className="border-t border-gray-800" />
                   </div>
                 )}
               </div>
