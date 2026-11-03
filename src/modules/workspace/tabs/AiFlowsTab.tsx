@@ -17,12 +17,12 @@ import NodeCanvas from "../../flow/NodeCanvas";
 import { CanvasState } from "../../flow/utils/storageUtils";
 import {
   Plus,
-  ArrowRight,
   Trash2,
   X,
   Download,
   Edit,
   Wrench,
+  Workflow as WorkflowIcon,
 } from "lucide-react";
 import {
   WorkflowFile,
@@ -37,11 +37,13 @@ import {
   createNewMcpTool,
   deleteMcpToolFile,
   toolToMcpToolFile,
+  updateMcpToolFile,
 } from "../utils/mcpStorageUtils";
 import { saveWorkspaceToDefaultLocation } from "../utils/storageUtils";
 import AddToolOrWorkflowDialog from "../../../shared/components/AddToolOrWorkflowDialog";
 import { McpWorkflowImportDialog } from "../components/McpWorkflowImportDialog";
 import { DeleteConfirmationDialog } from "../../../shared/components/DeleteConfirmationDialog";
+import { McpEditDialog } from "../components/McpEditDialog";
 
 interface AiFlowsTabProps {
   workspaceData: WorkspaceData;
@@ -97,7 +99,10 @@ const WorkflowEditDialog: React.FC<{
               <Edit size={16} className="text-blue-400" />
             </div>
             <h3 className="text-xl font-bold text-white">
-              {t("workspaces.editWorkflow", "Edit Workflow")}
+              {t(
+                "workspaces.editWorkflowDescription",
+                "Edit Workflow Description"
+              )}
             </h3>
           </div>
           <button
@@ -226,6 +231,10 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowFile | null>(
     null
   );
+  const [showMcpEditDialog, setShowMcpEditDialog] = useState(false);
+  const [editingMcpTool, setEditingMcpTool] = useState<McpToolFile | null>(
+    null
+  );
   const [workflows, setWorkflows] = useState<WorkflowFile[]>([]);
   const [mcpTools, setMcpTools] = useState<McpToolFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,35 +245,36 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
       try {
         setLoading(true);
 
-        // Load workflows
+        // Load workflows preserving workspace order
         if (!workspaceData.workflows || workspaceData.workflows.length === 0) {
           setWorkflows([]);
         } else {
           // Load all workflows from file system
           const allWorkflows = await loadAllWorkflowsFromFiles();
+          const workflowMap = new Map(allWorkflows.map((w) => [w.id, w]));
 
-          // Filter to only include workflows that are referenced in this workspace
-          const workspaceWorkflowIds = workspaceData.workflows.map((w) => w.id);
-          const filteredWorkflows = allWorkflows.filter((workflow) =>
-            workspaceWorkflowIds.includes(workflow.id)
-          );
+          // Preserve exact ordering from workspaceData.workflows
+          const orderedWorkflows = workspaceData.workflows
+            .map((w) => workflowMap.get(w.id))
+            .filter((w): w is WorkflowFile => Boolean(w));
 
-          setWorkflows(filteredWorkflows);
+          setWorkflows(orderedWorkflows);
         }
-        // Load workflows
+
+        // Load MCP tools preserving workspace order
         if (!workspaceData.mcpTools || workspaceData.mcpTools.length === 0) {
           setMcpTools([]);
         } else {
-          // Load all workflows from file system
+          // Load all MCP tools from file system
           const allMcps = await loadAllMcpToolsFromFiles();
+          const mcpMap = new Map(allMcps.map((m) => [m.id, m]));
 
-          // Filter to only include workflows that are referenced in this workspace
-          const workspaceMcpIds = workspaceData.mcpTools.map((w) => w.id);
-          const filteredMcps = allMcps.filter((mcp) =>
-            workspaceMcpIds.includes(mcp.id)
-          );
+          // Preserve exact ordering from workspaceData.mcpTools
+          const orderedMcps = workspaceData.mcpTools
+            .map((m) => mcpMap.get(m.id || ""))
+            .filter((m): m is McpToolFile => Boolean(m));
 
-          setMcpTools(filteredMcps);
+          setMcpTools(orderedMcps);
         }
       } catch (error) {
         console.error("Error loading data:", error);
@@ -493,6 +503,48 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
     setShowEditDialog(false);
     setEditingWorkflow(null);
   };
+
+  const handleOpenEditMcpDialog = (tool: McpToolFile) => {
+    setEditingMcpTool(tool);
+    setShowMcpEditDialog(true);
+  };
+
+  const handleCloseMcpEditDialog = () => {
+    setShowMcpEditDialog(false);
+    setEditingMcpTool(null);
+  };
+
+  const handleSaveEditedMcpTool = async (tool: Tool) => {
+    if (!editingMcpTool) return;
+    try {
+      const updatedMcp = await updateMcpToolFile(editingMcpTool.id, {
+        name: tool.name,
+        description: tool.description,
+        type: (tool.parameters?.type as "STDIO" | "HTTP") || "STDIO",
+        parameters: {
+          command: tool.parameters?.command as string | undefined,
+          args: tool.parameters?.args as string[] | undefined,
+          url: tool.parameters?.url as string | undefined,
+          headers: tool.parameters?.headers as Record<string, string> | undefined,
+        },
+      });
+
+      if (updatedMcp) {
+        // Update local state in place to preserve order
+        const updatedMcpTools = mcpTools.map((m) =>
+          m.id === updatedMcp.id ? updatedMcp : m
+        );
+        setMcpTools(updatedMcpTools);
+
+        // Update workspace data
+        await updateWorkspaceMcpTools(updatedMcpTools);
+
+        handleCloseMcpEditDialog();
+      }
+    } catch (error) {
+      console.error("Error editing MCP tool:", error);
+    }
+  };
   const handleEditFlow = (workflow: WorkflowFile) => {
     setSelectedWorkflow(workflow.canvasState);
     setSelectedWorkflowMeta(workflow);
@@ -701,16 +753,16 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
                       <button
                         onClick={() => editWorkflowMeta(workflow)}
                         className="flex items-center justify-center w-8 h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded-lg transition-all duration-200"
-                        title={t("workspaces.editFlow", "Edit Flow")}
+                        title={t("workspaces.editDescription", "Edit Description")}
                       >
                         <Edit size={14} />
                       </button>
                       <button
                         onClick={() => handleEditFlow(workflow)}
                         className="flex items-center justify-center w-8 h-8 text-purple-400 hover:text-purple-300 hover:bg-purple-400/10 rounded-lg transition-all duration-200"
-                        title={t("workspaces.editFlow", "Edit Flow")}
+                        title={t("workspaces.designWorkflow", "Design Workflow")}
                       >
-                        <ArrowRight size={14} />
+                        <WorkflowIcon size={14} />
                       </button>
                       <button
                         onClick={() => handleDeleteFlow(workflow.id)}
@@ -724,26 +776,6 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
 
                   {/* Description */}
                   <div className="bg-[#0a0a0a]/50 rounded-lg p-4 border border-zinc-800/50 relative z-10">
-                    <div className="flex items-center gap-2 mb-2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-zinc-400"
-                      >
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                        <polyline points="14,2 14,8 20,8" />
-                      </svg>
-                      <span className="text-zinc-400 text-xs font-medium uppercase tracking-wide">
-                        {t("workspaces.description", "Description")}
-                      </span>
-                    </div>
                     <p
                       className={`text-sm leading-relaxed ${
                         workflow.description
@@ -836,6 +868,13 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
                     {/* Action buttons */}
                     <div className="flex gap-1 ml-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <button
+                        onClick={() => handleOpenEditMcpDialog(mcpTool)}
+                        className="flex items-center justify-center w-8 h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded-lg transition-all duration-200"
+                        title={t("workspaces.editMcpTool", "Edit MCP Tool")}
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
                         onClick={() => handleDeleteMcpTool(mcpTool.id)}
                         className="flex items-center justify-center w-8 h-8 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-all duration-200"
                         title={t("workspaces.deleteMcpTool", "Delete MCP Tool")}
@@ -847,26 +886,6 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
 
                   {/* Description */}
                   <div className="bg-[#0a0a0a]/50 rounded-lg p-4 border border-zinc-800/50 relative z-10">
-                    <div className="flex items-center gap-2 mb-2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-zinc-400"
-                      >
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                        <polyline points="14,2 14,8 20,8" />
-                      </svg>
-                      <span className="text-zinc-400 text-xs font-medium uppercase tracking-wide">
-                        {t("workspaces.description", "Description")}
-                      </span>
-                    </div>
                     <p
                       className={`text-sm leading-relaxed ${
                         mcpTool.description
@@ -940,6 +959,15 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
         currentWorkspaceWorkflows={
           workspaceData.workflows?.map((w) => w.id) || []
         }
+      />
+
+      {/* MCP Tool Edit Dialog */}
+      <McpEditDialog
+        isOpen={showMcpEditDialog}
+        onClose={handleCloseMcpEditDialog}
+        onSave={handleSaveEditedMcpTool}
+        mcpTool={editingMcpTool}
+        baseUrl={baseUrl}
       />
 
       {/* Delete confirmation dialog */}

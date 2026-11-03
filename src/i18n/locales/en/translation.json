@@ -199,6 +199,10 @@
     "addNew": "Add New",
     "importFlow": "Import",
     "editWorkflow": "Edit Workflow",
+    "editDescription": "Edit Description",
+    "editWorkflowDescription": "Edit Workflow Description",
+    "designWorkflow": "Design Workflow",
+    "editMcpTool": "Edit MCP Tool",
     "lastUpdated": "Last updated"
   },
   "workspaceTab": {
