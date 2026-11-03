@@ -660,6 +660,7 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
           graph={selectedWorkflow}
           onReturnToHome={handleReturnToList}
           workflowMeta={selectedWorkflowMeta}
+          workspaceName={workspaceData.name}
         />
       </div>
     );

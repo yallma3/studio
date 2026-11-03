@@ -13,9 +13,10 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@/modules/flow/NodeCanvas", () => ({
-  default: ({ workflowMeta, onReturnToHome }: any) => (
+  default: ({ workflowMeta, workspaceName, onReturnToHome }: any) => (
     <div data-testid="node-canvas">
       <span>Editing: {workflowMeta?.name}</span>
+      <span data-testid="workspace-name">{workspaceName}</span>
       <button onClick={() => onReturnToHome()}>Return Home</button>
     </div>
   ),
@@ -261,6 +262,7 @@ describe("AiFlowsTab", () => {
 
     expect(screen.getByTestId("node-canvas")).toBeInTheDocument();
     expect(screen.getByText("Editing: First Workflow")).toBeInTheDocument();
+    expect(screen.getByTestId("workspace-name")).toHaveTextContent("Test Workspace");
   });
 
   it("renders MCP cards with 'Edit MCP Tool' button and opens McpEditDialog", async () => {
