@@ -43,6 +43,8 @@ interface ViewportState {
 }
 
 const DEFAULT_ZOOM = 0.7; // 70% default zoom
+const MIN_ZOOM = 0.1; // 10% minimum zoom
+const MAX_ZOOM = 3; // 300% maximum zoom
 const NODE_WIDTH = 416; // TaskNode and TriggerNode are w-104 (26rem = 416px)
 const NODE_HEIGHT = 280; // TaskNode and TriggerNode are h-70 (~280px)
 
@@ -308,7 +310,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
       e.preventDefault();
 
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newZoom = Math.max(0.1, Math.min(3, viewport.zoom * delta));
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, viewport.zoom * delta));
 
       if (newZoom === viewport.zoom) return; // No change needed
 
@@ -441,7 +443,8 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     const zoomY = availableHeight / contentHeight;
 
     // Manual Fit To View scales content to fit; max 1.0 (100%), min 0.1 (10%)
-    const fitZoom = Math.max(0.1, Math.min(zoomX, zoomY, 1));
+    const fitZoom = Math.max(MIN_ZOOM, Math.min(zoomX, zoomY, 1));
+    const appliedZoom = Math.round(fitZoom * 100) / 100;
 
     // Center of the nodes bounding box
     const centerX = (minX + maxX) / 2;
@@ -450,9 +453,9 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
     const viewportCenterY = rect.height / 2;
 
     setViewport({
-      x: Math.round((viewportCenterX - centerX * fitZoom) * 100) / 100,
-      y: Math.round((viewportCenterY - centerY * fitZoom) * 100) / 100,
-      zoom: Math.round(fitZoom * 100) / 100,
+      x: Math.round((viewportCenterX - centerX * appliedZoom) * 100) / 100,
+      y: Math.round((viewportCenterY - centerY * appliedZoom) * 100) / 100,
+      zoom: appliedZoom,
     });
   }, [tasks, triggerPosition, trigger]);
 
@@ -767,7 +770,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
           onClick={() =>
             setViewport((prev) => ({
               ...prev,
-              zoom: Math.max(0.1, prev.zoom * 0.8),
+              zoom: Math.max(MIN_ZOOM, prev.zoom * 0.8),
             }))
           }
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-yellow-600/30 bg-zinc-900/90 text-yellow-500 backdrop-blur-sm transition-all hover:border-yellow-500/50 hover:bg-zinc-800"
@@ -780,7 +783,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
           onClick={() =>
             setViewport((prev) => ({
               ...prev,
-              zoom: Math.min(3, prev.zoom * 1.2),
+              zoom: Math.min(MAX_ZOOM, prev.zoom * 1.2),
             }))
           }
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-yellow-600/30 bg-zinc-900/90 text-yellow-500 backdrop-blur-sm transition-all hover:border-yellow-500/50 hover:bg-zinc-800"

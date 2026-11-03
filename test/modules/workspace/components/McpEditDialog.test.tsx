@@ -179,4 +179,83 @@ describe("McpEditDialog", () => {
 
     expect(mockOnSave).not.toHaveBeenCalled();
   });
+
+  it("preserves header order when editing header keys in place and filters blank header names on submit", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      status: 200,
+    });
+
+    const httpTool: McpToolFile = {
+      id: "mcp-2",
+      name: "HTTP Tool",
+      description: "A test tool for HTTP",
+      type: "HTTP",
+      createdAt: 1620000000000,
+      updatedAt: 1620000000000,
+      parameters: {
+        url: "https://example.com/mcp",
+        headers: {
+          "X-First": "1",
+          "X-Second": "2",
+        },
+      },
+    };
+
+    render(
+      <McpEditDialog
+        isOpen={true}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+        mcpTool={httpTool}
+        baseUrl={baseUrl}
+      />
+    );
+
+    // Edit the first header's key in place
+    const firstKeyInput = screen.getByDisplayValue("X-First");
+    fireEvent.change(firstKeyInput, { target: { value: "X-Updated-First" } });
+
+    // Add an empty header row
+    const addHeaderButton = screen.getByText(/\+ Add Header/i);
+    fireEvent.click(addHeaderButton);
+
+    // Click save
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      // The empty header should be filtered out, and the updated key should maintain position
+      expect(mockOnSave).toHaveBeenCalledWith({
+        id: "mcp-2",
+        type: "mcp",
+        name: "HTTP Tool",
+        description: "A test tool for HTTP",
+        parameters: {
+          type: "HTTP",
+          url: "https://example.com/mcp",
+          headers: {
+            "X-Updated-First": "1",
+            "X-Second": "2",
+          },
+        },
+      });
+    });
+
+    // Verify fetch body sent cleanHeaders without empty key
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${baseUrl}/mcp/health`,
+      expect.objectContaining({
+        body: JSON.stringify({
+          type: "HTTP",
+          command: "",
+          args: [],
+          url: "https://example.com/mcp",
+          headers: {
+            "X-Updated-First": "1",
+            "X-Second": "2",
+          },
+        }),
+      })
+    );
+  });
 });

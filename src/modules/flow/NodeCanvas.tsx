@@ -721,8 +721,11 @@ const NodeCanvas: React.FC<{
   const handleSaveCanvasState = async (graphName?: string) => {
     if (!graph) return;
     try {
-      const nameToUse = graphName || graph?.graphName;
+      const nameToUse = graphName || workflowMeta?.name || graph?.graphName;
       if (!nameToUse) { setGraphNameDialogOpen(true); return; }
+      if (graph) {
+        graph.graphName = nameToUse;
+      }
       await saveCanvasState(graph?.graphId, nodes, connections, nextNodeId.current, nameToUse);
       setFileMenuOpen(false);
       showToast(t("canvas.saveSuccess", { name: nameToUse }), "success");
@@ -861,6 +864,7 @@ const NodeCanvas: React.FC<{
                   if (graph) {
                     const updatedCanvasState: CanvasState = {
                       ...graph,
+                      graphName: workflowMeta?.name || graph.graphName,
                       nodes,
                       connections,
                       nextNodeId: nextNodeId.current,

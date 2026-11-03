@@ -48,7 +48,7 @@ export const McpEditDialog: React.FC<McpEditDialogProps> = ({
     if (isOpen && mcpTool) {
       setName(mcpTool.name || "");
       setDescription(mcpTool.description || "");
-      const toolType = mcpTool.type || "STDIO";
+      const toolType = (mcpTool.type || "STDIO") as "STDIO" | "HTTP";
       setType(toolType);
       setCommand(mcpTool.parameters?.command || "");
       setArgs(mcpTool.parameters?.args ? [...mcpTool.parameters.args] : []);
@@ -86,12 +86,13 @@ export const McpEditDialog: React.FC<McpEditDialogProps> = ({
   };
 
   const updateHeader = (key: string, newKey: string, value: string) => {
-    const newHeaders = { ...headers };
-    delete newHeaders[key];
-    if (newKey.trim()) {
-      newHeaders[newKey.trim()] = value;
-    }
-    setHeaders(newHeaders);
+    setHeaders(
+      Object.fromEntries(
+        Object.entries(headers).map(([k, v]) =>
+          k === key ? [newKey, value] : [k, v]
+        )
+      )
+    );
   };
 
   const removeHeader = (key: string) => {
@@ -100,15 +101,23 @@ export const McpEditDialog: React.FC<McpEditDialogProps> = ({
     setHeaders(newHeaders);
   };
 
-  const checkMcpServerHealth = async (): Promise<boolean> => {
+  const checkMcpServerHealth = async (
+    customHeaders?: Record<string, string>
+  ): Promise<boolean> => {
     setHealthError("");
+
+    const headersToUse =
+      customHeaders ??
+      Object.fromEntries(
+        Object.entries(headers).filter(([k]) => k.trim() !== "")
+      );
 
     const mcp = {
       type,
       command,
       args,
       url,
-      headers,
+      headers: headersToUse,
     };
 
     try {
@@ -160,7 +169,11 @@ export const McpEditDialog: React.FC<McpEditDialogProps> = ({
 
     setIsSubmitting(true);
 
-    const isHealthy = await checkMcpServerHealth();
+    const cleanHeaders = Object.fromEntries(
+      Object.entries(headers).filter(([key]) => key.trim() !== "")
+    );
+
+    const isHealthy = await checkMcpServerHealth(cleanHeaders);
     if (!isHealthy) {
       setIsSubmitting(false);
       return;
@@ -173,7 +186,9 @@ export const McpEditDialog: React.FC<McpEditDialogProps> = ({
       description: description.trim(),
       parameters: {
         type,
-        ...(type === "STDIO" ? { command, args } : { url, headers }),
+        ...(type === "STDIO"
+          ? { command, args }
+          : { url, headers: cleanHeaders }),
       },
     };
 

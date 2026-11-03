@@ -473,10 +473,18 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
     if (!editingWorkflow) return;
 
     try {
-      // Update workflow file with new metadata
+      // Update workflow file with new metadata and synchronize canvasState.graphName
       const updatedWorkflow = await updateWorkflowFile(editingWorkflow.id, {
         name,
         description,
+        ...(editingWorkflow.canvasState
+          ? {
+              canvasState: {
+                ...editingWorkflow.canvasState,
+                graphName: name,
+              },
+            }
+          : {}),
       });
 
       if (updatedWorkflow) {
@@ -546,7 +554,13 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
     }
   };
   const handleEditFlow = (workflow: WorkflowFile) => {
-    setSelectedWorkflow(workflow.canvasState);
+    const canvasState = workflow.canvasState
+      ? {
+          ...workflow.canvasState,
+          graphName: workflow.name || workflow.canvasState.graphName,
+        }
+      : workflow.canvasState;
+    setSelectedWorkflow(canvasState);
     setSelectedWorkflowMeta(workflow);
     setShowCanvas(true);
   };
