@@ -34,11 +34,21 @@ export default {
             transform: "translateY(10px) translateX(-50%)",
           },
         },
+        "ping-three": {
+          "0%": { transform: "scale(1)", opacity: "0.8" },
+          "75%, 100%": { transform: "scale(2)", opacity: "0" },
+        },
+        "pulse-three": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
+        },
       },
       animation: {
         dropdown: "dropdown 0.2s ease-out",
         "fade-in-up": "fade-in-up 0.3s ease-out forwards",
         "fade-out-down": "fade-out-down 0.3s ease-out forwards",
+        "ping-three": "ping-three 1s cubic-bezier(0, 0, 0.2, 1) 3 forwards",
+        "pulse-three": "pulse-three 1s cubic-bezier(0.4, 0, 0.6, 1) 3",
       },
     },
   },

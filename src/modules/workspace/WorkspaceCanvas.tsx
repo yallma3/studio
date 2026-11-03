@@ -293,6 +293,8 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   const hasIncomingMessages =
     !isConsoleOpen &&
     (unreadCount > 0 || (pendingPrompts && pendingPrompts.length > 0));
+  const [isIndicatorPulsing, setIsIndicatorPulsing] = useState(false);
+  const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevActiveTabRef = useRef<WorkspaceTabSelector>(activeTab);
   const [isRunning, setIsRunning] = useState(false);
   const isRunningRef = useRef(isRunning);
@@ -321,16 +323,58 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   useEffect(() => {
     if (isConsoleOpen) {
       setUnreadCount(0);
+      setIsIndicatorPulsing(false);
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+        pulseTimeoutRef.current = null;
+      }
     } else {
       const diff = events.length - prevEventsLengthRef.current;
       if (diff > 0) {
         setUnreadCount((prev) => prev + diff);
+        // Trigger pulse/ping effect for only 3 times (3 seconds total) upon new arrival
+        setIsIndicatorPulsing(true);
+        if (pulseTimeoutRef.current) {
+          clearTimeout(pulseTimeoutRef.current);
+        }
+        pulseTimeoutRef.current = setTimeout(() => {
+          setIsIndicatorPulsing(false);
+          pulseTimeoutRef.current = null;
+        }, 3000);
       } else if (events.length === 0) {
         setUnreadCount(0);
+        setIsIndicatorPulsing(false);
+        if (pulseTimeoutRef.current) {
+          clearTimeout(pulseTimeoutRef.current);
+          pulseTimeoutRef.current = null;
+        }
       }
     }
     prevEventsLengthRef.current = events.length;
   }, [events.length, isConsoleOpen]);
+
+  // Handle incoming prompts while console is minimized
+  useEffect(() => {
+    if (!isConsoleOpen && pendingPrompts && pendingPrompts.length > 0) {
+      setIsIndicatorPulsing(true);
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+      }
+      pulseTimeoutRef.current = setTimeout(() => {
+        setIsIndicatorPulsing(false);
+        pulseTimeoutRef.current = null;
+      }, 3000);
+    }
+  }, [pendingPrompts, isConsoleOpen]);
+
+  // Clean up pulse timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle active tab changes for console visibility
   useEffect(() => {
@@ -1321,7 +1365,9 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                   isConsoleOpen
                     ? "bg-zinc-700 text-white border-zinc-600"
                     : hasIncomingMessages
-                    ? "bg-[#FFC72C]/15 hover:bg-[#FFC72C]/25 text-[#FFC72C] border-[#FFC72C]/60 shadow-[0_0_12px_rgba(255,199,44,0.35)] animate-pulse"
+                    ? `bg-[#FFC72C]/15 hover:bg-[#FFC72C]/25 text-[#FFC72C] border-[#FFC72C]/60 shadow-[0_0_12px_rgba(255,199,44,0.35)] ${
+                        isIndicatorPulsing ? "animate-pulse-three" : ""
+                      }`
                     : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700 hover:text-white"
                 }`}
                 onClick={handleToggleConsole}
@@ -1351,7 +1397,13 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                 <Terminal className={`h-4 w-4 ${hasIncomingMessages ? "text-[#FFC72C]" : ""}`} />
                 {hasIncomingMessages && (
                   <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 px-1 items-center justify-center">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFC72C] opacity-75" />
+                    {isIndicatorPulsing && (
+                      <span
+                        key={unreadCount}
+                        className="animate-ping-three absolute inline-flex h-full w-full rounded-full bg-[#FFC72C] opacity-75"
+                        onAnimationEnd={() => setIsIndicatorPulsing(false)}
+                      />
+                    )}
                     <span className="relative inline-flex items-center justify-center rounded-full h-4 min-w-4 px-1 bg-[#FFC72C] text-[9px] font-bold text-zinc-950 shadow-sm border border-zinc-950">
                       {unreadCount > 9 ? "9+" : unreadCount > 0 ? unreadCount : "!"}
                     </span>

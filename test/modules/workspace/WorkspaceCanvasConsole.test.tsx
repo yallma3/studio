@@ -387,8 +387,17 @@ describe("WorkspaceCanvas - Console Panel Consistency & Session Persistence", ()
     // Button should now have pulsing highlight styling and updated accessible title
     const alertingBtn = screen.getByTitle(/New messages incoming \(1\)/i);
     expect(alertingBtn).toBeInTheDocument();
-    expect(alertingBtn).toHaveClass("animate-pulse");
+    expect(alertingBtn).toHaveClass("animate-pulse-three");
     expect(alertingBtn).toHaveClass("text-[#FFC72C]");
+    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(document.querySelector(".animate-ping-three")).toBeInTheDocument();
+
+    // Ending the 3-cycle animation stops the ripple
+    const pingRipple = document.querySelector(".animate-ping-three");
+    fireEvent.animationEnd(pingRipple!);
+    expect(alertingBtn).not.toHaveClass("animate-pulse-three");
+    expect(document.querySelector(".animate-ping-three")).toBeNull();
+    // Badge remains visible
     expect(screen.getByText("1")).toBeInTheDocument();
   });
 
@@ -478,5 +487,57 @@ describe("WorkspaceCanvas - Console Panel Consistency & Session Persistence", ()
 
     expect(screen.getByTitle(/New messages incoming \(12\)/i)).toBeInTheDocument();
     expect(screen.getByText("9+")).toBeInTheDocument();
+  });
+
+  it("should limit pulse effect around number indicator to 3 iterations and settle at resting gold state", () => {
+    vi.useFakeTimers();
+    let consoleEventCallback: ((event: any) => void) | null = null;
+    vi.spyOn(sidecarClient, "onConsoleEvent").mockImplementation((cb) => {
+      consoleEventCallback = cb;
+      return () => {
+        consoleEventCallback = null;
+      };
+    });
+
+    sessionStorage.setItem(
+      `workspace_console_open_${mockWorkspaceData.id}`,
+      "false"
+    );
+
+    render(
+      <WorkspaceCanvas
+        workspaceData={mockWorkspaceData}
+        onReturnToHome={vi.fn()}
+        baseUrl="http://localhost:3001"
+      />
+    );
+
+    act(() => {
+      consoleEventCallback?.({
+        id: "evt-pulse-1",
+        timestamp: Date.now(),
+        type: "info",
+        message: "Incoming message testing 3 pulses",
+      });
+    });
+
+    const alertingBtn = screen.getByTitle(/New messages incoming \(1\)/i);
+    expect(alertingBtn).toHaveClass("animate-pulse-three");
+    expect(document.querySelector(".animate-ping-three")).toBeInTheDocument();
+
+    // Advance by 3000ms (3 iterations of 1s pulse)
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    // After 3 pulses, pulsing stops so it is no longer annoying
+    expect(alertingBtn).not.toHaveClass("animate-pulse-three");
+    expect(document.querySelector(".animate-ping-three")).toBeNull();
+
+    // Resting state remains clearly highlighted with the badge
+    expect(alertingBtn).toHaveClass("text-[#FFC72C]");
+    expect(screen.getByText("1")).toBeInTheDocument();
+
+    vi.useRealTimers();
   });
 });

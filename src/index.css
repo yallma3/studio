@@ -90,3 +90,32 @@
 ::-ms-clear {
   display: none;
 }
+
+/* 3-iteration pulse and ping animations */
+@keyframes ping-three {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-ping-three {
+  animation: ping-three 1s cubic-bezier(0, 0, 0.2, 1) 3 forwards;
+}
+
+@keyframes pulse-three {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-three {
+  animation: pulse-three 1s cubic-bezier(0.4, 0, 0.6, 1) 3;
+}
