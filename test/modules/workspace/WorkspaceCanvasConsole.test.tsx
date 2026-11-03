@@ -12,14 +12,21 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import WorkspaceCanvas from "@/modules/workspace/WorkspaceCanvas";
+import { sidecarClient } from "@/modules/api/SidecarClient";
 import { WorkspaceData } from "@/modules/workspace/types/Types";
 
 // Mock i18n
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, defaultValue?: string) => defaultValue || key,
+    t: (key: string, defaultValue?: string, options?: any) => {
+      let result = defaultValue || key;
+      if (options?.count !== undefined) {
+        result = result.replace("{{count}}", String(options.count));
+      }
+      return result;
+    },
     i18n: { language: "en" },
   }),
 }));
@@ -337,5 +344,139 @@ describe("WorkspaceCanvas - Console Panel Consistency & Session Persistence", ()
     expect(
       screen.getByRole("button", { name: "Close Console" })
     ).toBeInTheDocument();
+  });
+
+  it("should visually change console button to indicate incoming messages when new text is added while minimized", () => {
+    let consoleEventCallback: ((event: any) => void) | null = null;
+    vi.spyOn(sidecarClient, "onConsoleEvent").mockImplementation((cb) => {
+      consoleEventCallback = cb;
+      return () => {
+        consoleEventCallback = null;
+      };
+    });
+
+    // Start with console closed
+    sessionStorage.setItem(
+      `workspace_console_open_${mockWorkspaceData.id}`,
+      "false"
+    );
+
+    render(
+      <WorkspaceCanvas
+        workspaceData={mockWorkspaceData}
+        onReturnToHome={vi.fn()}
+        baseUrl="http://localhost:3001"
+      />
+    );
+
+    // Initial state: passive Open Console button with no badge
+    const initialBtn = screen.getByRole("button", { name: "Open Console" });
+    expect(initialBtn).toBeInTheDocument();
+    expect(initialBtn).not.toHaveClass("animate-pulse");
+
+    // Simulate incoming console text/event while console is minimized
+    act(() => {
+      consoleEventCallback?.({
+        id: "evt-1",
+        timestamp: Date.now(),
+        type: "info",
+        message: "Incoming assistant thought or streamed output",
+      });
+    });
+
+    // Button should now have pulsing highlight styling and updated accessible title
+    const alertingBtn = screen.getByTitle(/New messages incoming \(1\)/i);
+    expect(alertingBtn).toBeInTheDocument();
+    expect(alertingBtn).toHaveClass("animate-pulse");
+    expect(alertingBtn).toHaveClass("text-[#FFC72C]");
+    expect(screen.getByText("1")).toBeInTheDocument();
+  });
+
+  it("should clear incoming message indicator and reset unread count when user clicks to open the console", () => {
+    let consoleEventCallback: ((event: any) => void) | null = null;
+    vi.spyOn(sidecarClient, "onConsoleEvent").mockImplementation((cb) => {
+      consoleEventCallback = cb;
+      return () => {
+        consoleEventCallback = null;
+      };
+    });
+
+    sessionStorage.setItem(
+      `workspace_console_open_${mockWorkspaceData.id}`,
+      "false"
+    );
+
+    render(
+      <WorkspaceCanvas
+        workspaceData={mockWorkspaceData}
+        onReturnToHome={vi.fn()}
+        baseUrl="http://localhost:3001"
+      />
+    );
+
+    // Dispatch 2 incoming messages
+    act(() => {
+      consoleEventCallback?.({
+        id: "msg-1",
+        timestamp: Date.now(),
+        type: "info",
+        message: "Message 1",
+      });
+      consoleEventCallback?.({
+        id: "msg-2",
+        timestamp: Date.now(),
+        type: "info",
+        message: "Message 2",
+      });
+    });
+
+    // Alerting button with 2 unread messages
+    const alertingBtn = screen.getByTitle(/New messages incoming \(2\)/i);
+    expect(screen.getByText("2")).toBeInTheDocument();
+
+    // User clicks the button to see the coming messages
+    fireEvent.click(alertingBtn);
+
+    // Console is now open, badge is cleared, title becomes Close Console
+    expect(screen.getByRole("button", { name: "Close Console" })).toBeInTheDocument();
+    expect(screen.queryByText("2")).toBeNull();
+  });
+
+  it("should format badge count with 9+ when more than 9 unread messages arrive while minimized", () => {
+    let consoleEventCallback: ((event: any) => void) | null = null;
+    vi.spyOn(sidecarClient, "onConsoleEvent").mockImplementation((cb) => {
+      consoleEventCallback = cb;
+      return () => {
+        consoleEventCallback = null;
+      };
+    });
+
+    sessionStorage.setItem(
+      `workspace_console_open_${mockWorkspaceData.id}`,
+      "false"
+    );
+
+    render(
+      <WorkspaceCanvas
+        workspaceData={mockWorkspaceData}
+        onReturnToHome={vi.fn()}
+        baseUrl="http://localhost:3001"
+      />
+    );
+
+    // Dispatch 12 incoming messages
+    act(() => {
+      for (let i = 1; i <= 12; i++) {
+        consoleEventCallback?.({
+          id: `burst-msg-${i}`,
+          timestamp: Date.now(),
+          type: "info",
+          message: `Burst log message ${i}`,
+        });
+      }
+    });
+
+    expect(screen.getByTitle(/New messages incoming \(12\)/i)).toBeInTheDocument();
+    expect(screen.getByText("9+")).toBeInTheDocument();
   });
 });

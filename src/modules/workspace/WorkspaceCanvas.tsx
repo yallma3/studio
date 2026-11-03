@@ -250,7 +250,7 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<WorkspaceTabSelector>("workspace");
-  const { addEvent, events } = useConsole();
+  const { addEvent, events, pendingPrompts } = useConsole();
 
   // Maintain workspace data in state
   const [workspaceData, setWorkspaceData] =
@@ -290,6 +290,9 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
   const [isConsoleMaximized, setIsConsoleMaximized] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const prevEventsLengthRef = useRef(0);
+  const hasIncomingMessages =
+    !isConsoleOpen &&
+    (unreadCount > 0 || (pendingPrompts && pendingPrompts.length > 0));
   const prevActiveTabRef = useRef<WorkspaceTabSelector>(activeTab);
   const [isRunning, setIsRunning] = useState(false);
   const isRunningRef = useRef(isRunning);
@@ -1317,24 +1320,41 @@ const WorkspaceCanvasContent: React.FC<WorkspaceCanvasProps> = ({
                 className={`relative border p-2 rounded-md transition-all ${
                   isConsoleOpen
                     ? "bg-zinc-700 text-white border-zinc-600"
+                    : hasIncomingMessages
+                    ? "bg-[#FFC72C]/15 hover:bg-[#FFC72C]/25 text-[#FFC72C] border-[#FFC72C]/60 shadow-[0_0_12px_rgba(255,199,44,0.35)] animate-pulse"
                     : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700 hover:text-white"
                 }`}
                 onClick={handleToggleConsole}
                 title={
                   isConsoleOpen
                     ? t("workspaceTab.closeConsole", "Close Console")
+                    : hasIncomingMessages
+                    ? t(
+                        "workspaceTab.openConsoleIncoming",
+                        "New messages incoming ({{count}}) - click to view",
+                        { count: unreadCount > 0 ? unreadCount : 1 }
+                      )
                     : t("workspaceTab.openConsole", "Open Console")
                 }
                 aria-label={
                   isConsoleOpen
                     ? t("workspaceTab.closeConsole", "Close Console")
+                    : hasIncomingMessages
+                    ? t(
+                        "workspaceTab.openConsoleIncoming",
+                        "New messages incoming ({{count}}) - click to view",
+                        { count: unreadCount > 0 ? unreadCount : 1 }
+                      )
                     : t("workspaceTab.openConsole", "Open Console")
                 }
               >
-                <Terminal className="h-4 w-4" />
-                {!isConsoleOpen && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-600 text-[8px] font-bold text-white shadow-sm border border-[#0a0a0a]">
-                    {unreadCount > 9 ? "9+" : unreadCount}
+                <Terminal className={`h-4 w-4 ${hasIncomingMessages ? "text-[#FFC72C]" : ""}`} />
+                {hasIncomingMessages && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 px-1 items-center justify-center">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFC72C] opacity-75" />
+                    <span className="relative inline-flex items-center justify-center rounded-full h-4 min-w-4 px-1 bg-[#FFC72C] text-[9px] font-bold text-zinc-950 shadow-sm border border-zinc-950">
+                      {unreadCount > 9 ? "9+" : unreadCount > 0 ? unreadCount : "!"}
+                    </span>
                   </span>
                 )}
               </button>

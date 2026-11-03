@@ -250,7 +250,8 @@
     "waitingForInput": "في انتظار إدخال المستخدم",
     "send": "إرسال",
     "openConsole": "فتح وحدة التحكم",
-    "closeConsole": "إغلاق وحدة التحكم"
+    "closeConsole": "إغلاق وحدة التحكم",
+    "openConsoleIncoming": "رسائل جديدة واردة ({{count}}) - انقر للعرض"
   },
   "tasksTab": {
     "editTask": "تعديل المهمة",

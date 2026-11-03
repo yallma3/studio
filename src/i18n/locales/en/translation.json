@@ -246,7 +246,8 @@
     "waitingForInput": "Waiting for user input",
     "send": "Send",
     "openConsole": "Open Console",
-    "closeConsole": "Close Console"
+    "closeConsole": "Close Console",
+    "openConsoleIncoming": "New messages incoming ({{count}}) - click to view"
   },
   "tasksTab": {
     "editTask": "Edit Task",
