@@ -42,6 +42,10 @@ interface ViewportState {
   zoom: number;
 }
 
+const DEFAULT_ZOOM = 0.7; // 70% default zoom
+const NODE_WIDTH = 416; // TaskNode and TriggerNode are w-104 (26rem = 416px)
+const NODE_HEIGHT = 280; // TaskNode and TriggerNode are h-70 (~280px)
+
 const TasksCanvas: React.FC<TasksCanvasProps> = ({
   tasks = [],
   connections = [],
@@ -65,7 +69,7 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
   const [viewport, setViewport] = useState<ViewportState>({
     x: 50, // Start with a small offset to show tasks
     y: 50,
-    zoom: 1,
+    zoom: DEFAULT_ZOOM,
   });
 
   const [isDragging, setIsDragging] = useState(false);
@@ -366,47 +370,57 @@ const TasksCanvas: React.FC<TasksCanvasProps> = ({
       positions.push(triggerPosition);
     }
 
-    if (positions.length === 0) return;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0 || rect.height === 0) return;
 
-    const minX = Math.min(...positions.map((p) => p.x)) - 100;
-    const maxX = Math.max(...positions.map((p) => p.x)) + 550;
-    const minY = Math.min(...positions.map((p) => p.y)) - 100;
-    const maxY = Math.max(...positions.map((p) => p.y)) + 450;
+    if (positions.length === 0) {
+      // Empty canvas: default to 70% zoom centered
+      setViewport({
+        x: rect.width / 2,
+        y: rect.height / 2,
+        zoom: DEFAULT_ZOOM,
+      });
+      return;
+    }
+
+    const minX = Math.min(...positions.map((p) => p.x));
+    const maxX = Math.max(...positions.map((p) => p.x)) + NODE_WIDTH;
+    const minY = Math.min(...positions.map((p) => p.y));
+    const maxY = Math.max(...positions.map((p) => p.y)) + NODE_HEIGHT;
 
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
 
-        // Get canvas dimensions
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    // Calculate zoom if content is larger than viewport (with 80px margin padding)
+    const padding = 80;
+    const availableWidth = Math.max(100, rect.width - padding * 2);
+    const availableHeight = Math.max(100, rect.height - padding * 2);
+    const zoomX = availableWidth / contentWidth;
+    const zoomY = availableHeight / contentHeight;
 
-        // Calculate zoom to fit content with some padding
-    const zoomX = (rect.width * 0.9) / contentWidth;
-    const zoomY = (rect.height * 0.9) / contentHeight;
-    const fitZoom = Math.min(zoomX, zoomY, 1);// Don't zoom in beyond 100%
+    // Default zoom is 70% (0.7); scale down below 70% only if nodes exceed canvas bounds
+    const fitZoom = Math.max(0.1, Math.min(zoomX, zoomY, DEFAULT_ZOOM));
 
-        // Center the content
+    // Center of the nodes bounding box
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
     const viewportCenterX = rect.width / 2;
     const viewportCenterY = rect.height / 2;
 
     setViewport({
-      x: viewportCenterX - centerX * fitZoom,
-      y: viewportCenterY - centerY * fitZoom,
-      zoom: fitZoom,
+      x: Math.round((viewportCenterX - centerX * fitZoom) * 100) / 100,
+      y: Math.round((viewportCenterY - centerY * fitZoom) * 100) / 100,
+      zoom: Math.round(fitZoom * 100) / 100,
     });
   }, [tasks, triggerPosition, trigger]);
 
   // Keep ref updated with latest fitToView
   fitToViewRef.current = fitToView;
 
-// Fit to view on mount and when tasks change
-useEffect(() => {
-  if (tasks.length > 0 || trigger) {
+  // Fit to view on mount and when tasks/trigger change
+  useEffect(() => {
     fitToViewRef.current();
-  }
-}, [tasks.length, trigger]);
+  }, [tasks.length, trigger]);
 
   const handleCanvasContextMenu = useCallback(
     (e: React.MouseEvent) => {
