@@ -674,13 +674,19 @@ const AiFlowsTab: React.FC<AiFlowsTabProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="bg-[#121212] rounded-md">
-        <div className="flex justify-between items-center p-6 border-b border-[#FFC72C]/50">
-          <div className="flex items-center">
-            <h2 className="text-xl font-bold text-white">
+        <div className="flex justify-between items-center px-6 py-3.5 border-b border-[#FFC72C]/50">
+          <div>
+            <h2 className="text-lg font-bold text-white leading-tight">
               {t("workspaces.aiFlows", "Tools & AI Workflows")}
             </h2>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              {t(
+                "workspaces.toolsAndWorkflowsDescription",
+                "Create and manage visual workflows and MCP tools available to agents in this workspace"
+              )}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <button

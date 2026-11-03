@@ -203,6 +203,9 @@
     "editWorkflowDescription": "Edit Workflow Description",
     "designWorkflow": "Design Workflow",
     "editMcpTool": "Edit MCP Tool",
+    "subAgentsDescription": "Define and manage AI agents, their roles, capabilities, and assigned tools",
+    "toolsAndWorkflowsDescription": "Create and manage visual workflows and MCP tools available to agents in this workspace",
+    "environmentVariablesDescription": "Configure environment variables and secure credentials accessible during workspace execution",
     "lastUpdated": "Last updated"
   },
   "workspaceTab": {

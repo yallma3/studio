@@ -144,6 +144,24 @@ describe("AiFlowsTab", () => {
     });
   });
 
+  it("renders top sub-title bar with header and 'use for' description statement", async () => {
+    render(
+      <AiFlowsTab
+        workspaceData={mockWorkspaceData}
+        baseUrl="http://localhost:8000"
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Tools & AI Workflows")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(
+        "Create and manage visual workflows and MCP tools available to agents in this workspace"
+      )
+    ).toBeInTheDocument();
+  });
+
   it("maintains stable card ordering matching workspaceData rather than updatedAt", async () => {
     render(
       <AiFlowsTab

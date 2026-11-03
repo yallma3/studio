@@ -131,6 +131,11 @@ describe("AgentsTab", () => {
     );
 
     expect(screen.getByText("Sub Agents")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Define and manage AI agents, their roles, capabilities, and assigned tools"
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText("Add Agent")).toBeInTheDocument();
     expect(screen.getByText("Test Agent")).toBeInTheDocument();
   });

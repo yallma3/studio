@@ -188,13 +188,19 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="bg-[#121212] rounded-md">
-        <div className="flex justify-between items-center p-6 border-b border-[#FFC72C]/50">
-          <div className="flex items-center">
-            <h2 className="text-xl font-bold text-white">
+        <div className="flex justify-between items-center px-6 py-3.5 border-b border-[#FFC72C]/50">
+          <div>
+            <h2 className="text-lg font-bold text-white leading-tight">
               {t("workspaces.subAgents", "Sub Agents")}
             </h2>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              {t(
+                "workspaces.subAgentsDescription",
+                "Define and manage AI agents, their roles, capabilities, and assigned tools"
+              )}
+            </p>
           </div>
           <button
             className="bg-[#FFC72C] hover:bg-[#E6B428] text-black px-3 py-1 rounded text-sm flex items-center gap-1"
