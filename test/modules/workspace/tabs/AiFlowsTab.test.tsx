@@ -22,15 +22,16 @@ vi.mock("@/modules/flow/NodeCanvas", () => ({
 }));
 
 vi.mock("@/shared/components/AddToolOrWorkflowDialog", () => ({
-  default: () => <div data-testid="add-dialog" />,
+  default: ({ isOpen }: any) => (isOpen ? <div data-testid="add-dialog" /> : null),
 }));
 
 vi.mock("@/modules/workspace/components/McpWorkflowImportDialog", () => ({
-  McpWorkflowImportDialog: () => <div data-testid="import-dialog" />,
+  McpWorkflowImportDialog: ({ isOpen }: any) => (isOpen ? <div data-testid="import-dialog" /> : null),
 }));
 
 vi.mock("@/shared/components/DeleteConfirmationDialog", () => ({
-  DeleteConfirmationDialog: () => <div data-testid="delete-dialog" />,
+  DeleteConfirmationDialog: ({ isOpen, itemName }: any) =>
+    isOpen ? <div data-testid="delete-dialog">Delete {itemName}</div> : null,
 }));
 
 describe("AiFlowsTab", () => {
@@ -245,5 +246,147 @@ describe("AiFlowsTab", () => {
 
     expect(screen.getByRole("heading", { name: "Edit MCP Tool" })).toBeInTheDocument();
     expect(screen.getByDisplayValue("Beta MCP")).toBeInTheDocument();
+  });
+
+  it("updates workflow metadata in place without reordering on edit submit", async () => {
+    const onWorkflowsChange = vi.fn();
+
+    render(
+      <AiFlowsTab
+        workspaceData={mockWorkspaceData}
+        baseUrl="http://localhost:8000"
+        onWorkflowsChange={onWorkflowsChange}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Second Workflow")).toBeInTheDocument();
+    });
+
+    // Open edit dialog for First Workflow (index 1)
+    const editDescButtons = screen.getAllByTitle("Edit Description");
+    fireEvent.click(editDescButtons[1]); // First Workflow
+
+    const nameInput = screen.getByDisplayValue("First Workflow");
+    fireEvent.change(nameInput, { target: { value: "Renamed First Workflow" } });
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(workflowStorageUtils.updateWorkflowFile).toHaveBeenCalledWith(
+        "wf-1",
+        expect.objectContaining({ name: "Renamed First Workflow" })
+      );
+    });
+
+    // Check that Second Workflow is still first and Renamed First Workflow is still second
+    await waitFor(() => {
+      const headings = screen.getAllByRole("heading", { level: 3 });
+      const texts = headings.map((h) => h.textContent);
+      const secondIndex = texts.indexOf("Second Workflow");
+      const renamedIndex = texts.indexOf("Renamed First Workflow");
+      expect(secondIndex).toBeLessThan(renamedIndex);
+    });
+
+    expect(onWorkflowsChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "wf-2" }),
+        expect.objectContaining({ id: "wf-1", name: "Renamed First Workflow" }),
+      ])
+    );
+  });
+
+  it("updates MCP tool in place without reordering on edit save", async () => {
+    (global.fetch as any) = vi.fn().mockResolvedValue({
+      status: 200,
+      json: async () => ({ status: "ok" }),
+    });
+
+    const onMcpToolsChange = vi.fn();
+
+    render(
+      <AiFlowsTab
+        workspaceData={mockWorkspaceData}
+        baseUrl="http://localhost:8000"
+        onMcpToolsChange={onMcpToolsChange}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Beta MCP")).toBeInTheDocument();
+    });
+
+    // Open edit for Alpha MCP (index 1)
+    const editMcpButtons = screen.getAllByTitle("Edit MCP Tool");
+    fireEvent.click(editMcpButtons[1]); // Alpha MCP
+
+    const nameInput = screen.getByDisplayValue("Alpha MCP");
+    fireEvent.change(nameInput, { target: { value: "Renamed Alpha MCP" } });
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(mcpStorageUtils.updateMcpToolFile).toHaveBeenCalledWith(
+        "mcp-1",
+        expect.objectContaining({ name: "Renamed Alpha MCP" })
+      );
+    });
+
+    // Check that Beta MCP is still before Renamed Alpha MCP
+    await waitFor(() => {
+      const headings = screen.getAllByRole("heading", { level: 3 });
+      const texts = headings.map((h) => h.textContent);
+      const betaIndex = texts.indexOf("Beta MCP");
+      const alphaIndex = texts.indexOf("Renamed Alpha MCP");
+      expect(betaIndex).toBeLessThan(alphaIndex);
+    });
+
+    expect(onMcpToolsChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "mcp-2" }),
+        expect.objectContaining({ id: "mcp-1", name: "Renamed Alpha MCP" }),
+      ])
+    );
+  });
+
+  it("opens AddToolOrWorkflowDialog when clicking Add New button", async () => {
+    render(
+      <AiFlowsTab
+        workspaceData={mockWorkspaceData}
+        baseUrl="http://localhost:8000"
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Add New")).toBeInTheDocument();
+    });
+
+    const addNewButton = screen.getByText("Add New");
+    fireEvent.click(addNewButton);
+
+    expect(screen.getByTestId("add-dialog")).toBeInTheDocument();
+  });
+
+  it("renders empty state when workspace has no workflows and no MCP tools", async () => {
+    const emptyWorkspace: WorkspaceData = {
+      ...mockWorkspaceData,
+      workflows: [],
+      mcpTools: [],
+    };
+
+    render(
+      <AiFlowsTab
+        workspaceData={emptyWorkspace}
+        baseUrl="http://localhost:8000"
+      />
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("No workflows or MCP tools have been added to this workspace yet")
+      ).toBeInTheDocument();
+    });
   });
 });
