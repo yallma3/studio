@@ -311,6 +311,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 />
               </div>
               <div className="flex items-center gap-2">
+                <div className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                 {isEditing ? (
                   <input
                     type="number"
