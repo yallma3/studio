@@ -21,7 +21,6 @@ import {
   Clock,
   X,
   Check,
-  RotateCcw,
 } from "lucide-react";
 
 import {
@@ -312,7 +311,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 />
               </div>
               <div className="flex items-center gap-2">
-                <RotateCcw className="h-4 w-4 text-zinc-500" />
                 {isEditing ? (
                   <input
                     type="number"
