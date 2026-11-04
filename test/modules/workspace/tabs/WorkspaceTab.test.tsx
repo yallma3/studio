@@ -351,6 +351,10 @@ describe('WorkspaceTab', () => {
       expect(input).toBeInTheDocument();
       expect(input).toHaveAttribute('type', 'number');
       expect(input).toHaveAttribute('min', '1');
+      expect(input).toHaveAttribute('id', 'workspaceMaxIterations');
+
+      // Accessible label association
+      expect(screen.getByLabelText(/Maximum Task Retries/i)).toBe(input);
 
       fireEvent.change(input, { target: { value: '5' } });
       fireEvent.click(screen.getByText('Confirm'));
@@ -384,6 +388,25 @@ describe('WorkspaceTab', () => {
         expect(mockOnUpdate).toHaveBeenCalledWith(
           expect.objectContaining({
             maxIterations: undefined,
+          })
+        );
+      });
+    });
+
+    it('correctly parses scientific notation such as 1e2 to 100 on save', async () => {
+      const mockOnUpdate = vi.fn().mockResolvedValue(undefined);
+      renderWorkspaceTab({ onUpdateWorkspace: mockOnUpdate });
+
+      fireEvent.click(screen.getByText('Edit'));
+
+      const input = screen.getByLabelText(/Maximum Task Retries/i);
+      fireEvent.change(input, { target: { value: '1e2' } });
+      fireEvent.click(screen.getByText('Confirm'));
+
+      await waitFor(() => {
+        expect(mockOnUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            maxIterations: 100,
           })
         );
       });

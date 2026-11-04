@@ -141,4 +141,20 @@ describe('TooltipHelper Component', () => {
     fireEvent.mouseEnter(container);
     expect(screen.getByText(longText)).toBeInTheDocument();
   });
+
+  it('should be focusable with keyboard and show/hide tooltip on focus/blur', () => {
+    render(<TooltipHelper text="Accessible help text" />);
+
+    const container = document.querySelector('svg')!.parentElement!;
+    expect(container).toHaveAttribute('tabIndex', '0');
+    expect(container).toHaveAttribute('aria-label', 'Accessible help text');
+
+    expect(screen.queryByText('Accessible help text')).not.toBeInTheDocument();
+
+    fireEvent.focus(container);
+    expect(screen.getByText('Accessible help text')).toBeInTheDocument();
+
+    fireEvent.blur(container);
+    expect(screen.queryByText('Accessible help text')).not.toBeInTheDocument();
+  });
 });

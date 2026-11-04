@@ -461,6 +461,19 @@ describe('AgentForm Component', () => {
         })
       );
     });
+
+    it('should correctly parse scientific notation such as 1e2 to 100', () => {
+      render(<AgentForm {...defaultProps} />);
+
+      const input = screen.getByLabelText(/Max Iterations \/ Retries/i);
+      fireEvent.change(input, { target: { value: '1e2' } });
+
+      expect(mockOnChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxIterations: 100,
+        })
+      );
+    });
   });
 
   describe('UI Elements', () => {

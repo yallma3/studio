@@ -369,10 +369,11 @@ const AgentForm: React.FC<AgentFormProps> = ({
             if (raw === "") {
               onChange({ ...value, maxIterations: undefined });
             } else {
-              const parsed = Number.parseInt(raw, 10);
+              const num = Number(raw);
               onChange({
                 ...value,
-                maxIterations: Number.isNaN(parsed) ? undefined : Math.max(1, parsed),
+                maxIterations:
+                  !Number.isFinite(num) ? undefined : Math.max(1, Math.floor(num)),
               });
             }
           }}

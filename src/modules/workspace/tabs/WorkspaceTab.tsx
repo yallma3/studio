@@ -299,7 +299,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
 
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <label className="text-sm text-zinc-400">
+                <label
+                  htmlFor="workspaceMaxIterations"
+                  className="text-sm text-zinc-400"
+                >
                   {t("workspaceTab.maxIterations", "Maximum Task Retries")}
                 </label>
                 <TooltipHelper
@@ -315,6 +318,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                 {isEditing ? (
                   <input
                     type="number"
+                    id="workspaceMaxIterations"
                     name="maxIterations"
                     min={1}
                     step={1}
@@ -331,12 +335,11 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                           maxIterations: undefined,
                         }));
                       } else {
-                        const parsed = Number.parseInt(raw, 10);
+                        const num = Number(raw);
                         setFormValues((prev) => ({
                           ...prev,
-                          maxIterations: Number.isNaN(parsed)
-                            ? undefined
-                            : Math.max(1, parsed),
+                          maxIterations:
+                            !Number.isFinite(num) ? undefined : Math.max(1, Math.floor(num)),
                         }));
                       }
                     }}

@@ -48,9 +48,13 @@ export const TooltipHelper: React.FC<TooltipHelperProps> = ({
   return (
     <div className={`relative inline-flex items-center ${className}`}>
       <div
-        className="cursor-help text-gray-400 hover:text-yellow-400 transition-colors"
+        className="cursor-help text-gray-400 hover:text-yellow-400 transition-colors focus:outline-none focus:text-yellow-400"
+        tabIndex={0}
+        aria-label={text}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
+        onFocus={() => setShowTooltip(true)}
+        onBlur={() => setShowTooltip(false)}
       >
         <HelpCircle size={size} />
       </div>

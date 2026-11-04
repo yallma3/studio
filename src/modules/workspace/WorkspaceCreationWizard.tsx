@@ -988,12 +988,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                                 maxIterations: undefined,
                               }));
                             } else {
-                              const parsed = Number.parseInt(raw, 10);
+                              const num = Number(raw);
                               setWorkspaceData((prev) => ({
                                 ...prev,
-                                maxIterations: Number.isNaN(parsed)
-                                  ? undefined
-                                  : Math.max(1, parsed),
+                                maxIterations:
+                                  !Number.isFinite(num) ? undefined : Math.max(1, Math.floor(num)),
                               }));
                             }
                           }}
