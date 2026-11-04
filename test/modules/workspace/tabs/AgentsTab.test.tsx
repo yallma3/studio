@@ -55,6 +55,23 @@ vi.mock("@/modules/workspace/components/AgentForm", () => ({
       >
         Change Form
       </button>
+      <button
+        data-testid="form-change-iterations-btn"
+        onClick={() =>
+          onChange({
+            name: "Agent With Iterations",
+            role: "Iterative Reviewer",
+            background: "Reviews repeatedly",
+            llm: { provider: "OpenAI", model: { name: "GPT-4", id: "gpt-4" } },
+            apiKey: "iter-key",
+            tools: [],
+            variables: {},
+            maxIterations: 5,
+          })
+        }
+      >
+        Set Max Iterations
+      </button>
     </div>
   ),
 }));
@@ -461,5 +478,66 @@ describe("AgentsTab", () => {
     expect(screen.getByText("Test objective")).toBeInTheDocument();
     expect(screen.getByText("Test background")).toBeInTheDocument();
     expect(screen.getByText("Test capabilities")).toBeInTheDocument();
+  });
+
+  it("persists maxIterations when saving a new agent", async () => {
+    render(
+      <AgentsTab
+        workspaceData={mockWorkspaceData}
+        onTabChanges={mockOnTabChanges}
+        handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
+      />
+    );
+
+    const addButton = screen.getByText("Add Agent");
+    fireEvent.click(addButton);
+
+    const changeButton = screen.getByTestId("form-change-iterations-btn");
+    fireEvent.click(changeButton);
+
+    const saveButton = screen.getByText("Add");
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockOnAgentsChange).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "Agent With Iterations",
+            maxIterations: 5,
+          }),
+        ])
+      );
+    });
+  });
+
+  it("passes existing agent maxIterations when opening edit dialog", () => {
+    const dataWithIterations: WorkspaceData = {
+      ...mockWorkspaceData,
+      agents: [
+        {
+          ...mockWorkspaceData.agents[0],
+          maxIterations: 4,
+        },
+      ],
+    };
+
+    render(
+      <AgentsTab
+        workspaceData={dataWithIterations}
+        onTabChanges={mockOnTabChanges}
+        handleImportWorkflow={mockHandleImportWorkflow}
+        onAgentsChange={mockOnAgentsChange}
+      />
+    );
+
+    const editButton = screen.getByTitle("Edit Agent");
+    fireEvent.click(editButton);
+
+    const formValue = screen.getByTestId("form-value");
+    expect(JSON.parse(formValue.textContent || "{}")).toMatchObject({
+      name: "Test Agent",
+      maxIterations: 4,
+    });
   });
 });

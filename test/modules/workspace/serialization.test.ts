@@ -264,4 +264,37 @@ describe('enrichWorkspace', () => {
     const enriched = await enrichWorkspace(ws);
     expect(enriched).toHaveProperty('id', 'ws-test-001');
   });
+
+  it('preserves maxIterations at workspace and agent levels in run payload', async () => {
+    const { enrichWorkspace } = await import('@/modules/workspace/utils/buildRunPayload');
+    const ws = createMockWorkspaceData();
+    ws.maxIterations = 5;
+    ws.tasks[0].executorId = 'ag-001';
+    ws.agents[0].maxIterations = 2;
+
+    const enriched = await enrichWorkspace(ws);
+    expect(enriched.maxIterations).toBe(5);
+
+    const agents = enriched.agents as Array<Record<string, unknown>>;
+    expect(agents).toHaveLength(1);
+    expect(agents[0].maxIterations).toBe(2);
+  });
+
+  it('backward compatibility: handles workspaces and agents without maxIterations', async () => {
+    const { enrichWorkspace } = await import('@/modules/workspace/utils/buildRunPayload');
+    const ws = createMockWorkspaceData();
+    delete ws.maxIterations;
+    delete ws.agents[0].maxIterations;
+
+    const serialized = JSON.stringify(ws);
+    const parsed = JSON.parse(serialized) as WorkspaceData;
+
+    expect(parsed.maxIterations).toBeUndefined();
+    expect(parsed.agents[0].maxIterations).toBeUndefined();
+
+    const enriched = await enrichWorkspace(parsed);
+    expect(enriched.maxIterations).toBeUndefined();
+    const agents = enriched.agents as Array<Record<string, unknown>>;
+    expect(agents[0].maxIterations).toBeUndefined();
+  });
 });

@@ -20,6 +20,7 @@ export interface AgentFormValues {
   apiKey: string;
   tools: Tool[];
   variables?: Record<string, string>;
+  maxIterations?: number;
 }
 
 interface AgentFormProps {
@@ -341,6 +342,44 @@ const AgentForm: React.FC<AgentFormProps> = ({
             </span>
           )}
         </p>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label
+          htmlFor="agentMaxIterations"
+          className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-1"
+        >
+          {t("agentForm.maxIterations", "Max Iterations / Retries")}
+          <TooltipHelper
+            text={t(
+              "agentForm.maxIterationsTooltip",
+              "Number of self-evaluation revision rounds this agent performs, and retry budget if push-back occurs. Setting > 1 overrides the workspace-level retry budget."
+            )}
+            position="bottom"
+          />
+        </label>
+        <input
+          type="number"
+          id="agentMaxIterations"
+          min={1}
+          step={1}
+          value={value.maxIterations !== undefined ? value.maxIterations : ""}
+          onChange={(e) => {
+            const raw = e.target.value.trim();
+            if (raw === "") {
+              onChange({ ...value, maxIterations: undefined });
+            } else {
+              const num = Number(raw);
+              onChange({
+                ...value,
+                maxIterations:
+                  !Number.isFinite(num) ? undefined : Math.max(1, Math.floor(num)),
+              });
+            }
+          }}
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          placeholder={t("agentForm.maxIterationsPlaceholder", "1 (Default)")}
+        />
       </div>
 
       <div className="flex flex-col space-y-2">

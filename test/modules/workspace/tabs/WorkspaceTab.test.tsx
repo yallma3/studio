@@ -321,4 +321,95 @@ describe('WorkspaceTab', () => {
 
     expect(screen.getByText('Content Creation')).toBeInTheDocument();
   });
+
+  describe('Max Task Retries (maxIterations)', () => {
+    it('displays default placeholder in view mode when omitted', () => {
+      renderWorkspaceTab();
+
+      expect(screen.getByText('Maximum Task Retries')).toBeInTheDocument();
+      expect(screen.getByText('3 (Default)')).toBeInTheDocument();
+    });
+
+    it('displays configured maxIterations in view mode', () => {
+      renderWorkspaceTab({
+        workspaceData: {
+          ...mockWorkspaceData,
+          maxIterations: 6,
+        },
+      });
+
+      expect(screen.getByText('6')).toBeInTheDocument();
+    });
+
+    it('renders number input in edit mode and updates integer value on save', async () => {
+      const mockOnUpdate = vi.fn().mockResolvedValue(undefined);
+      renderWorkspaceTab({ onUpdateWorkspace: mockOnUpdate });
+
+      fireEvent.click(screen.getByText('Edit'));
+
+      const input = screen.getByPlaceholderText('3 (Default)');
+      expect(input).toBeInTheDocument();
+      expect(input).toHaveAttribute('type', 'number');
+      expect(input).toHaveAttribute('min', '1');
+      expect(input).toHaveAttribute('id', 'workspaceMaxIterations');
+
+      // Accessible label association
+      expect(screen.getByLabelText(/Maximum Task Retries/i)).toBe(input);
+
+      fireEvent.change(input, { target: { value: '5' } });
+      fireEvent.click(screen.getByText('Confirm'));
+
+      await waitFor(() => {
+        expect(mockOnUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            maxIterations: 5,
+          })
+        );
+      });
+    });
+
+    it('saves undefined when maxIterations input is cleared', async () => {
+      const mockOnUpdate = vi.fn().mockResolvedValue(undefined);
+      renderWorkspaceTab({
+        workspaceData: {
+          ...mockWorkspaceData,
+          maxIterations: 4,
+        },
+        onUpdateWorkspace: mockOnUpdate,
+      });
+
+      fireEvent.click(screen.getByText('Edit'));
+
+      const input = screen.getByDisplayValue('4');
+      fireEvent.change(input, { target: { value: '' } });
+      fireEvent.click(screen.getByText('Confirm'));
+
+      await waitFor(() => {
+        expect(mockOnUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            maxIterations: undefined,
+          })
+        );
+      });
+    });
+
+    it('correctly parses scientific notation such as 1e2 to 100 on save', async () => {
+      const mockOnUpdate = vi.fn().mockResolvedValue(undefined);
+      renderWorkspaceTab({ onUpdateWorkspace: mockOnUpdate });
+
+      fireEvent.click(screen.getByText('Edit'));
+
+      const input = screen.getByLabelText(/Maximum Task Retries/i);
+      fireEvent.change(input, { target: { value: '1e2' } });
+      fireEvent.click(screen.getByText('Confirm'));
+
+      await waitFor(() => {
+        expect(mockOnUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            maxIterations: 100,
+          })
+        );
+      });
+    });
+  });
 });

@@ -65,6 +65,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
     llm: workspaceData.mainLLM, // Default to workspace's main LLM
     apiKey: "",
     variables: {}, // Initialize empty variables object
+    maxIterations: undefined,
   });
 
   // LLM provider/model control moved into AgentForm
@@ -82,6 +83,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         llm: { ...agentToEdit.llm },
         apiKey: agentToEdit.apiKey || "",
         variables: agentToEdit.variables,
+        maxIterations: agentToEdit.maxIterations,
       });
     }
   }, [isEditing, agentToEdit, workspaceData.mainLLM]);
@@ -109,6 +111,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         llm: { ...agent.llm },
         apiKey: agent.apiKey,
         variables: agent.variables,
+        maxIterations: agent.maxIterations,
       });
     } else {
       // Reset form for new agent
@@ -122,6 +125,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         llm: workspaceData.mainLLM,
         apiKey: "",
         variables: {}, // Initialize empty variables object
+        maxIterations: undefined,
       });
     }
 
@@ -158,6 +162,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
             llm: agentForm.llm,
             apiKey: agentForm.apiKey,
             variables: agentForm.variables,
+            maxIterations: agentForm.maxIterations,
           };
         }
         return agent;
@@ -174,6 +179,9 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
         tools: agentForm.tools,
         llm: agentForm.llm,
         apiKey: agentForm.apiKey,
+        ...(agentForm.maxIterations !== undefined
+          ? { maxIterations: agentForm.maxIterations }
+          : {}),
       };
 
       updatedAgents = [...agents, newAgent];
@@ -425,6 +433,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                   apiKey: agentForm.apiKey,
                   tools: agentForm.tools,
                   variables: agentForm.variables,
+                  maxIterations: agentForm.maxIterations,
                 }}
                 onChange={(val: AgentFormValues) => {
                   setAgentForm({
@@ -443,6 +452,7 @@ const AgentsTab: React.FC<AgentsTabProps> = ({
                     apiKey: val.apiKey,
                     tools: val.tools,
                     variables: val.variables,
+                    maxIterations: val.maxIterations,
                   });
                 }}
                 handleImportWorkflow={handleImportWorkflow}

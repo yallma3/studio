@@ -27,6 +27,7 @@ export interface Agent {
   llm: LLMOption; // ID of the LLM to use for this agent
   apiKey: string;
   variables?: Record<string, string>; // Variables for templating in background and other fields
+  maxIterations?: number; // Optional agent review loop & retry limit (default: 1)
 }
 
 export interface ToolConfig {
@@ -96,6 +97,8 @@ export interface WorkspaceData {
   mcpTools: Tool[];
   // Environment Variables
   environmentVariables: EnvironmentVariable[]; 
+  // Optional workspace-level retry budget (default: 3)
+  maxIterations?: number;
 }
 
 export interface WorkspaceArtifact {
