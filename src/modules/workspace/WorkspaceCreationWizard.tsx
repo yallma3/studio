@@ -207,6 +207,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
     llm: workspaceData.mainLLM,
     variables: {}, // Initialize empty variables object
     apiKey: "",
+    maxIterations: undefined,
   });
 
   // Variables input state moved into AgentForm
@@ -558,6 +559,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                   llm: newAgent.llm,
                   variables: newAgent.variables,
                   apiKey: newAgent.apiKey,
+                  maxIterations: newAgent.maxIterations,
                 }
               : agent
           ),
@@ -575,6 +577,9 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
           llm: newAgent.llm,
           variables: newAgent.variables,
           apiKey: newAgent.apiKey,
+          ...(newAgent.maxIterations !== undefined
+            ? { maxIterations: newAgent.maxIterations }
+            : {}),
         };
 
         setWorkspaceData((prev) => ({
@@ -594,6 +599,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         llm: workspaceData.mainLLM, // Keep using workspace's main LLM as default
         variables: {},
         apiKey: "",
+        maxIterations: undefined,
       });
       setIsEditingAgent(false);
     }
@@ -614,6 +620,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         apiKey: agentToEdit.apiKey,
         variables: agentToEdit.variables || {},
         tools: agentToEdit.tools,
+        maxIterations: agentToEdit.maxIterations,
       });
       setIsEditingAgent(true);
     }
@@ -632,6 +639,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
         llm: workspaceData.mainLLM,
         variables: {},
         apiKey: "",
+        maxIterations: undefined,
       });
       setIsEditingAgent(false);
     }
@@ -947,6 +955,55 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           maxLength={250}
                         />
                       </div>
+                      <div className="flex flex-col gap-2">
+                        <label
+                          htmlFor="workspaceMaxIterations"
+                          className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-1"
+                        >
+                          {t("workspaces.maxIterations", "Maximum Task Retries")}
+                          <TooltipHelper
+                            text={t(
+                              "workspaces.maxIterationsTooltip",
+                              "Maximum number of push-back retries allowed across workspace tasks when an agent rejects upstream output or requires a re-run. Used as fallback when not overridden on the agent."
+                            )}
+                            position="bottom"
+                          />
+                        </label>
+                        <input
+                          type="number"
+                          id="workspaceMaxIterations"
+                          name="maxIterations"
+                          min={1}
+                          step={1}
+                          value={
+                            workspaceData.maxIterations !== undefined
+                              ? workspaceData.maxIterations
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const raw = e.target.value.trim();
+                            if (raw === "") {
+                              setWorkspaceData((prev) => ({
+                                ...prev,
+                                maxIterations: undefined,
+                              }));
+                            } else {
+                              const parsed = Number.parseInt(raw, 10);
+                              setWorkspaceData((prev) => ({
+                                ...prev,
+                                maxIterations: Number.isNaN(parsed)
+                                  ? undefined
+                                  : Math.max(1, parsed),
+                              }));
+                            }
+                          }}
+                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                          placeholder={t(
+                            "workspaces.maxIterationsPlaceholder",
+                            "3 (Default)"
+                          )}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -1030,6 +1087,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                         apiKey: newAgent.apiKey,
                         tools: newAgent.tools,
                         variables: newAgent.variables,
+                        maxIterations: newAgent.maxIterations,
                       }}
                       onChange={(val: AgentFormValues) =>
                         setNewAgent((prev) => ({
@@ -1045,6 +1103,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           apiKey: val.apiKey,
                           tools: val.tools,
                           variables: val.variables || {},
+                          maxIterations: val.maxIterations,
                         }))
                       }
                       handleImportWorkflow={handleImportWorkflow}
@@ -1068,6 +1127,7 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                               llm: workspaceData.mainLLM,
                               apiKey: "",
                               variables: {},
+                              maxIterations: undefined,
                             });
                             setIsEditingAgent(false);
                           }}
@@ -1954,6 +2014,16 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                           {workspaceData.mainLLM?.model?.name || t("workspaceTab.noModelSelected", "No LLM selected")}
                         </span>
                       </div>
+                      <div className="flex">
+                        <span className="text-gray-400 w-40">
+                          {t("workspaces.maxIterations", "Maximum Task Retries")}:
+                        </span>
+                        <span className="text-white font-medium">
+                          {workspaceData.maxIterations !== undefined
+                            ? workspaceData.maxIterations
+                            : t("workspaces.maxIterationsPlaceholder", "3 (Default)")}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -1985,6 +2055,11 @@ const WorkspaceCreationWizard: React.FC<WorkspaceCreationWizardProps> = ({
                             {agent.role && (
                               <div className="text-sm text-yellow-400">
                                 {agent.role}
+                              </div>
+                            )}
+                            {agent.maxIterations !== undefined && (
+                              <div className="text-xs text-gray-400 mt-1">
+                                {t("agentForm.maxIterations", "Max Iterations / Retries")}: {agent.maxIterations}
                               </div>
                             )}
                           </div>

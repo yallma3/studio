@@ -393,6 +393,76 @@ describe('AgentForm Component', () => {
     });
   });
 
+  describe('Max Iterations Configuration', () => {
+    it('should render max iterations input with default placeholder', () => {
+      render(<AgentForm {...defaultProps} />);
+
+      const input = screen.getByLabelText(/Max Iterations \/ Retries/i);
+      expect(input).toBeInTheDocument();
+      expect(input).toHaveAttribute('type', 'number');
+      expect(input).toHaveAttribute('min', '1');
+      expect(input).toHaveAttribute('step', '1');
+      expect(input).toHaveAttribute('placeholder', '1 (Default)');
+      expect(input).toHaveValue(null);
+    });
+
+    it('should display existing maxIterations value', () => {
+      render(
+        <AgentForm
+          {...defaultProps}
+          value={{ ...defaultProps.value, maxIterations: 4 }}
+        />
+      );
+
+      const input = screen.getByLabelText(/Max Iterations \/ Retries/i);
+      expect(input).toHaveValue(4);
+    });
+
+    it('should call onChange with parsed integer when user enters valid number', () => {
+      render(<AgentForm {...defaultProps} />);
+
+      const input = screen.getByLabelText(/Max Iterations \/ Retries/i);
+      fireEvent.change(input, { target: { value: '3' } });
+
+      expect(mockOnChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxIterations: 3,
+        })
+      );
+    });
+
+    it('should enforce min 1 when user enters 0 or negative value', () => {
+      render(<AgentForm {...defaultProps} />);
+
+      const input = screen.getByLabelText(/Max Iterations \/ Retries/i);
+      fireEvent.change(input, { target: { value: '0' } });
+
+      expect(mockOnChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxIterations: 1,
+        })
+      );
+    });
+
+    it('should serialize empty input as undefined', () => {
+      render(
+        <AgentForm
+          {...defaultProps}
+          value={{ ...defaultProps.value, maxIterations: 5 }}
+        />
+      );
+
+      const input = screen.getByLabelText(/Max Iterations \/ Retries/i);
+      fireEvent.change(input, { target: { value: '' } });
+
+      expect(mockOnChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxIterations: undefined,
+        })
+      );
+    });
+  });
+
   describe('UI Elements', () => {
     it('should have proper styling classes', () => {
       render(<AgentForm {...defaultProps} />);

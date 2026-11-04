@@ -21,6 +21,7 @@ import {
   Clock,
   X,
   Check,
+  RotateCcw,
 } from "lucide-react";
 
 import {
@@ -32,6 +33,7 @@ import {
 } from "../../../shared/components/ui/card";
 import { Button } from "../../../shared/components/ui/button";
 import LLMPicker from "../../../shared/components/LLMPicker";
+import { TooltipHelper } from "../../../shared/components/ui/tooltip-helper";
 import { useTranslation } from "react-i18next";
 
 interface WorkspaceTabProps {
@@ -47,12 +49,20 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const [formValues, setFormValues] = useState({
+  const [formValues, setFormValues] = useState<{
+    name: string;
+    description: string;
+    mainLLM: WorkspaceData["mainLLM"];
+    apiKey: string;
+    useSavedCredentials: boolean;
+    maxIterations?: number;
+  }>({
     name: workspaceData.name || "",
     description: workspaceData.description || "",
     mainLLM: workspaceData.mainLLM,
     apiKey: workspaceData.apiKey || "",
     useSavedCredentials: workspaceData.useSavedCredentials || false,
+    maxIterations: workspaceData.maxIterations,
   });
 
   // State for editing mode
@@ -85,6 +95,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
         mainLLM: formValues.mainLLM,
         apiKey: formValues.apiKey,
         useSavedCredentials: formValues.useSavedCredentials,
+        maxIterations: formValues.maxIterations,
       });
     }
     setIsEditing(false);
@@ -98,6 +109,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
       mainLLM: workspaceData.mainLLM,
       apiKey: workspaceData.apiKey || "",
       useSavedCredentials: workspaceData.useSavedCredentials || false,
+      maxIterations: workspaceData.maxIterations,
     });
     setIsEditing(false);
   };
@@ -110,6 +122,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
       mainLLM: workspaceData.mainLLM,
       apiKey: workspaceData.apiKey || "",
       useSavedCredentials: workspaceData.useSavedCredentials || false,
+      maxIterations: workspaceData.maxIterations,
     });
   }, [workspaceData]);
 
@@ -282,6 +295,65 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({
                       )
                     : "28/05/2025, 15:46:54"}
                 </span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="text-sm text-zinc-400">
+                  {t("workspaceTab.maxIterations", "Maximum Task Retries")}
+                </label>
+                <TooltipHelper
+                  text={t(
+                    "workspaceTab.maxIterationsTooltip",
+                    "Maximum number of push-back retries allowed across workspace tasks when an agent rejects upstream output or requires a re-run. Used as fallback when not overridden on the agent."
+                  )}
+                  position="bottom"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <RotateCcw className="h-4 w-4 text-zinc-500" />
+                {isEditing ? (
+                  <input
+                    type="number"
+                    name="maxIterations"
+                    min={1}
+                    step={1}
+                    value={
+                      formValues.maxIterations !== undefined
+                        ? formValues.maxIterations
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value.trim();
+                      if (raw === "") {
+                        setFormValues((prev) => ({
+                          ...prev,
+                          maxIterations: undefined,
+                        }));
+                      } else {
+                        const parsed = Number.parseInt(raw, 10);
+                        setFormValues((prev) => ({
+                          ...prev,
+                          maxIterations: Number.isNaN(parsed)
+                            ? undefined
+                            : Math.max(1, parsed),
+                        }));
+                      }
+                    }}
+                    className="bg-zinc-800 border border-zinc-600 rounded px-2 py-1 text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C] w-32"
+                    placeholder={t(
+                      "workspaceTab.maxIterationsPlaceholder",
+                      "3 (Default)"
+                    )}
+                  />
+                ) : (
+                  <span className="text-sm text-white font-medium">
+                    {workspaceData.maxIterations !== undefined
+                      ? workspaceData.maxIterations
+                      : t("workspaceTab.defaultIterations", "3 (Default)")}
+                  </span>
+                )}
               </div>
             </div>
             </div>

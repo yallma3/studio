@@ -207,7 +207,10 @@
     "toolsAndWorkflowsDescription": "Create and manage visual workflows and MCP tools available to agents in this workspace",
     "environmentVariablesDescription": "Configure environment variables and secure credentials accessible during workspace execution",
     "untitledWorkflow": "Untitled Workflow",
-    "lastUpdated": "Last updated"
+    "lastUpdated": "Last updated",
+    "maxIterations": "Maximum Task Retries",
+    "maxIterationsPlaceholder": "3 (Default)",
+    "maxIterationsTooltip": "Maximum number of push-back retries allowed across workspace tasks when an agent rejects upstream output or requires a re-run. Used as fallback when not overridden on the agent."
   },
   "workspaceTab": {
     "unknownNode": "Unknown Node",
@@ -225,6 +228,10 @@
     "model": "Model",
     "noModelSelected": "No model selected",
     "lastUpdated": "Last Updated",
+    "maxIterations": "Maximum Task Retries",
+    "maxIterationsPlaceholder": "3 (Default)",
+    "maxIterationsTooltip": "Maximum number of push-back retries allowed across workspace tasks when an agent rejects upstream output or requires a re-run. Used as fallback when not overridden on the agent.",
+    "defaultIterations": "3 (Default)",
     "apiConfiguration": "API Configuration",
     "newKey": "New Key",
     "keysVault": "Keys Vault",
@@ -512,6 +519,9 @@
     "tools": "Tools",
     "addTool": "Add Tool",
     "removeTool": "Remove tool",
-    "noToolsSelected": "No tools selected - Press the plus button to add tools"
+    "noToolsSelected": "No tools selected - Press the plus button to add tools",
+    "maxIterations": "Max Iterations / Retries",
+    "maxIterationsPlaceholder": "1 (Default)",
+    "maxIterationsTooltip": "Number of self-evaluation revision rounds this agent performs, and retry budget if push-back occurs. Setting > 1 overrides the workspace-level retry budget."
   }
 }
